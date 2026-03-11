@@ -1,4 +1,4 @@
-./Data/
-./.venv/
-./output/
-./src/__pycache__/
+Data/
+.venv/
+output/
+src/__pycache__/
