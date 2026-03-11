@@ -31,6 +31,7 @@ plt.rcParams["axes.unicode_minus"] = False
 # 导入项目模块
 from dataset_npy import data_set_split
 from resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
+from resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
 from confusionMatrix import ConfusionMatrix
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
 
@@ -86,8 +87,15 @@ def main():
         "--model",
         type=str,
         default="resnet6_2d",
-        choices=["resnet6_2d", "resnet10_2d", "resnet14_2d"],
-        help="选择轻量级模型 (默认 resnet10_2d",
+        choices=[
+            "resnet6_2d",
+            "resnet10_2d",
+            "resnet14_2d",
+            "resnet18_2d",
+            "resnet34_2d",
+            "resnet50_2d",
+        ],
+        help="选择模型 (默认 resnet6_2d)",
     )
 
     # 数据路径
@@ -199,6 +207,9 @@ def main():
         "resnet6_2d": resnet6_2d,
         "resnet10_2d": resnet10_2d,
         "resnet14_2d": resnet14_2d,
+        "resnet18_2d": resnet18_2d,
+        "resnet34_2d": resnet34_2d,
+        "resnet50_2d": resnet50_2d,
     }
     model = model_map[args.model](num_classes=args.class_num, dropout_p=args.dropout_p)
     model.to(device)
