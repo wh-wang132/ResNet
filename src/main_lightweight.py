@@ -23,6 +23,7 @@ from matplotlib.lines import Line2D
 import matplotlib.cm as cm
 import umap
 from sklearn.decomposition import PCA
+import psutil
 
 plt.rcParams["font.sans-serif"] = ["Times New Roman"]
 plt.rcParams["axes.unicode_minus"] = False
@@ -391,7 +392,7 @@ def main():
         writer.close()
 
         # 加载最佳模型（包含 AMP scaler 状态）
-        checkpoint = torch.load(save_path, weights_only=False)
+        checkpoint = torch.load(save_path, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
 
         # 绘制训练曲线（包含学习率）
@@ -453,7 +454,7 @@ def main():
         assert os.path.exists(model_path), f"找不到模型文件: {model_path}"
 
         # 加载模型（同时兼容旧格式和新 checkpoint 格式）
-        checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+        checkpoint = torch.load(model_path, map_location=device, weights_only=True)
         if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
             model.load_state_dict(checkpoint["model_state_dict"])
         else:
@@ -475,11 +476,15 @@ def main():
         confusion.plot(folder_path)
         confusion.summary()
 
-    # UMAP 可视化（内存优化版）
+    # UMAP 可视化（内存优化版 + 16线程配置）
     if args.TSNE:
         print(f"\n{'='*80}")
-        print("UMAP 可视化（内存优化版）")
+        print("UMAP 可视化（内存优化版 + 16线程配置）")
         print(f"{'='*80}")
+
+        print("配置 UMAP 使用 16 个逻辑线程...")
+        print(f"系统 CPU 核心数: {psutil.cpu_count(logical=False)}")
+        print(f"系统逻辑线程数: {psutil.cpu_count(logical=True)}")
 
         all_features = []
         all_labels = []
@@ -507,15 +512,19 @@ def main():
             f"原始维度: {all_features.shape[1]}, PCA降维后维度: {all_features_pca.shape[1]}"
         )
 
-        print("执行 UMAP 降维...")
+        print("执行 UMAP 降维（使用 16 个逻辑线程）...")
         umap_embedding = umap.UMAP(
             n_components=2,
-            random_state=42,
+            random_state=None,
             n_neighbors=15,
             min_dist=0.1,
             metric="euclidean",
             low_memory=True,
+            n_jobs=16,
+            verbose=True,
         )
+
+        print(f"UMAP 线程配置: n_jobs={umap_embedding.n_jobs}")
         X_umap = umap_embedding.fit_transform(all_features_pca)
 
         cmaps = "viridis"
@@ -524,7 +533,7 @@ def main():
             X_umap[:, 0], X_umap[:, 1], c=all_labels, cmap=cmaps, alpha=0.6
         )
         plt.colorbar(scatter)
-        plt.title("UMAP Visualization (Memory-Optimized)")
+        plt.title("UMAP Visualization (Memory-Optimized, 16 Threads)")
         plt.xlabel("UMAP Feature 1")
         plt.ylabel("UMAP Feature 2")
 
