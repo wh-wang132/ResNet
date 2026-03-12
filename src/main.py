@@ -13,11 +13,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
-from prettytable import PrettyTable
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.cm as cm

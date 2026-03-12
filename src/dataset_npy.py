@@ -8,9 +8,8 @@
 import os
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
-from torchvision import transforms
 
 
 class NPYDataset(Dataset):

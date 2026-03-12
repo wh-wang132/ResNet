@@ -1,10 +1,4 @@
-import os
-import json
-
-import torch
-from torchvision import transforms, datasets
 import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 
@@ -79,52 +73,3 @@ class ConfusionMatrix(object):
         plt.tight_layout()
         plt.savefig(folder_path + "/" + " Confusion matrix.png")
         plt.show()
-
-
-# if __name__ == '__main__':
-#     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#     print(device)
-
-#     data_transform = transforms.Compose([transforms.Resize(256),
-#                                          transforms.CenterCrop(224),
-#                                          transforms.ToTensor(),
-#                                          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-
-#     # data_root = os.path.abspath(os.path.join(os.getcwd(), "../.."))  # get data root path
-#     # image_path = os.path.join(data_root, "data_set", "flower_data")  # flower data set path
-#     image_path = '/root/autodl-tmp/lzk/D00/data_set'
-#     assert os.path.exists(image_path), "data path {} does not exist.".format(image_path)
-
-#     validate_dataset = datasets.ImageFolder(root=os.path.join(image_path, "test"),
-#                                             transform=data_transform)
-
-#     batch_size = 32
-#     class_num = 10
-#     validate_loader = torch.utils.data.DataLoader(validate_dataset,
-#                                                   batch_size=batch_size, shuffle=False,
-#                                                   num_workers=2)
-#     net = ResNet10(num_classes=class_num)
-#     # load pretrain weights
-#     model_weight_path = "/root/autodl-tmp/lzk/test/ANN_model_deep.pth"
-#     assert os.path.exists(model_weight_path), "cannot find {} file".format(model_weight_path)
-#     net.load_state_dict(torch.load(model_weight_path, map_location=device))
-#     net.to(device)
-
-#     # read class_indict
-#     json_label_path = './class_indices.json'
-#     assert os.path.exists(json_label_path), "cannot find {} file".format(json_label_path)
-#     json_file = open(json_label_path, 'r')
-#     class_indict = json.load(json_file)
-
-#     labels = [label for _, label in class_indict.items()]
-#     confusion = ConfusionMatrix(num_classes=class_num, labels=labels)
-#     net.eval()
-#     with torch.no_grad():
-#         for val_data in tqdm(validate_loader):
-#             val_images, val_labels = val_data
-#             outputs = net(val_images.to(device))
-#             outputs = torch.softmax(outputs, dim=1)
-#             outputs = torch.argmax(outputs, dim=1)
-#             confusion.update(outputs.to("cpu").numpy(), val_labels.to("cpu").numpy())
-#     confusion.plot()
-#     confusion.summary()
