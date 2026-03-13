@@ -14,7 +14,7 @@ plt.rcParams["font.sans-serif"] = ["Times New Roman"]
 plt.rcParams["axes.unicode_minus"] = False
 
 # 导入项目模块
-from dataset_npy import data_set_split
+from dataset import data_set_split
 from utils import (
     release_gpu_memory,
     setup_device,
@@ -123,4 +123,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
