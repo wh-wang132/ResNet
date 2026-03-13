@@ -39,7 +39,7 @@
 
 3. 准备数据集：
    - 将 .npy 格式数据集放入 `Data/` 目录
-   - 数据集结构详见 [`数据准备`](docs/DATA_PREPARATION.md)
+   - 数据集结构详见 [数据准备](docs/DATA_PREPARATION.md)
 
 ### 基本使用
 
@@ -112,7 +112,7 @@ ResNet/
 | ResNet-34 | 21.3M | BasicBlock |
 | ResNet-50 | 23.6M | Bottleneck |
 
-详细模型说明请参考 [`模型架构`](docs/MODEL_ARCHITECTURE.md)。
+详细模型说明请参考 [模型架构](docs/MODEL_ARCHITECTURE.md)。
 
 ## 命令行参数
 
@@ -155,7 +155,7 @@ ResNet/
 | `--plot_lr_schedule` | True | 绘制学习率曲线 |
 | `--no-plot_lr_schedule` | - | 禁用学习率曲线绘制 |
 
-详细参数说明请参考 [`命令行参数`](docs/CLI_ARGUMENTS.md)。
+详细参数说明请参考 [命令行参数](docs/CLI_ARGUMENTS.md)。
 
 ## 输出文件
 
@@ -173,11 +173,11 @@ output/<model>_Data/<config>/
 
 ## 文档
 
-- [`数据准备指南`](docs/DATA_PREPARATION.md) - 如何准备和组织数据集
-- [`模型架构说明`](docs/MODEL_ARCHITECTURE.md) - 各种 ResNet 架构的详细说明
-- [`训练参数调优`](docs/TRAINING_GUIDE.md) - 训练参数调优建议
-- [`命令行参数详解`](docs/CLI_ARGUMENTS.md) - 完整的命令行参数说明
-- [`模块说明`](docs/MODULES.md) - 代码模块结构和功能说明
+- [数据准备指南](docs/DATA_PREPARATION.md) - 如何准备和组织数据集
+- [模型架构说明](docs/MODEL_ARCHITECTURE.md) - 各种 ResNet 架构的详细说明
+- [训练参数调优](docs/TRAINING_GUIDE.md) - 训练参数调优建议
+- [命令行参数详解](docs/CLI_ARGUMENTS.md) - 完整的命令行参数说明
+- [模块说明](docs/MODULES.md) - 代码模块结构和功能说明
 
 ## 贡献规范
 
@@ -188,11 +188,11 @@ output/<model>_Data/<config>/
 3. 新功能请添加相应文档
 4. 提交信息清晰明确
 
-详细规范请参考 [`贡献指南`](docs/CONTRIBUTING.md)。
+详细规范请参考 [贡献指南](docs/CONTRIBUTING.md)。
 
 ## 许可证
 
-本项目采用 [`GPLv3 许可证`](LICENSE)。
+本项目采用 [GPLv3 许可证](LICENSE)。
 
 ## 联系方式
 

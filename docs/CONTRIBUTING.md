@@ -38,7 +38,7 @@ uv sync
 
 ### Python 代码风格
 
-- 遵循 [`PEP 8`](https://peps.python.org/pep-0008/) 规范
+- 遵循 [PEP 8](https://peps.python.org/pep-0008/) 规范
 - 使用 4 空格缩进
 - 每行不超过 120 字符
 - 使用有意义的变量和函数名
@@ -185,13 +185,13 @@ git push origin feature/your-feature-name
 
 如果您有任何问题或需要帮助：
 
-1. 查看 [`README.md`](../README.md)
-2. 查看 [`文档目录`](./)
+1. 查看 [README.md](../README.md)
+2. 查看 [文档目录](./)
 3. 提交 Issue
 
 ## 许可证
 
-通过贡献代码，您同意您的贡献将根据项目的 [`LICENSE`](../LICENSE) 进行许可。
+通过贡献代码，您同意您的贡献将根据项目的 [LICENSE](../LICENSE) 进行许可。
 
 ---
 

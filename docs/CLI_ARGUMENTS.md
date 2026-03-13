@@ -219,4 +219,4 @@ uv run src/main.py \
 
 ## 参数调优建议
 
-详细的参数调优建议请参考 [`训练参数调优指南`](TRAINING_GUIDE.md)。
+详细的参数调优建议请参考 [训练参数调优指南](TRAINING_GUIDE.md)。
