@@ -22,6 +22,7 @@ from utils import (
     create_output_directory,
     load_model_map,
     print_model_info,
+    create_optimized_dataloader,
 )
 from trainer import train_model
 from tester import test_model
@@ -50,20 +51,46 @@ def main():
         val_ratio=0.2,
         test_ratio=0.2,
         full_load=args.full_load,
+        num_workers=args.num_workers,
     )
 
-    # 数据加载器配置
-    nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])
-    print(f"\n使用 {nw} 个数据加载工作线程")
+    # 检查是否使用GPU
+    use_cuda = torch.cuda.is_available()
+    pin_memory = args.pin_memory and use_cuda
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=nw
+    # 优化的数据加载器配置
+    train_loader, _ = create_optimized_dataloader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        prefetch_factor=args.prefetch_factor,
+        persistent_workers=args.persistent_workers,
+        pin_memory=pin_memory,
+        drop_last=True,
+        loader_name="训练集 DataLoader",
     )
-    validate_loader = torch.utils.data.DataLoader(
-        validate_dataset, batch_size=args.batch_size, shuffle=False, num_workers=nw
+    validate_loader, _ = create_optimized_dataloader(
+        validate_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        prefetch_factor=args.prefetch_factor,
+        persistent_workers=args.persistent_workers,
+        pin_memory=pin_memory,
+        drop_last=False,
+        loader_name="验证集 DataLoader",
     )
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=nw
+    test_loader, _ = create_optimized_dataloader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        prefetch_factor=args.prefetch_factor,
+        persistent_workers=args.persistent_workers,
+        pin_memory=pin_memory,
+        drop_last=False,
+        loader_name="测试集 DataLoader",
     )
 
     train_num = len(train_dataset)

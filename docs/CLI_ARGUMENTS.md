@@ -96,6 +96,72 @@
   uv run python src/main.py --no-full_load
   ```
 
+### --num_workers
+
+- **类型**: int
+- **默认值**: None
+- **说明**: 数据加载工作线程数
+  - None：自动检测CPU核心数（推荐）
+  - 0：单线程加载（主线程）
+  - >0：指定工作线程数
+- **使用场景**:
+  - 自动检测（推荐）：不添加该参数
+  - 手动控制：根据系统资源调整
+- **示例**:
+  ```bash
+  # 自动检测（推荐）
+  uv run python src/main.py
+
+  # 指定4个工作线程
+  uv run python src/main.py --num_workers 4
+  ```
+
+### --prefetch_factor
+
+- **类型**: int
+- **默认值**: 2
+- **说明**: DataLoader预取因子（每个工作线程预取的样本数）
+  - 较高值：提高吞吐量但增加内存使用
+  - 较低值：减少内存使用但可能降低吞吐量
+- **使用场景**:
+  - 内存充足：使用3-4
+  - 内存受限：使用1-2
+- **示例**:
+  ```bash
+  # 预取因子设为4（内存充足）
+  uv run python src/main.py --prefetch_factor 4
+  ```
+
+### --persistent_workers / --no-persistent_workers
+
+- **类型**: boolean
+- **默认值**: True
+- **说明**: 保持DataLoader工作线程活跃
+  - 启用：训练过程中保持工作线程存活，减少线程创建开销
+  - 禁用：每个epoch后销毁工作线程，节省资源
+- **使用场景**:
+  - 长时间训练：保持启用（默认）
+  - 快速测试或资源受限：可以禁用
+- **示例**:
+  ```bash
+  # 禁用持久化工作线程
+  uv run python src/main.py --no-persistent_workers
+  ```
+
+### --pin_memory / --no-pin_memory
+
+- **类型**: boolean
+- **默认值**: True
+- **说明**: 启用CUDA内存钉住（GPU训练时推荐）
+  - 启用：将数据固定在页锁定内存中，加速CPU到GPU的数据传输
+  - 禁用：使用常规内存
+- **注意**: 仅在使用GPU训练时有效
+- **示例**:
+  ```bash
+  # 禁用内存钉住（CPU训练时）
+  uv run python src/main.py --no-pin_memory
+  ```
+
 ## 功能开关
 
 ### --Train / --no-Train
