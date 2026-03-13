@@ -108,13 +108,14 @@ class AutomatedTrainer:
 
             self.logger.info(f"执行命令: {' '.join(cmd)}")
 
-            # 运行训练并捕获输出
+            # 运行训练并捕获输出（使用相对路径）
+            # 脚本位于项目根目录，直接使用当前目录
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd="/root/ResNet",
+                cwd=".",
             )
 
             stdout, stderr = process.communicate()
