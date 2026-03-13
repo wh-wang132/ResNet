@@ -108,6 +108,14 @@ def parse_args():
     # 数据路径
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")
 
+    # 数据加载选项
+    parser.add_argument(
+        "--full_load", action="store_true", default=False, help="全量加载数据集到内存 (默认 False)"
+    )
+    parser.add_argument(
+        "--no-full_load", dest="full_load", action="store_false", help="禁用全量加载（增量加载）"
+    )
+
     # 功能开关
     parser.add_argument(
         "--Train", action="store_true", default=True, help="是否训练 (默认 True)"

@@ -45,7 +45,11 @@ def main():
     # 数据加载
     print("\n开始加载数据 (FP16)...")
     train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(
-        args.data_dir, train_ratio=0.6, val_ratio=0.2, test_ratio=0.2
+        args.data_dir,
+        train_ratio=0.6,
+        val_ratio=0.2,
+        test_ratio=0.2,
+        full_load=args.full_load,
     )
 
     # 数据加载器配置

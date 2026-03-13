@@ -74,7 +74,26 @@
 - **说明**: 数据集路径
 - **示例**:
   ```bash
-  uv run src/main.py --data_dir ./my_dataset
+  uv run python src/main.py --data_dir ./my_dataset
+  ```
+
+### --full_load / --no-full_load
+
+- **类型**: boolean
+- **默认值**: False
+- **说明**: 启用/禁用全量加载数据集到内存
+  - 启用：将整个数据集一次性加载到内存中，优化数据访问速度（适用于内存充足的情况）
+  - 禁用：保持原有的增量加载机制，按需从磁盘加载数据（适用于内存受限的情况）
+- **使用场景**:
+  - 内存充足且追求训练速度：使用 `--full_load`
+  - 内存受限或数据集过大：使用默认（不添加该参数）或 `--no-full_load`
+- **示例**:
+  ```bash
+  # 启用全量加载
+  uv run python src/main.py --full_load
+
+  # 禁用全量加载（默认）
+  uv run python src/main.py --no-full_load
   ```
 
 ## 功能开关

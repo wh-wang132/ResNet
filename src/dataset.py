@@ -15,22 +15,55 @@ from sklearn.model_selection import train_test_split
 class NPYDataset(Dataset):
     """自定义 Dataset 类用于加载.npy 文件（FP16 版本）"""
 
-    def __init__(self, file_paths, labels, transform=None):
+    def __init__(self, file_paths, labels, transform=None, full_load=False):
         """
         Args:
             file_paths: .npy 文件路径列表
             labels: 对应的标签列表
             transform: 数据变换
+            full_load: 是否全量加载到内存
         """
         self.file_paths = file_paths
         self.labels = labels
         self.transform = transform
+        self.full_load = full_load
+        self.data_cache = None
+
+        if self.full_load:
+            self._preload_data()
+
+    def _preload_data(self):
+        """预加载所有数据到内存"""
+        print(f"开始预加载 {len(self.file_paths)} 个样本到内存...")
+        self.data_cache = []
+        for idx in range(len(self.file_paths)):
+            try:
+                data = np.load(self.file_paths[idx])
+                label = self.labels[idx]
+
+                if data.dtype != np.float16:
+                    data = data.astype(np.float16)
+
+                data = torch.from_numpy(data).to(torch.float16)
+                data = data.unsqueeze(0)
+
+                self.data_cache.append((data, label))
+            except Exception as e:
+                print(f"Error preloading {self.file_paths[idx]}: {e}")
+                self.data_cache.append((torch.zeros(1, 543, 512, dtype=torch.float16), 0))
+        print(f"✓ 预加载完成，共 {len(self.data_cache)} 个样本")
 
     def __len__(self):
         return len(self.file_paths)
 
     def __getitem__(self, idx):
         """加载单个样本（FP16）"""
+        if self.full_load and self.data_cache is not None:
+            data, label = self.data_cache[idx]
+            if self.transform:
+                data = self.transform(data)
+            return data, label
+
         try:
             # 加载.npy 文件
             data = np.load(self.file_paths[idx])
@@ -64,6 +97,7 @@ def data_set_split(
     val_ratio=0.2,
     test_ratio=0.2,
     random_state=42,
+    full_load=False,
 ):
     """
     划分数据集（FP16 版本）
@@ -74,6 +108,7 @@ def data_set_split(
         val_ratio: 验证集比例
         test_ratio: 测试集比例
         random_state: 随机种子
+        full_load: 是否全量加载到内存
 
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
@@ -126,8 +161,8 @@ def data_set_split(
     print(f"测试集：{len(test_paths)} 样本")
 
     # 创建数据集（FP16 版本）
-    train_dataset = NPYDataset(train_paths, train_labels)
-    validate_dataset = NPYDataset(val_paths, val_labels)
-    test_dataset = NPYDataset(test_paths, test_labels)
+    train_dataset = NPYDataset(train_paths, train_labels, full_load=full_load)
+    validate_dataset = NPYDataset(val_paths, val_labels, full_load=full_load)
+    test_dataset = NPYDataset(test_paths, test_labels, full_load=full_load)
 
     return train_dataset, validate_dataset, test_dataset, labels__
