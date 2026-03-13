@@ -2,3 +2,5 @@ Data/
 .venv/
 output/
 src/__pycache__/
+logs/
+experiments/
