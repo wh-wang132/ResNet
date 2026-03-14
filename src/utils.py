@@ -107,8 +107,8 @@ def parse_args():
 
     # 训练参数
     parser.add_argument("--epochs", type=int, default=20, help="训练轮数 (默认 60)")
-    parser.add_argument("--lr", type=float, default=0.0003, help="学习率 (默认 0.001)")
-    parser.add_argument("--batch_size", type=int, default=64, help="批次大小 (默认 32)")
+    parser.add_argument("--lr", type=float, default=0.0003, help="学习率 (默认 0.003)")
+    parser.add_argument("--batch_size", type=int, default=64, help="批次大小 (默认 64)")
     parser.add_argument(
         "--model_path", type=str, default="best_model.pth", help="模型保存路径"
     )

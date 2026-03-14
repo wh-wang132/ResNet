@@ -16,7 +16,12 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
-from utils import get_gpu_memory_info, print_training_summary, configure_cudnn, compile_model
+from utils import (
+    get_gpu_memory_info,
+    print_training_summary,
+    configure_cudnn,
+    compile_model,
+)
 
 
 def train_model(
