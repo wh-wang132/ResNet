@@ -16,7 +16,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
-from utils import get_gpu_memory_info, print_training_summary
+from utils import get_gpu_memory_info, print_training_summary, configure_cudnn, compile_model
 
 
 def train_model(
@@ -54,6 +54,18 @@ def train_model(
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
+
+    # 配置 cuDNN 性能优化
+    configure_cudnn(args)
+
+    # 模型编译（训练前完成）
+    model = compile_model(
+        model=model,
+        args=args,
+        device=device,
+        loss_function=loss_function,
+        optimizer=optimizer,
     )
 
     # 初始化 GradScaler 用于自动混合精度

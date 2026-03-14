@@ -158,6 +158,56 @@ def parse_args():
         help="禁用内存钉住",
     )
 
+    # cuDNN和性能优化选项
+    parser.add_argument(
+        "--cudnn_benchmark",
+        action="store_true",
+        default=True,
+        help="启用cuDNN自动调优 (默认 True, 优化卷积性能)",
+    )
+    parser.add_argument(
+        "--no-cudnn_benchmark",
+        dest="cudnn_benchmark",
+        action="store_false",
+        help="禁用cuDNN自动调优",
+    )
+    parser.add_argument(
+        "--cudnn_deterministic",
+        action="store_true",
+        default=False,
+        help="启用cuDNN确定性算法 (默认 False, 禁用以提高速度)",
+    )
+    parser.add_argument(
+        "--no-cudnn_deterministic",
+        dest="cudnn_deterministic",
+        action="store_false",
+        help="禁用cuDNN确定性算法 (使用非确定性算法提高速度)",
+    )
+    parser.add_argument(
+        "--compile_model",
+        action="store_true",
+        default=True,
+        help="启用模型编译 (默认 True, 使用torch.compile优化)",
+    )
+    parser.add_argument(
+        "--no-compile_model",
+        dest="compile_model",
+        action="store_false",
+        help="禁用模型编译",
+    )
+    parser.add_argument(
+        "--compile_mode",
+        type=str,
+        default="default",
+        choices=[
+            "default",
+            "reduce-overhead",
+            "max-autotune",
+            "max-autotune-no-cudagraphs",
+        ],
+        help="模型编译模式 (默认 default)",
+    )
+
     # 功能开关
     parser.add_argument(
         "--Train", action="store_true", default=True, help="是否训练 (默认 True)"
@@ -238,6 +288,155 @@ def print_model_info(model, device):
     except Exception as e:
         print(f"无法使用 torchsummary: {e}")
         print(f"模型参数量: {sum(p.numel() for p in model.parameters()):,}")
+
+
+def configure_cudnn(args):
+    """
+    配置cuDNN设置并验证配置是否生效
+
+    Args:
+        args: 命令行参数
+
+    Returns:
+        dict: 包含配置状态的字典
+    """
+    print(f"\n{'='*80}")
+    print("配置 cuDNN 性能优化")
+    print(f"{'='*80}")
+
+    config_status = {
+        "cudnn_available": False,
+        "cudnn_benchmark": args.cudnn_benchmark,
+        "cudnn_deterministic": args.cudnn_deterministic,
+        "cudnn_version": None,
+    }
+
+    if torch.cuda.is_available():
+        config_status["cudnn_available"] = torch.backends.cudnn.is_available()
+
+        if config_status["cudnn_available"]:
+            config_status["cudnn_version"] = torch.backends.cudnn.version()
+
+            # 设置cuDNN benchmark模式（自动调优）
+            torch.backends.cudnn.benchmark = args.cudnn_benchmark
+            print(f"  cuDNN 自动调优: {'✓ 启用' if args.cudnn_benchmark else '✗ 禁用'}")
+
+            # 设置确定性算法
+            torch.backends.cudnn.deterministic = args.cudnn_deterministic
+
+            if args.cudnn_deterministic:
+                print(f"  cuDNN 确定性算法: ✓ 启用 (可能降低性能)")
+                # 当使用确定性算法时，禁用benchmark
+                if args.cudnn_benchmark:
+                    print("  ⚠️  警告: 确定性算法已启用，自动禁用 cuDNN benchmark")
+                    torch.backends.cudnn.benchmark = False
+            else:
+                print(f"  cuDNN 非确定性算法: ✓ 启用 (提高训练速度)")
+
+            print(f"  cuDNN 版本: {config_status['cudnn_version']}")
+
+            # 验证配置是否生效
+            actual_benchmark = torch.backends.cudnn.benchmark
+            actual_deterministic = torch.backends.cudnn.deterministic
+
+            if actual_benchmark == args.cudnn_benchmark or (
+                args.cudnn_deterministic and not actual_benchmark
+            ):
+                print(f"  ✓ cuDNN benchmark 配置验证通过")
+            else:
+                print(f"  ✗ cuDNN benchmark 配置验证失败")
+
+            if actual_deterministic == args.cudnn_deterministic:
+                print(f"  ✓ cuDNN 确定性算法配置验证通过")
+            else:
+                print(f"  ✗ cuDNN 确定性算法配置验证失败")
+        else:
+            print("  ✗ cuDNN 不可用")
+    else:
+        print("  ℹ️  CUDA 不可用，跳过 cuDNN 配置")
+
+    print(f"{'='*80}\n")
+    return config_status
+
+
+def compile_model(model, args, device, loss_function, optimizer):
+    """
+    编译模型以优化性能
+
+    Args:
+        model: 要编译的模型
+        args: 命令行参数
+        device: 计算设备
+        loss_function: 损失函数（用于编译验证）
+        optimizer: 优化器（用于编译验证）
+
+    Returns:
+        compiled_model: 编译后的模型（如果禁用编译则返回原模型）
+    """
+    if not args.compile_model or not torch.cuda.is_available():
+        if not args.compile_model:
+            print("\nℹ️  模型编译已禁用")
+        else:
+            print("\nℹ️  CUDA 不可用，跳过模型编译")
+        return model
+
+    print(f"\n{'='*80}")
+    print("开始模型编译")
+    print(f"{'='*80}")
+    print(f"  编译模式: {args.compile_mode}")
+    print(f"  正在编译模型，请稍候...")
+
+    import time
+
+    start_time = time.time()
+
+    try:
+        # 使用torch.compile编译模型
+        compiled_model = torch.compile(
+            model,
+            mode=args.compile_mode,
+            fullgraph=False,
+            dynamic=False,
+        )
+
+        # 验证编译是否成功 - 通过一次前向+反向传播
+        compiled_model.train()
+
+        # 创建一个示例输入进行验证
+        sample_input = torch.randn(1, 1, 543, 512, dtype=torch.float16, device=device)
+        sample_target = torch.randint(0, 24, (1,), device=device)
+
+        # 执行前向传播
+        optimizer.zero_grad()
+        with torch.amp.autocast("cuda", enabled=True):
+            sample_output = compiled_model(sample_input)
+            sample_loss = loss_function(sample_output, sample_target)
+
+        # 执行反向传播
+        sample_loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        compile_time = time.time() - start_time
+
+        print(f"  ✓ 模型编译成功")
+        print(f"  编译耗时: {compile_time:.2f}s")
+        print(f"  编译模式: {args.compile_mode}")
+        print(f"{'='*80}\n")
+
+        return compiled_model
+
+    except Exception as e:
+        compile_time = time.time() - start_time
+        print(f"  ✗ 模型编译失败: {e}")
+        print(f"  编译耗时: {compile_time:.2f}s")
+        print(f"  ⚠️  回退到未编译模型")
+        print(f"{'='*80}\n")
+
+        # 重置优化器状态
+        optimizer.zero_grad()
+
+        return model
 
 
 def create_optimized_dataloader(

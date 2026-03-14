@@ -162,6 +162,76 @@
   uv run python src/main.py --no-pin_memory
   ```
 
+### --cudnn_benchmark / --no-cudnn_benchmark
+
+- **类型**: boolean
+- **默认值**: True
+- **说明**: 启用/禁用cuDNN自动调优
+  - 启用：自动为每个卷积层选择最优算法，显著提升卷积操作性能
+  - 禁用：使用固定算法，减少启动时间但可能降低性能
+- **注意**: 当启用确定性算法时，此选项会被自动禁用
+- **使用场景**:
+  - 追求最佳性能：保持启用（默认）
+  - 需要快速启动或确定性：可以禁用
+- **示例**:
+  ```bash
+  # 禁用cuDNN自动调优
+  uv run python src/main.py --no-cudnn_benchmark
+  ```
+
+### --cudnn_deterministic / --no-cudnn_deterministic
+
+- **类型**: boolean
+- **默认值**: False
+- **说明**: 启用/禁用cuDNN确定性算法
+  - 启用：使用确定性算法，确保结果可复现，但会降低训练速度
+  - 禁用：使用非确定性算法，提高训练速度（推荐用于训练）
+- **使用场景**:
+  - 训练阶段：禁用（默认）以获得最佳性能
+  - 调试/研究/需要可复现结果：启用
+- **示例**:
+  ```bash
+  # 启用确定性算法（结果可复现）
+  uv run python src/main.py --cudnn_deterministic
+  ```
+
+### --compile_model / --no-compile_model
+
+- **类型**: boolean
+- **默认值**: True
+- **说明**: 启用/禁用模型编译
+  - 启用：使用torch.compile编译模型，优化前向和反向传播
+  - 禁用：不编译模型，直接使用原始模型
+- **注意**: 仅在CUDA可用时生效
+- **使用场景**:
+  - 追求最佳性能：保持启用（默认）
+  - 调试或快速测试：可以禁用
+- **示例**:
+  ```bash
+  # 禁用模型编译
+  uv run python src/main.py --no-compile_model
+  ```
+
+### --compile_mode
+
+- **类型**: str
+- **默认值**: "default"
+- **可选值**: "default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"
+- **说明**: 模型编译模式
+  - default: 平衡编译时间和性能
+  - reduce-overhead: 优先减少CPU开销
+  - max-autotune: 最大程度自动调优（编译时间最长，性能最佳）
+  - max-autotune-no-cudagraphs: 最大自动调优但不使用CUDA Graphs
+- **使用场景**:
+  - 常规使用：default
+  - 追求极致性能：max-autotune
+  - 内存受限：max-autotune-no-cudagraphs
+- **示例**:
+  ```bash
+  # 使用最大自动调优模式
+  uv run python src/main.py --compile_mode max-autotune
+  ```
+
 ## 功能开关
 
 ### --Train / --no-Train
