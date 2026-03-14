@@ -13,6 +13,8 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
