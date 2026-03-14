@@ -494,3 +494,92 @@ def create_optimized_dataloader(
     )
 
     return dataloader, num_workers
+
+
+def remove_orig_mod_prefix(state_dict):
+    """
+    移除权重字典中的 _orig_mod 前缀
+
+    Args:
+        state_dict: 原始权重字典
+
+    Returns:
+        dict: 处理后的权重字典
+    """
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        if k.startswith("_orig_mod."):
+            new_k = k[len("_orig_mod.") :]
+            new_state_dict[new_k] = v
+        else:
+            new_state_dict[k] = v
+    return new_state_dict
+
+
+def get_raw_model(model):
+    """
+    获取编译模型的原始模型（如果有的话）
+
+    Args:
+        model: 可能被torch.compile包装的模型
+
+    Returns:
+        nn.Module: 原始模型
+    """
+    if hasattr(model, "_orig_mod"):
+        return model._orig_mod
+    if hasattr(model, "module"):
+        return model.module
+    return model
+
+
+def load_state_dict_safely(model, state_dict, strict=True):
+    """
+    安全地加载模型权重，智能处理 _orig_mod 前缀问题（只移除前缀，不添加）
+
+    Args:
+        model: 目标模型
+        state_dict: 要加载的权重字典
+        strict: 是否严格匹配键名
+
+    Returns:
+        bool: 是否成功加载
+    """
+    import torch
+
+    try:
+        # 首先尝试直接加载到原始模型（如果是编译模型）
+        raw_model = get_raw_model(model)
+        raw_model.load_state_dict(state_dict, strict=strict)
+        return True
+    except RuntimeError as e:
+        error_str = str(e)
+        if (
+            "Missing key(s) in state_dict" in error_str
+            and "Unexpected key(s) in state_dict" in error_str
+        ):
+            # 检测到键名不匹配，尝试处理
+            has_orig_mod_in_state = any(
+                k.startswith("_orig_mod.") for k in state_dict.keys()
+            )
+
+            if has_orig_mod_in_state:
+                # 状态字典有前缀，尝试移除前缀后加载
+                new_state_dict = remove_orig_mod_prefix(state_dict)
+                try:
+                    raw_model = get_raw_model(model)
+                    raw_model.load_state_dict(new_state_dict, strict=strict)
+                    return True
+                except Exception:
+                    pass
+
+            # 最后尝试非严格加载
+            if not strict:
+                try:
+                    raw_model = get_raw_model(model)
+                    raw_model.load_state_dict(state_dict, strict=False)
+                    return True
+                except Exception:
+                    pass
+
+        return False

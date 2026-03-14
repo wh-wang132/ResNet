@@ -24,6 +24,8 @@ from utils import (
     print_training_summary,
     configure_cudnn,
     compile_model,
+    get_raw_model,
+    load_state_dict_safely,
 )
 
 
@@ -227,17 +229,8 @@ def train_model(
             best_acc = val_accurate
             best_epoch = epoch + 1
 
-            # 获取要保存的模型权重：优先使用原始模型（避免 _orig_mod 前缀）
-            # 检查模型是否被编译（是否有 _orig_mod 属性）
-            model_to_save = model
-            if hasattr(model, "_orig_mod"):
-                model_to_save = model._orig_mod
-            elif hasattr(model, "module"):
-                # 处理 DataParallel 的情况
-                model_to_save = model.module
-            else:
-                # 使用原始模型引用
-                model_to_save = original_model
+            # 优先使用保存的原始模型引用，其次从当前模型中提取原始模型
+            model_to_save = get_raw_model(original_model)
 
             checkpoint = {
                 "model_state_dict": model_to_save.state_dict(),
@@ -264,9 +257,21 @@ def train_model(
     print(f"{'='*80}")
     writer.close()
 
-    # 加载最佳模型
+    # 加载最佳模型 - 智能处理不同的模型状态
     checkpoint = torch.load(save_path, weights_only=True)
-    model.load_state_dict(checkpoint["model_state_dict"])
+    state_dict_to_load = checkpoint["model_state_dict"]
+
+    # 使用统一的安全加载函数
+    success = load_state_dict_safely(model, state_dict_to_load, strict=True)
+    if not success:
+        # 如果严格加载失败，尝试非严格加载
+        success = load_state_dict_safely(model, state_dict_to_load, strict=False)
+        if success:
+            print("  ⚠️  使用非严格模式加载模型")
+        else:
+            raise RuntimeError("无法加载模型权重")
+    else:
+        print("  ✓ 成功加载最佳模型权重")
 
     # 绘制训练曲线（包含学习率）
     plot_training_curves(
