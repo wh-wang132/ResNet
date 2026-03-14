@@ -14,9 +14,9 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import shutil
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
 from utils import (
@@ -51,14 +51,16 @@ def train_model(
     Returns:
         model: 训练后的模型（加载最佳权重）
     """
-    if os.path.exists(folder_path):
-        shutil.rmtree(folder_path)
+    if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     print(f"\n{'='*80}")
     print(f"开始训练 (FP16 + AMP)")
     print(f"{'='*80}")
     print(f"训练轮数: {args.epochs}, 批次大小: {args.batch_size}, 学习率: {args.lr}")
     writer = SummaryWriter(folder_path + "/runs")
+
+    # 保存原始模型的引用（用于保存权重，避免 torch.compile 的 _orig_mod 前缀问题）
+    original_model = model
 
     # 损失函数和优化器
     loss_function = nn.CrossEntropyLoss()
@@ -113,6 +115,8 @@ def train_model(
 
     save_path = os.path.join(folder_path, args.model_path)
     best_acc_info_path = os.path.join(folder_path, "best_val_acc_info.txt")
+    if os.path.exists(best_acc_info_path):
+        os.remove(best_acc_info_path)
     global_step = 0
     for epoch in range(args.epochs):
         # 训练阶段
@@ -222,8 +226,21 @@ def train_model(
         if val_accurate > best_acc:
             best_acc = val_accurate
             best_epoch = epoch + 1
+
+            # 获取要保存的模型权重：优先使用原始模型（避免 _orig_mod 前缀）
+            # 检查模型是否被编译（是否有 _orig_mod 属性）
+            model_to_save = model
+            if hasattr(model, "_orig_mod"):
+                model_to_save = model._orig_mod
+            elif hasattr(model, "module"):
+                # 处理 DataParallel 的情况
+                model_to_save = model.module
+            else:
+                # 使用原始模型引用
+                model_to_save = original_model
+
             checkpoint = {
-                "model_state_dict": model.state_dict(),
+                "model_state_dict": model_to_save.state_dict(),
                 "scaler_state_dict": (
                     scaler.state_dict() if torch.cuda.is_available() else None
                 ),

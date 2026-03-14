@@ -11,7 +11,8 @@ import sys
 import torch
 import gc
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 plt.rcParams["font.sans-serif"] = ["Times New Roman"]
@@ -154,10 +155,10 @@ def main():
     print(f"\n{'='*80}")
     print("所有任务完成")
     print(f"{'='*80}")
-    
+
     # 清理所有资源，确保程序正常退出
     cleanup_resources()
-    
+
     # 显式退出程序
     sys.exit(0)
 
@@ -167,28 +168,28 @@ def cleanup_resources():
     清理所有资源，防止程序阻塞
     """
     print("\n正在清理资源...")
-    
+
     # 1. 清理 matplotlib 资源
     try:
-        plt.close('all')
+        plt.close("all")
         print("  ✓ 已关闭所有 matplotlib 图形")
     except Exception as e:
         print(f"  ⚠️  清理 matplotlib 时出错: {e}")
-    
+
     # 2. 释放 GPU 内存
     try:
         release_gpu_memory()
         print("  ✓ 已释放 GPU 内存")
     except Exception as e:
         print(f"  ⚠️  释放 GPU 内存时出错: {e}")
-    
+
     # 3. 强制垃圾回收
     try:
         gc.collect()
         print("  ✓ 已执行垃圾回收")
     except Exception as e:
         print(f"  ⚠️  垃圾回收时出错: {e}")
-    
+
     print("资源清理完成")
 
 
@@ -202,6 +203,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n程序执行出错: {e}")
         import traceback
+
         traceback.print_exc()
         cleanup_resources()
         sys.exit(1)
