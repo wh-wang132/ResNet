@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 
@@ -46,16 +47,20 @@ class ConfusionMatrix(object):
     def plot(self, folder_path):
         matrix = self.matrix
         print(matrix)
+
+        # 增加图形尺寸3倍，提高分辨率
+        plt.figure(figsize=(20, 16))
         plt.imshow(matrix, cmap=plt.cm.Blues)
 
         # 设置x轴坐标label
-        plt.xticks(range(self.num_classes), self.labels, rotation=45)
+        plt.xticks(range(self.num_classes), self.labels, rotation=45, fontsize=28)
         # 设置y轴坐标label
-        plt.yticks(range(self.num_classes), self.labels)
+        plt.yticks(range(self.num_classes), self.labels, fontsize=28)
         # 显示colorbar
-        plt.colorbar()
-        plt.xlabel("True Labels")
-        plt.ylabel("Predicted Labels")
+        cbar = plt.colorbar()
+        cbar.ax.tick_params(labelsize=24)
+        plt.xlabel("True Labels", fontsize=32)
+        plt.ylabel("Predicted Labels", fontsize=32)
         # plt.title(folder_path + ' Confusion matrix')
 
         # 在图中标注数量/概率信息
@@ -71,7 +76,11 @@ class ConfusionMatrix(object):
                     verticalalignment="center",
                     horizontalalignment="center",
                     color="white" if info > thresh else "black",
+                    fontsize=24,
                 )
         plt.tight_layout()
-        plt.savefig(folder_path + "/" + " Confusion matrix.png")
+        # DPI设为原来的2倍（默认约为100，设为200）
+        plt.savefig(
+            folder_path + "/" + " Confusion matrix.png", dpi=100, bbox_inches="tight"
+        )
         plt.close()
