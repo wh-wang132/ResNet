@@ -16,6 +16,7 @@ from tqdm import tqdm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import shutil
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
 from utils import (
@@ -50,11 +51,13 @@ def train_model(
     Returns:
         model: 训练后的模型（加载最佳权重）
     """
+    if os.path.exists(folder_path):
+        shutil.rmtree(folder_path)
+        os.makedirs(folder_path)
     print(f"\n{'='*80}")
     print(f"开始训练 (FP16 + AMP)")
     print(f"{'='*80}")
     print(f"训练轮数: {args.epochs}, 批次大小: {args.batch_size}, 学习率: {args.lr}")
-
     writer = SummaryWriter(folder_path + "/runs")
 
     # 损失函数和优化器
@@ -111,7 +114,6 @@ def train_model(
     save_path = os.path.join(folder_path, args.model_path)
     best_acc_info_path = os.path.join(folder_path, "best_val_acc_info.txt")
     global_step = 0
-
     for epoch in range(args.epochs):
         # 训练阶段
         model.train()
@@ -234,7 +236,7 @@ def train_model(
             )
 
             # 记录最优验证准确率信息到文本文件
-            with open(best_acc_info_path, "w", encoding="utf-8") as f:
+            with open(best_acc_info_path, "a", encoding="utf-8") as f:
                 f.write(
                     f"Best Validation Accuracy: {best_acc:.4f} at Epoch: {best_epoch}\n"
                 )
