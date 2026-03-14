@@ -74,6 +74,31 @@ def setup_device():
     return device
 
 
+def str2bool(v):
+    """
+    正确的字符串到布尔值转换器
+
+    Args:
+        v: 字符串值
+
+    Returns:
+        bool: 解析后的布尔值
+
+    Raises:
+        argparse.ArgumentTypeError: 如果无法解析为布尔值
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        import argparse
+
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
 def parse_args():
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
@@ -111,15 +136,9 @@ def parse_args():
     # 数据加载选项
     parser.add_argument(
         "--full_load",
-        action="store_true",
+        type=str2bool,
         default=False,
         help="全量加载数据集到内存 (默认 False)",
-    )
-    parser.add_argument(
-        "--no-full_load",
-        dest="full_load",
-        action="store_false",
-        help="禁用全量加载（增量加载）",
     )
     parser.add_argument(
         "--num_workers",
@@ -135,65 +154,35 @@ def parse_args():
     )
     parser.add_argument(
         "--persistent_workers",
-        action="store_true",
+        type=str2bool,
         default=True,
         help="保持DataLoader工作线程活跃 (默认 True)",
     )
     parser.add_argument(
-        "--no-persistent_workers",
-        dest="persistent_workers",
-        action="store_false",
-        help="禁用持久化工作线程",
-    )
-    parser.add_argument(
         "--pin_memory",
-        action="store_true",
+        type=str2bool,
         default=True,
         help="启用CUDA内存钉住 (默认 True, GPU训练时启用)",
-    )
-    parser.add_argument(
-        "--no-pin_memory",
-        dest="pin_memory",
-        action="store_false",
-        help="禁用内存钉住",
     )
 
     # cuDNN和性能优化选项
     parser.add_argument(
         "--cudnn_benchmark",
-        action="store_true",
+        type=str2bool,
         default=True,
         help="启用cuDNN自动调优 (默认 True, 优化卷积性能)",
     )
     parser.add_argument(
-        "--no-cudnn_benchmark",
-        dest="cudnn_benchmark",
-        action="store_false",
-        help="禁用cuDNN自动调优",
-    )
-    parser.add_argument(
         "--cudnn_deterministic",
-        action="store_true",
+        type=str2bool,
         default=False,
         help="启用cuDNN确定性算法 (默认 False, 禁用以提高速度)",
     )
     parser.add_argument(
-        "--no-cudnn_deterministic",
-        dest="cudnn_deterministic",
-        action="store_false",
-        help="禁用cuDNN确定性算法 (使用非确定性算法提高速度)",
-    )
-    parser.add_argument(
         "--compile_model",
-        action="store_true",
+        type=str2bool,
         default=True,
         help="启用模型编译 (默认 True, 使用torch.compile优化)",
-    )
-    parser.add_argument(
-        "--no-compile_model",
-        dest="compile_model",
-        action="store_false",
-        help="禁用模型编译",
     )
     parser.add_argument(
         "--compile_mode",
@@ -210,17 +199,22 @@ def parse_args():
 
     # 功能开关
     parser.add_argument(
-        "--Train", action="store_true", default=True, help="是否训练 (默认 True)"
+        "--Train",
+        type=str2bool,
+        default=True,
+        help="是否训练 (默认 True)",
     )
     parser.add_argument(
-        "--no-Train", dest="Train", action="store_false", help="禁用训练"
+        "--Test",
+        type=str2bool,
+        default=True,
+        help="是否测试 (默认 True)",
     )
     parser.add_argument(
-        "--Test", action="store_true", default=True, help="是否测试 (默认 True)"
-    )
-    parser.add_argument("--no-Test", dest="Test", action="store_false", help="禁用测试")
-    parser.add_argument(
-        "--UMAP", action="store_true", default=False, help="UMAP 可视化 (默认 False)"
+        "--UMAP",
+        type=str2bool,
+        default=False,
+        help="UMAP 可视化 (默认 False)",
     )
 
     # 正则化参数
@@ -249,15 +243,9 @@ def parse_args():
     )
     parser.add_argument(
         "--plot_lr_schedule",
-        action="store_true",
+        type=str2bool,
         default=True,
         help="是否绘制学习率调度曲线 (默认 True)",
-    )
-    parser.add_argument(
-        "--no-plot_lr_schedule",
-        dest="plot_lr_schedule",
-        action="store_false",
-        help="禁用学习率调度曲线绘图",
     )
 
     return parser.parse_args()

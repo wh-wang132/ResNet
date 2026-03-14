@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档详细说明所有可用的命令行参数及其用法。
+本文档详细说明所有可用的命令行参数及其用法。所有布尔参数使用 `--arg True`（启用）或 `--arg False`（禁用）的方式控制。
 
 ## 基本参数
 
@@ -77,23 +77,25 @@
   uv run python src/main.py --data_dir ./my_dataset
   ```
 
-### --full_load / --no-full_load
+## 数据加载选项
 
-- **类型**: boolean
+### --full_load
+
+- **类型**: bool
 - **默认值**: False
-- **说明**: 启用/禁用全量加载数据集到内存
-  - 启用：将整个数据集一次性加载到内存中，优化数据访问速度（适用于内存充足的情况）
-  - 禁用：保持原有的增量加载机制，按需从磁盘加载数据（适用于内存受限的情况）
+- **说明**: 全量加载数据集到内存
+  - True：将整个数据集一次性加载到内存中，优化数据访问速度（适用于内存充足的情况）
+  - False：保持原有的增量加载机制，按需从磁盘加载数据（适用于内存受限的情况）
 - **使用场景**:
-  - 内存充足且追求训练速度：使用 `--full_load`
-  - 内存受限或数据集过大：使用默认（不添加该参数）或 `--no-full_load`
+  - 内存充足且追求训练速度：`--full_load True`
+  - 内存受限或数据集过大：`--full_load False`（默认）
 - **示例**:
   ```bash
   # 启用全量加载
-  uv run python src/main.py --full_load
+  uv run python src/main.py --full_load True
 
   # 禁用全量加载（默认）
-  uv run python src/main.py --no-full_load
+  uv run python src/main.py --full_load False
   ```
 
 ### --num_workers
@@ -124,92 +126,94 @@
   - 较高值：提高吞吐量但增加内存使用
   - 较低值：减少内存使用但可能降低吞吐量
 - **使用场景**:
-  - 内存充足：使用3-4
-  - 内存受限：使用1-2
+  - 内存充足：3-4
+  - 内存受限：1-2
 - **示例**:
   ```bash
   # 预取因子设为4（内存充足）
   uv run python src/main.py --prefetch_factor 4
   ```
 
-### --persistent_workers / --no-persistent_workers
+### --persistent_workers
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
 - **说明**: 保持DataLoader工作线程活跃
-  - 启用：训练过程中保持工作线程存活，减少线程创建开销
-  - 禁用：每个epoch后销毁工作线程，节省资源
+  - True：训练过程中保持工作线程存活，减少线程创建开销
+  - False：每个epoch后销毁工作线程，节省资源
 - **使用场景**:
-  - 长时间训练：保持启用（默认）
-  - 快速测试或资源受限：可以禁用
+  - 长时间训练：`--persistent_workers True`（默认）
+  - 快速测试或资源受限：`--persistent_workers False`
 - **示例**:
   ```bash
   # 禁用持久化工作线程
-  uv run python src/main.py --no-persistent_workers
+  uv run python src/main.py --persistent_workers False
   ```
 
-### --pin_memory / --no-pin_memory
+### --pin_memory
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
 - **说明**: 启用CUDA内存钉住（GPU训练时推荐）
-  - 启用：将数据固定在页锁定内存中，加速CPU到GPU的数据传输
-  - 禁用：使用常规内存
+  - True：将数据固定在页锁定内存中，加速CPU到GPU的数据传输
+  - False：使用常规内存
 - **注意**: 仅在使用GPU训练时有效
 - **示例**:
   ```bash
   # 禁用内存钉住（CPU训练时）
-  uv run python src/main.py --no-pin_memory
+  uv run python src/main.py --pin_memory False
   ```
 
-### --cudnn_benchmark / --no-cudnn_benchmark
+## cuDNN和性能优化选项
 
-- **类型**: boolean
+### --cudnn_benchmark
+
+- **类型**: bool
 - **默认值**: True
-- **说明**: 启用/禁用cuDNN自动调优
-  - 启用：自动为每个卷积层选择最优算法，显著提升卷积操作性能
-  - 禁用：使用固定算法，减少启动时间但可能降低性能
+- **说明**: 启用cuDNN自动调优
+  - True：自动为每个卷积层选择最优算法，显著提升卷积操作性能
+  - False：使用固定算法，减少启动时间但可能降低性能
 - **注意**: 当启用确定性算法时，此选项会被自动禁用
 - **使用场景**:
-  - 追求最佳性能：保持启用（默认）
-  - 需要快速启动或确定性：可以禁用
+  - 追求最佳性能：`--cudnn_benchmark True`（默认）
+  - 需要快速启动或确定性：`--cudnn_benchmark False`
 - **示例**:
   ```bash
   # 禁用cuDNN自动调优
-  uv run python src/main.py --no-cudnn_benchmark
+  uv run python src/main.py --cudnn_benchmark False
   ```
 
-### --cudnn_deterministic / --no-cudnn_deterministic
+### --cudnn_deterministic
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: False
-- **说明**: 启用/禁用cuDNN确定性算法
-  - 启用：使用确定性算法，确保结果可复现，但会降低训练速度
-  - 禁用：使用非确定性算法，提高训练速度（推荐用于训练）
+- **说明**: 启用cuDNN确定性算法
+  - True：使用确定性算法，确保结果可复现，但会降低训练速度
+  - False：使用非确定性算法，提高训练速度（推荐用于训练）
 - **使用场景**:
-  - 训练阶段：禁用（默认）以获得最佳性能
-  - 调试/研究/需要可复现结果：启用
+  - 训练阶段：`--cudnn_deterministic False`（默认）以获得最佳性能
+  - 调试/研究/需要可复现结果：`--cudnn_deterministic True`
 - **示例**:
   ```bash
   # 启用确定性算法（结果可复现）
-  uv run python src/main.py --cudnn_deterministic
+  uv run python src/main.py --cudnn_deterministic True
   ```
 
-### --compile_model / --no-compile_model
+### --compile_model
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
-- **说明**: 启用/禁用模型编译
-  - 启用：使用torch.compile编译模型，优化前向和反向传播
-  - 禁用：不编译模型，直接使用原始模型
+- **说明**: 启用模型编译
+  - True：使用torch.compile编译模型，优化前向和反向传播
+  - False：不编译模型，直接使用原始模型
 - **注意**: 仅在CUDA可用时生效
 - **使用场景**:
-  - 追求最佳性能：保持启用（默认）
-  - 调试或快速测试：可以禁用
+  - 追求最佳性能：`--compile_model True`（默认）
+  - 调试或快速测试：`--compile_model False`
 - **示例**:
   ```bash
   # 禁用模型编译
-  uv run python src/main.py --no-compile_model
+  uv run python src/main.py --compile_model False
   ```
 
 ### --compile_mode
@@ -234,42 +238,42 @@
 
 ## 功能开关
 
-### --Train / --no-Train
+### --Train
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
 - **说明**: 启用/禁用训练
 - **示例**:
   ```bash
   # 启用训练（默认）
-  uv run src/main.py --Train
+  uv run src/main.py --Train True
 
   # 禁用训练
-  uv run src/main.py --no-Train
+  uv run src/main.py --Train False
   ```
 
-### --Test / --no-Test
+### --Test
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
 - **说明**: 启用/禁用测试
 - **示例**:
   ```bash
   # 启用测试（默认）
-  uv run src/main.py --Test
+  uv run src/main.py --Test True
 
   # 禁用测试
-  uv run src/main.py --no-Test
+  uv run src/main.py --Test False
   ```
 
 ### --UMAP
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: False
-- **说明**: 启用 UMAP 可视化
+- **说明**: 启用UMAP可视化
 - **示例**:
   ```bash
-  uv run src/main.py --UMAP
+  uv run src/main.py --UMAP True
   ```
 
 ## 正则化参数
@@ -278,7 +282,7 @@
 
 - **类型**: float
 - **默认值**: 0.3
-- **说明**: Dropout 概率
+- **说明**: Dropout概率
 - **示例**:
   ```bash
   uv run src/main.py --dropout_p 0.5
@@ -288,7 +292,7 @@
 
 - **类型**: float
 - **默认值**: 0.0001
-- **说明**: 权重衰减（L2 正则化）
+- **说明**: 权重衰减（L2正则化）
 - **示例**:
   ```bash
   uv run src/main.py --weight_decay 0.001
@@ -300,7 +304,7 @@
 
 - **类型**: float
 - **默认值**: 0.05
-- **说明**: Warmup 占总步数的比例
+- **说明**: Warmup占总步数的比例
 - **示例**:
   ```bash
   uv run src/main.py --warmup_ratio 0.1
@@ -310,7 +314,7 @@
 
 - **类型**: int
 - **默认值**: 0
-- **说明**: Warmup 步数（如果为 0，则使用 warmup_ratio）
+- **说明**: Warmup步数（如果为0，则使用warmup_ratio）
 - **示例**:
   ```bash
   uv run src/main.py --warmup_steps 1000
@@ -326,18 +330,18 @@
   uv run src/main.py --min_lr 1e-7
   ```
 
-### --plot_lr_schedule / --no-plot_lr_schedule
+### --plot_lr_schedule
 
-- **类型**: boolean
+- **类型**: bool
 - **默认值**: True
 - **说明**: 是否绘制学习率调度曲线
 - **示例**:
   ```bash
   # 绘制学习率曲线（默认）
-  uv run src/main.py --plot_lr_schedule
+  uv run src/main.py --plot_lr_schedule True
 
   # 禁用学习率曲线
-  uv run src/main.py --no-plot_lr_schedule
+  uv run src/main.py --plot_lr_schedule False
   ```
 
 ## 常用组合示例
@@ -351,13 +355,13 @@ uv run src/main.py --epochs 60 --model resnet10_2d
 ### 仅训练
 
 ```bash
-uv run src/main.py --epochs 60 --no-Test
+uv run src/main.py --epochs 60 --Test False
 ```
 
 ### 仅测试和可视化
 
 ```bash
-uv run src/main.py --no-Train --UMAP
+uv run src/main.py --Train False --UMAP True
 ```
 
 ### 自定义超参数
