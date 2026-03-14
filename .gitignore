@@ -2,3 +2,6 @@ Data/
 .venv/
 output/
 src/__pycache__/
+# pixi environments
+.pixi/*
+!.pixi/config.toml
