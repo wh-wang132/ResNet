@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 
@@ -72,4 +74,4 @@ class ConfusionMatrix(object):
                 )
         plt.tight_layout()
         plt.savefig(folder_path + "/" + " Confusion matrix.png")
-        plt.show()
+        plt.close()

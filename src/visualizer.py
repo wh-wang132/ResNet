@@ -8,6 +8,9 @@ UMAP 可视化模块
 import os
 import numpy as np
 import torch
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.cm as cm
@@ -107,4 +110,3 @@ def visualize_umap(model, device, test_loader, args, folder_path, labels__):
     plt.savefig(os.path.join(folder_path, "umap_plot.png"))
     plt.close()
     print(f"✓ UMAP可视化图已保存至: {os.path.join(folder_path, 'umap_plot.png')}")
-

@@ -79,6 +79,8 @@ def plot_lr_schedule(
         save_path: 保存路径（可选）
         title: 图表标题
     """
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     
     lrs = []

@@ -13,10 +13,17 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
-from utils import get_gpu_memory_info, print_training_summary
+from utils import (
+    get_gpu_memory_info,
+    print_training_summary,
+    configure_cudnn,
+    compile_model,
+)
 
 
 def train_model(
@@ -56,6 +63,18 @@ def train_model(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
 
+    # 配置 cuDNN 性能优化
+    configure_cudnn(args)
+
+    # 模型编译（训练前完成）
+    model = compile_model(
+        model=model,
+        args=args,
+        device=device,
+        loss_function=loss_function,
+        optimizer=optimizer,
+    )
+
     # 初始化 GradScaler 用于自动混合精度
     scaler = GradScaler("cuda", enabled=torch.cuda.is_available())
 
@@ -83,12 +102,14 @@ def train_model(
         )
 
     best_acc = 0.0
+    best_epoch = 0
     best_train_losses = []
     best_val_losses = []
     best_val_accs = []
     lr_history = []
 
     save_path = os.path.join(folder_path, args.model_path)
+    best_acc_info_path = os.path.join(folder_path, "best_val_acc_info.txt")
     global_step = 0
 
     for epoch in range(args.epochs):
@@ -198,6 +219,7 @@ def train_model(
         # 保存最佳模型（同时保存 scaler 状态用于恢复训练）
         if val_accurate > best_acc:
             best_acc = val_accurate
+            best_epoch = epoch + 1
             checkpoint = {
                 "model_state_dict": model.state_dict(),
                 "scaler_state_dict": (
@@ -207,11 +229,19 @@ def train_model(
                 "best_acc": best_acc,
             }
             torch.save(checkpoint, save_path)
-            print(f"\n✓ 保存最佳模型 (Acc: {best_acc:.4f}, 包含 AMP scaler 状态)")
+            print(
+                f"\n✓ 保存最佳模型 (Acc: {best_acc:.4f} at Epoch {best_epoch}, 包含 AMP scaler 状态)"
+            )
+
+            # 记录最优验证准确率信息到文本文件
+            with open(best_acc_info_path, "w", encoding="utf-8") as f:
+                f.write(
+                    f"Best Validation Accuracy: {best_acc:.4f} at Epoch: {best_epoch}\n"
+                )
 
     print(f"\n{'='*80}")
     print(f"训练完成")
-    print(f"最佳验证准确率: {best_acc:.4f}")
+    print(f"最佳验证准确率: {best_acc:.4f} (Epoch: {best_epoch})")
     print(f"{'='*80}")
     writer.close()
 
@@ -241,7 +271,7 @@ def plot_training_curves(
     folder_path,
 ):
     """
-    绘制训练曲线
+    绘制训练曲线（2×2布局，包含Val错误率曲线）
 
     Args:
         train_losses: 训练损失列表
@@ -251,48 +281,124 @@ def plot_training_curves(
         scheduler: 学习率调度器
         folder_path: 保存路径
     """
-    plt.figure(figsize=(16, 4))
+    plt.figure(figsize=(14, 12))
+    epochs = list(range(1, len(train_losses) + 1))
 
-    # 损失曲线
-    plt.subplot(1, 3, 1)
-    plt.plot(train_losses, label="Train Loss")
-    plt.plot(val_losses, label="Val Loss")
+    # 计算验证错误率 (1 - 准确率)，并添加微小正值防止log(0)
+    epsilon = 1e-8
+    val_errors = [max(1.0 - acc, epsilon) for acc in val_accs]
+
+    # 统一样式设置
+    plt.rcParams.update(
+        {
+            "font.size": 12,
+            "axes.labelsize": 12,
+            "axes.titlesize": 14,
+            "legend.fontsize": 10,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+        }
+    )
+
+    # 子图1: 训练损失和验证损失
+    plt.subplot(2, 2, 1)
+    plt.plot(
+        epochs,
+        train_losses,
+        label="Train Loss",
+        color="blue",
+        linewidth=2,
+        marker="o",
+        markersize=4,
+        alpha=0.8,
+    )
+    plt.plot(
+        epochs,
+        val_losses,
+        label="Val Loss",
+        color="red",
+        linewidth=2,
+        marker="s",
+        markersize=4,
+        alpha=0.8,
+    )
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.legend()
-    plt.title("Training Loss Curves")
+    plt.title("Training & Validation Loss")
+    plt.grid(True, alpha=0.3, linestyle="--")
 
-    # 准确率曲线
-    plt.subplot(1, 3, 2)
-    plt.plot(val_accs, label="Val Acc", color="orange")
+    # 子图2: 验证准确率
+    plt.subplot(2, 2, 2)
+    plt.plot(
+        epochs,
+        val_accs,
+        label="Val Accuracy",
+        color="orange",
+        linewidth=2,
+        marker="^",
+        markersize=4,
+        alpha=0.8,
+    )
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.legend()
     plt.title("Validation Accuracy")
+    plt.grid(True, alpha=0.3, linestyle="--")
+    plt.ylim([0, 1.05])
 
-    # 学习率曲线
-    plt.subplot(1, 3, 3)
+    # 子图3: 验证错误率（对数坐标轴）
+    plt.subplot(2, 2, 3)
+    plt.plot(
+        epochs,
+        val_errors,
+        label="Val Error Rate",
+        color="purple",
+        linewidth=2,
+        marker="D",
+        markersize=4,
+        alpha=0.8,
+    )
+    plt.xlabel("Epoch")
+    plt.ylabel("Error Rate (Log Scale)")
+    plt.yscale("log")
+    plt.legend()
+    plt.title("Validation Error Rate (Logarithmic Scale)")
+    plt.grid(True, alpha=0.3, linestyle="--", which="both")
+
+    # 子图4: 学习率曲线
+    plt.subplot(2, 2, 4)
     if lr_history:
         steps = list(range(len(lr_history)))
-        plt.plot(steps, lr_history, label="Learning Rate", color="green", linewidth=2)
+        plt.plot(
+            steps,
+            lr_history,
+            label="Learning Rate",
+            color="green",
+            linewidth=2,
+            alpha=0.8,
+        )
         # 标记 warmup 结束点
         if scheduler.warmup_steps > 0 and scheduler.warmup_steps < len(lr_history):
             plt.axvline(
                 x=scheduler.warmup_steps,
                 color="r",
                 linestyle="--",
+                linewidth=1.5,
                 label=f"Warmup End (Step {scheduler.warmup_steps})",
             )
         plt.xlabel("Step")
-        plt.ylabel("Learning Rate")
+        plt.ylabel("Learning Rate (Log Scale)")
         plt.yscale("log")
         plt.legend()
         plt.title("Learning Rate Schedule")
+        plt.grid(True, alpha=0.3, linestyle="--", which="both")
 
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)
     plt.savefig(
         os.path.join(folder_path, "training_curves.png"),
-        dpi=300,
+        dpi=400,
         bbox_inches="tight",
+        facecolor="white",
     )
     plt.close()

@@ -3,34 +3,134 @@
 """
 .npy 数据集加载模块
 用于加载 Data 目录下的 24 类.npy 格式数据集
+支持多线程预加载和性能监控
 """
 
 import os
+import time
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class NPYDataset(Dataset):
-    """自定义 Dataset 类用于加载.npy 文件（FP16 版本）"""
+    """自定义 Dataset 类用于加载.npy 文件（FP16 版本，支持多线程预加载）"""
 
-    def __init__(self, file_paths, labels, transform=None):
+    def __init__(
+        self, file_paths, labels, transform=None, full_load=False, num_workers=None
+    ):
         """
         Args:
             file_paths: .npy 文件路径列表
             labels: 对应的标签列表
             transform: 数据变换
+            full_load: 是否全量加载到内存
+            num_workers: 预加载使用的线程数（None表示自动检测）
         """
         self.file_paths = file_paths
         self.labels = labels
         self.transform = transform
+        self.full_load = full_load
+        self.data_cache = None
+        self.num_workers = (
+            num_workers if num_workers is not None else max(1, os.cpu_count())
+        )
+
+        self.load_count = 0
+        self.load_time_total = 0.0
+
+        if self.full_load:
+            self._preload_data_multithreaded()
+
+    def _load_single_sample(self, idx):
+        """加载单个样本（线程安全）"""
+        try:
+            start_time = time.time()
+            data = np.load(self.file_paths[idx])
+            label = self.labels[idx]
+
+            if data.dtype != np.float16:
+                data = data.astype(np.float16)
+
+            data = torch.from_numpy(data).to(torch.float16)
+            data = data.unsqueeze(0)
+
+            load_time = time.time() - start_time
+            return idx, (data, label), load_time, None
+        except Exception as e:
+            return idx, (torch.zeros(1, 543, 512, dtype=torch.float16), 0), 0.0, str(e)
+
+    def _preload_data_multithreaded(self):
+        """多线程预加载所有数据到内存"""
+        print(f"\n{'='*80}")
+        print(f"开始多线程预加载 {len(self.file_paths)} 个样本到内存...")
+        print(f"使用 {self.num_workers} 个工作线程")
+        print(f"{'='*80}")
+
+        start_total = time.time()
+        self.data_cache = [None] * len(self.file_paths)
+        errors = []
+        total_load_time = 0.0
+
+        with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            futures = {
+                executor.submit(self._load_single_sample, idx): idx
+                for idx in range(len(self.file_paths))
+            }
+
+            completed = 0
+            for future in as_completed(futures):
+                idx, data, load_time, error = future.result()
+                self.data_cache[idx] = data
+                total_load_time += load_time
+                completed += 1
+
+                if error:
+                    errors.append((self.file_paths[idx], error))
+
+                if completed % 1000 == 0:
+                    elapsed = time.time() - start_total
+                    print(
+                        f"预加载进度: {completed}/{len(self.file_paths)} "
+                        f"({completed/len(self.file_paths)*100:.1f}%), "
+                        f"已用时间: {elapsed:.1f}s"
+                    )
+
+        total_time = time.time() - start_total
+        avg_load_time = total_load_time / len(self.file_paths) * 1000
+
+        print(f"\n{'='*80}")
+        print(f"✓ 预加载完成")
+        print(f"  总样本数: {len(self.data_cache)}")
+        print(f"  总耗时: {total_time:.2f}s")
+        print(f"  平均每个样本: {avg_load_time:.2f}ms")
+        print(f"  吞吐量: {len(self.file_paths)/total_time:.1f} 样本/秒")
+
+        if errors:
+            print(f"\n⚠️  警告：{len(errors)} 个样本加载失败")
+            for file_path, error in errors[:5]:
+                print(f"  - {file_path}: {error}")
+            if len(errors) > 5:
+                print(f"  ... 还有 {len(errors)-5} 个错误")
+        print(f"{'='*80}\n")
 
     def __len__(self):
         return len(self.file_paths)
 
     def __getitem__(self, idx):
-        """加载单个样本（FP16）"""
+        """加载单个样本（FP16，带性能监控）"""
+        start_time = time.time()
+
+        if self.full_load and self.data_cache is not None:
+            data, label = self.data_cache[idx]
+            if self.transform:
+                data = self.transform(data)
+            load_time = (time.time() - start_time) * 1000
+            self._record_load_time(load_time)
+            return data, label
+
         try:
             # 加载.npy 文件
             data = np.load(self.file_paths[idx])
@@ -50,12 +150,31 @@ class NPYDataset(Dataset):
             if self.transform:
                 data = self.transform(data)
 
+            load_time = (time.time() - start_time) * 1000
+            self._record_load_time(load_time)
             return data, label
 
         except Exception as e:
             print(f"Error loading {self.file_paths[idx]}: {e}")
+            load_time = (time.time() - start_time) * 1000
+            self._record_load_time(load_time)
             # 返回空样本（为了训练继续）
             return torch.zeros(1, 543, 512, dtype=torch.float16), 0
+
+    def _record_load_time(self, load_time_ms):
+        """记录加载时间用于性能监控"""
+        self.load_count += 1
+        self.load_time_total += load_time_ms
+
+    def get_load_stats(self):
+        """获取加载统计信息"""
+        if self.load_count == 0:
+            return {"count": 0, "avg_time_ms": 0.0}
+        return {
+            "count": self.load_count,
+            "total_time_ms": self.load_time_total,
+            "avg_time_ms": self.load_time_total / self.load_count,
+        }
 
 
 def data_set_split(
@@ -64,9 +183,11 @@ def data_set_split(
     val_ratio=0.2,
     test_ratio=0.2,
     random_state=42,
+    full_load=False,
+    num_workers=None,
 ):
     """
-    划分数据集（FP16 版本）
+    划分数据集（FP16 版本，支持多线程预加载）
 
     Args:
         data_dir: 数据根目录（如./Data）
@@ -74,6 +195,8 @@ def data_set_split(
         val_ratio: 验证集比例
         test_ratio: 测试集比例
         random_state: 随机种子
+        full_load: 是否全量加载到内存
+        num_workers: 预加载使用的线程数（None表示自动检测）
 
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
@@ -126,8 +249,14 @@ def data_set_split(
     print(f"测试集：{len(test_paths)} 样本")
 
     # 创建数据集（FP16 版本）
-    train_dataset = NPYDataset(train_paths, train_labels)
-    validate_dataset = NPYDataset(val_paths, val_labels)
-    test_dataset = NPYDataset(test_paths, test_labels)
+    train_dataset = NPYDataset(
+        train_paths, train_labels, full_load=full_load, num_workers=num_workers
+    )
+    validate_dataset = NPYDataset(
+        val_paths, val_labels, full_load=full_load, num_workers=num_workers
+    )
+    test_dataset = NPYDataset(
+        test_paths, test_labels, full_load=full_load, num_workers=num_workers
+    )
 
     return train_dataset, validate_dataset, test_dataset, labels__
