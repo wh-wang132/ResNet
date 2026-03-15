@@ -1,8 +1,9 @@
-Data/
 .venv/
+Data/
 output/
 src/__pycache__/
+Data.*
+output.*
 # pixi environments
 .pixi/*
 !.pixi/config.toml
-Data.zip
