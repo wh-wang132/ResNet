@@ -7,7 +7,7 @@
 
 import os
 import torch
-from torch.amp.autocast_mode import autocast
+from torch.amp import autocast
 from tqdm import tqdm
 
 try:

@@ -9,6 +9,7 @@ import os
 import gc
 import torch
 import argparse
+from torch.amp import autocast
 
 
 def release_gpu_memory():
@@ -398,7 +399,7 @@ def compile_model(model, args, device, loss_function, optimizer):
 
         # 执行前向传播
         optimizer.zero_grad()
-        with torch.amp.autocast("cuda", enabled=True):
+        with autocast("cuda", enabled=True):
             sample_output = compiled_model(sample_input)
             sample_loss = loss_function(sample_output, sample_target)
 

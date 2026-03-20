@@ -8,7 +8,7 @@
 
 import torch
 import torch.nn as nn
-from torch.amp.autocast_mode import autocast
+from torch.amp import autocast
 
 
 class BasicBlock(nn.Module):
@@ -351,4 +351,3 @@ def resnet50_2d(num_classes=24, dropout_p=0.0):
         init_channels=64,
         dropout_p=dropout_p,
     )
-
