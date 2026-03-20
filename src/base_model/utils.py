@@ -51,7 +51,7 @@ def create_output_directory(args):
         if os.path.basename(args.data_dir)
         else "npy_dataset"
     )
-    output_path = "./output"
+    output_path = "./output/base_model"
     folder_path = os.path.join(
         output_path,
         f"{args.model}_{folder_name}",

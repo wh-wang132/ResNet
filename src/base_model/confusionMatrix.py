@@ -81,6 +81,6 @@ class ConfusionMatrix(object):
         plt.tight_layout()
         # DPI设为原来的2倍（默认约为100，设为200）
         plt.savefig(
-            folder_path + "/" + " Confusion matrix.png", dpi=100, bbox_inches="tight"
+            folder_path + "/" + " Confusion_matrix.png", dpi=100, bbox_inches="tight"
         )
         plt.close()

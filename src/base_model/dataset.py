@@ -10,6 +10,7 @@ import os
 import time
 import numpy as np
 import torch
+import re
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -207,8 +208,12 @@ def data_set_split(
     label_map = {}
     label_index = 0
 
+    def natural_sort_key(text):
+        """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
+        return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
+
     # 读取所有文件路径和标签
-    for label_folder in sorted(os.listdir(data_dir)):
+    for label_folder in sorted(os.listdir(data_dir), key=natural_sort_key):
         label_folder_path = os.path.join(data_dir, label_folder)
         if os.path.isdir(label_folder_path):
             labels__.append(label_folder)
