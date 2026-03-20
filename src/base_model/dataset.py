@@ -11,9 +11,12 @@ import time
 import numpy as np
 import torch
 import re
+from typing import Optional, TypeAlias, cast
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+Sample: TypeAlias = tuple[torch.Tensor, int]
 
 
 class NPYDataset(Dataset):
@@ -34,10 +37,9 @@ class NPYDataset(Dataset):
         self.labels = labels
         self.transform = transform
         self.full_load = full_load
-        self.data_cache = None
-        self.num_workers = (
-            num_workers if num_workers is not None else max(1, os.cpu_count())
-        )
+        self.data_cache: Optional[list[Optional[Sample]]] = None
+        cpu_count = os.cpu_count() or 1
+        self.num_workers = num_workers if num_workers is not None else max(1, cpu_count)
 
         self.load_count = 0
         self.load_time_total = 0.0
@@ -59,7 +61,7 @@ class NPYDataset(Dataset):
             data = data.unsqueeze(0)
 
             load_time = time.time() - start_time
-            return idx, (data, label), load_time, None
+            return idx, (data, int(label)), load_time, None
         except Exception as e:
             return idx, (torch.zeros(1, 543, 512, dtype=torch.float16), 0), 0.0, str(e)
 
@@ -71,7 +73,10 @@ class NPYDataset(Dataset):
         print(f"{'='*80}")
 
         start_total = time.time()
-        self.data_cache = [None] * len(self.file_paths)
+        cache: list[Optional[Sample]] = cast(
+            list[Optional[Sample]], [None] * len(self.file_paths)
+        )
+        self.data_cache = cache
         errors = []
         total_load_time = 0.0
 
@@ -84,7 +89,7 @@ class NPYDataset(Dataset):
             completed = 0
             for future in as_completed(futures):
                 idx, data, load_time, error = future.result()
-                self.data_cache[idx] = data
+                cache[idx] = data
                 total_load_time += load_time
                 completed += 1
 
@@ -102,6 +107,7 @@ class NPYDataset(Dataset):
         total_time = time.time() - start_total
         avg_load_time = total_load_time / len(self.file_paths) * 1000
 
+        assert self.data_cache is not None
         print(f"\n{'='*80}")
         print(f"✓ 预加载完成")
         print(f"  总样本数: {len(self.data_cache)}")
@@ -125,7 +131,12 @@ class NPYDataset(Dataset):
         start_time = time.time()
 
         if self.full_load and self.data_cache is not None:
-            data, label = self.data_cache[idx]
+            cache = self.data_cache
+            cached_sample = cache[idx]
+            if cached_sample is None:
+                # 理论上不应发生；兜底保证类型安全和运行稳定性
+                return torch.zeros(1, 543, 512, dtype=torch.float16), 0
+            data, label = cached_sample
             if self.transform:
                 data = self.transform(data)
             load_time = (time.time() - start_time) * 1000

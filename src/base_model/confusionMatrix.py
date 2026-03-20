@@ -3,6 +3,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from prettytable import PrettyTable
 
 
@@ -50,7 +51,7 @@ class ConfusionMatrix(object):
 
         # 增加图形尺寸3倍，提高分辨率
         plt.figure(figsize=(20, 16))
-        plt.imshow(matrix, cmap=plt.cm.Blues)
+        plt.imshow(matrix, cmap=cm.get_cmap("Blues"))
 
         # 设置x轴坐标label
         plt.xticks(range(self.num_classes), self.labels, rotation=45, fontsize=28)
@@ -72,7 +73,7 @@ class ConfusionMatrix(object):
                 plt.text(
                     x,
                     y,
-                    info,
+                    str(info),
                     verticalalignment="center",
                     horizontalalignment="center",
                     color="white" if info > thresh else "black",
