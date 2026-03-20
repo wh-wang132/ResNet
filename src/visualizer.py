@@ -23,7 +23,7 @@ import psutil
 
 def visualize_umap(model, device, test_loader, args, folder_path, labels__):
     """
-    UMAP 可视化（内存优化版 + 16线程配置）
+    UMAP 可视化（8C16T 配置，仅使用测试集）
 
     Args:
         model: 要使用的模型
@@ -34,12 +34,13 @@ def visualize_umap(model, device, test_loader, args, folder_path, labels__):
         labels__: 类别标签列表
     """
     print(f"\n{'='*80}")
-    print("UMAP 可视化（内存优化版 + 16线程配置）")
+    print("UMAP 可视化（8C16T 配置，仅使用测试集）")
     print(f"{'='*80}")
 
-    print("配置 UMAP 使用 16 个逻辑线程...")
+    print("配置 UMAP 使用 8 个线程（8C16T）...")
     print(f"系统 CPU 核心数: {psutil.cpu_count(logical=False)}")
     print(f"系统逻辑线程数: {psutil.cpu_count(logical=True)}")
+    print("当前仅使用测试集数据进行 UMAP 降维")
 
     all_features = []
     all_labels = []
@@ -67,15 +68,14 @@ def visualize_umap(model, device, test_loader, args, folder_path, labels__):
         f"原始维度: {all_features.shape[1]}, PCA降维后维度: {all_features_pca.shape[1]}"
     )
 
-    print("执行 UMAP 降维（使用 16 个逻辑线程）...")
+    print("执行 UMAP 降维（使用 8 个线程）...")
     umap_embedding = umap.UMAP(
         n_components=2,
         random_state=None,
         n_neighbors=15,
         min_dist=0.1,
         metric="euclidean",
-        low_memory=True,
-        n_jobs=16,
+        n_jobs=8,
         verbose=True,
     )
 
@@ -88,7 +88,7 @@ def visualize_umap(model, device, test_loader, args, folder_path, labels__):
         X_umap[:, 0], X_umap[:, 1], c=all_labels, cmap=cmaps, alpha=0.6
     )
     plt.colorbar(scatter)
-    plt.title("UMAP Visualization (Memory-Optimized, 16 Threads)")
+    plt.title("UMAP Visualization (Test Set Only, 8 Threads)")
     plt.xlabel("UMAP Feature 1")
     plt.ylabel("UMAP Feature 2")
 
