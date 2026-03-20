@@ -11,7 +11,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from torch.amp import autocast, GradScaler
+from torch.amp.autocast_mode import autocast
+from torch.amp.grad_scaler import GradScaler
 from tqdm import tqdm
 import matplotlib
 

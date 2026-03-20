@@ -6,7 +6,6 @@
 模块化重构版本
 """
 
-import os
 import sys
 import torch
 import gc

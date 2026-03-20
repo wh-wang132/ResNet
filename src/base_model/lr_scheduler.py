@@ -7,7 +7,7 @@
 """
 
 import math
-import torch
+from typing import Optional
 from torch.optim.lr_scheduler import _LRScheduler
 
 
@@ -67,7 +67,7 @@ class WarmupCosineAnnealingLR(_LRScheduler):
 def plot_lr_schedule(
     scheduler,
     total_steps: int,
-    save_path: str = None,
+    save_path: Optional[str] = None,
     title: str = "Learning Rate Schedule",
 ):
     """

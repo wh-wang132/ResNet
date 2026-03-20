@@ -9,7 +9,6 @@ import os
 import gc
 import torch
 import argparse
-from torch.utils.tensorboard import SummaryWriter
 
 
 def release_gpu_memory():

@@ -14,7 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.cm as cm
-from torch.amp import autocast
+from torch.amp.autocast_mode import autocast
 from tqdm import tqdm
 import umap
 from sklearn.decomposition import PCA

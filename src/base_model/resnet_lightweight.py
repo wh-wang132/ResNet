@@ -9,7 +9,7 @@
 
 import torch
 import torch.nn as nn
-from torch.amp import autocast
+from torch.amp.autocast_mode import autocast
 
 
 class LightweightBasicBlock2D(nn.Module):
