@@ -93,8 +93,6 @@ def str2bool(v):
     elif v.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        import argparse
-
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
@@ -252,8 +250,13 @@ def parse_args():
 
 def load_model_map():
     """加载模型映射"""
-    from resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
-    from resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
+    try:
+        from .resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
+        from .resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
+    except ImportError:
+        # 兼容脚本方式运行: python src/base_model/main.py
+        from resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
+        from resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
 
     return {
         "resnet6_2d": resnet6_2d,

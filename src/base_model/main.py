@@ -18,19 +18,35 @@ plt.rcParams["font.sans-serif"] = ["Times New Roman"]
 plt.rcParams["axes.unicode_minus"] = False
 
 # 导入项目模块
-from dataset import data_set_split
-from utils import (
-    release_gpu_memory,
-    setup_device,
-    parse_args,
-    create_output_directory,
-    load_model_map,
-    print_model_info,
-    create_optimized_dataloader,
-)
-from trainer import train_model
-from tester import test_model
-from visualizer import visualize_umap
+try:
+    from .dataset import data_set_split
+    from .utils import (
+        release_gpu_memory,
+        setup_device,
+        parse_args,
+        create_output_directory,
+        load_model_map,
+        print_model_info,
+        create_optimized_dataloader,
+    )
+    from .trainer import train_model
+    from .tester import test_model
+    from .visualizer import visualize_umap
+except ImportError:
+    # 兼容脚本方式运行: python src/base_model/main.py
+    from dataset import data_set_split
+    from utils import (
+        release_gpu_memory,
+        setup_device,
+        parse_args,
+        create_output_directory,
+        load_model_map,
+        print_model_info,
+        create_optimized_dataloader,
+    )
+    from trainer import train_model
+    from tester import test_model
+    from visualizer import visualize_umap
 
 
 def main():

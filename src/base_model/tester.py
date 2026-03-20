@@ -10,8 +10,13 @@ import torch
 from torch.amp.autocast_mode import autocast
 from tqdm import tqdm
 
-from confusionMatrix import ConfusionMatrix
-from utils import load_state_dict_safely
+try:
+    from .confusionMatrix import ConfusionMatrix
+    from .utils import load_state_dict_safely
+except ImportError:
+    # 兼容脚本方式运行: python src/base_model/main.py
+    from confusionMatrix import ConfusionMatrix
+    from utils import load_state_dict_safely
 
 
 def test_model(model, device, test_loader, args, folder_path, labels__):
