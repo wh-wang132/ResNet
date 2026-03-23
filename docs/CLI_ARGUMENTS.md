@@ -9,11 +9,11 @@
 ### --epochs
 
 - **类型**: int
-- **默认值**: 20
+- **默认值**: 60
 - **说明**: 训练轮数
 - **示例**:
   ```bash
-  uv run src/main.py --epochs 60
+  uv run src/base_model_main.py --epochs 60
   ```
 
 ### --lr
@@ -23,7 +23,7 @@
 - **说明**: 学习率
 - **示例**:
   ```bash
-  uv run src/main.py --lr 0.001
+  uv run src/base_model_main.py --lr 0.001
   ```
 
 ### --batch_size
@@ -33,7 +33,7 @@
 - **说明**: 批次大小
 - **示例**:
   ```bash
-  uv run src/main.py --batch_size 32
+  uv run src/base_model_main.py --batch_size 32
   ```
 
 ### --model_path
@@ -43,7 +43,7 @@
 - **说明**: 模型保存路径（相对于输出目录）
 - **示例**:
   ```bash
-  uv run src/main.py --model_path checkpoint.pth
+  uv run src/base_model_main.py --model_path checkpoint.pth
   ```
 
 ### --class_num
@@ -53,7 +53,7 @@
 - **说明**: 分类数
 - **示例**:
   ```bash
-  uv run src/main.py --class_num 10
+  uv run src/base_model_main.py --class_num 10
   ```
 
 ### --model
@@ -64,7 +64,7 @@
 - **说明**: 选择模型架构
 - **示例**:
   ```bash
-  uv run src/main.py --model resnet18_2d
+  uv run src/base_model_main.py --model resnet18_2d
   ```
 
 ### --data_dir
@@ -74,7 +74,7 @@
 - **说明**: 数据集路径
 - **示例**:
   ```bash
-  uv run python src/main.py --data_dir ./my_dataset
+  uv run src/base_model_main.py --data_dir ./my_dataset
   ```
 
 ## 数据加载选项
@@ -92,10 +92,10 @@
 - **示例**:
   ```bash
   # 启用全量加载
-  uv run python src/main.py --full_load True
+  uv run src/base_model_main.py --full_load True
 
   # 禁用全量加载（默认）
-  uv run python src/main.py --full_load False
+  uv run src/base_model_main.py --full_load False
   ```
 
 ### --num_workers
@@ -112,10 +112,10 @@
 - **示例**:
   ```bash
   # 自动检测（推荐）
-  uv run python src/main.py
+  uv run src/base_model_main.py
 
   # 指定4个工作线程
-  uv run python src/main.py --num_workers 4
+  uv run src/base_model_main.py --num_workers 4
   ```
 
 ### --prefetch_factor
@@ -131,7 +131,7 @@
 - **示例**:
   ```bash
   # 预取因子设为4（内存充足）
-  uv run python src/main.py --prefetch_factor 4
+  uv run src/base_model_main.py --prefetch_factor 4
   ```
 
 ### --persistent_workers
@@ -147,7 +147,7 @@
 - **示例**:
   ```bash
   # 禁用持久化工作线程
-  uv run python src/main.py --persistent_workers False
+  uv run src/base_model_main.py --persistent_workers False
   ```
 
 ### --pin_memory
@@ -161,7 +161,7 @@
 - **示例**:
   ```bash
   # 禁用内存钉住（CPU训练时）
-  uv run python src/main.py --pin_memory False
+  uv run src/base_model_main.py --pin_memory False
   ```
 
 ## cuDNN和性能优化选项
@@ -180,7 +180,7 @@
 - **示例**:
   ```bash
   # 禁用cuDNN自动调优
-  uv run python src/main.py --cudnn_benchmark False
+  uv run src/base_model_main.py --cudnn_benchmark False
   ```
 
 ### --cudnn_deterministic
@@ -196,7 +196,7 @@
 - **示例**:
   ```bash
   # 启用确定性算法（结果可复现）
-  uv run python src/main.py --cudnn_deterministic True
+  uv run src/base_model_main.py --cudnn_deterministic True
   ```
 
 ### --compile_model
@@ -213,7 +213,7 @@
 - **示例**:
   ```bash
   # 禁用模型编译
-  uv run python src/main.py --compile_model False
+  uv run src/base_model_main.py --compile_model False
   ```
 
 ### --compile_mode
@@ -233,7 +233,7 @@
 - **示例**:
   ```bash
   # 使用最大自动调优模式
-  uv run python src/main.py --compile_mode max-autotune
+  uv run src/base_model_main.py --compile_mode max-autotune
   ```
 
 ## 功能开关
@@ -246,10 +246,10 @@
 - **示例**:
   ```bash
   # 启用训练（默认）
-  uv run src/main.py --Train True
+  uv run src/base_model_main.py --Train True
 
   # 禁用训练
-  uv run src/main.py --Train False
+  uv run src/base_model_main.py --Train False
   ```
 
 ### --Test
@@ -260,10 +260,10 @@
 - **示例**:
   ```bash
   # 启用测试（默认）
-  uv run src/main.py --Test True
+  uv run src/base_model_main.py --Test True
 
   # 禁用测试
-  uv run src/main.py --Test False
+  uv run src/base_model_main.py --Test False
   ```
 
 ### --UMAP
@@ -273,7 +273,7 @@
 - **说明**: 启用UMAP可视化
 - **示例**:
   ```bash
-  uv run src/main.py --UMAP True
+  uv run src/base_model_main.py --UMAP True
   ```
 
 ## 正则化参数
@@ -285,7 +285,7 @@
 - **说明**: Dropout概率
 - **示例**:
   ```bash
-  uv run src/main.py --dropout_p 0.5
+  uv run src/base_model_main.py --dropout_p 0.5
   ```
 
 ### --weight_decay
@@ -295,7 +295,7 @@
 - **说明**: 权重衰减（L2正则化）
 - **示例**:
   ```bash
-  uv run src/main.py --weight_decay 0.001
+  uv run src/base_model_main.py --weight_decay 0.001
   ```
 
 ## 学习率调度器参数
@@ -307,7 +307,7 @@
 - **说明**: Warmup占总步数的比例
 - **示例**:
   ```bash
-  uv run src/main.py --warmup_ratio 0.1
+  uv run src/base_model_main.py --warmup_ratio 0.1
   ```
 
 ### --warmup_steps
@@ -317,7 +317,7 @@
 - **说明**: Warmup步数（如果为0，则使用warmup_ratio）
 - **示例**:
   ```bash
-  uv run src/main.py --warmup_steps 1000
+  uv run src/base_model_main.py --warmup_steps 1000
   ```
 
 ### --min_lr
@@ -327,7 +327,7 @@
 - **说明**: 最小学习率
 - **示例**:
   ```bash
-  uv run src/main.py --min_lr 1e-7
+  uv run src/base_model_main.py --min_lr 1e-7
   ```
 
 ### --plot_lr_schedule
@@ -338,10 +338,10 @@
 - **示例**:
   ```bash
   # 绘制学习率曲线（默认）
-  uv run src/main.py --plot_lr_schedule True
+  uv run src/base_model_main.py --plot_lr_schedule True
 
   # 禁用学习率曲线
-  uv run src/main.py --plot_lr_schedule False
+  uv run src/base_model_main.py --plot_lr_schedule False
   ```
 
 ## 常用组合示例
@@ -349,25 +349,25 @@
 ### 完整训练流程
 
 ```bash
-uv run src/main.py --epochs 60 --model resnet10_2d
+uv run src/base_model_main.py --epochs 60 --model resnet10_2d
 ```
 
 ### 仅训练
 
 ```bash
-uv run src/main.py --epochs 60 --Test False
+uv run src/base_model_main.py --epochs 60 --Test False
 ```
 
 ### 仅测试和可视化
 
 ```bash
-uv run src/main.py --Train False --UMAP True
+uv run src/base_model_main.py --Train False --UMAP True
 ```
 
 ### 自定义超参数
 
 ```bash
-uv run src/main.py \
+uv run src/base_model_main.py \
   --epochs 60 \
   --lr 0.001 \
   --batch_size 128 \

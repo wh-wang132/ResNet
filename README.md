@@ -43,16 +43,16 @@
 
 ```bash
 # 完整训练流程（训练 + 测试）
-uv run src/main.py --epochs 20 --model resnet6_2d
+uv run src/base_model_main.py --epochs 20 --model resnet6_2d
 
 # 仅训练
-uv run src/main.py --epochs 20 --no-Test
+uv run src/base_model_main.py --epochs 20 --Test False
 
 # 仅测试和可视化
-uv run src/main.py --no-Train --UMAP
+uv run src/base_model_main.py --Train False --UMAP True
 
 # 使用不同的模型
-uv run src/main.py --model resnet18_2d
+uv run src/base_model_main.py --model resnet18_2d
 ```
 
 ## 技术栈选型
@@ -73,16 +73,19 @@ uv run src/main.py --model resnet18_2d
 ```
 ResNet/
 ├── src/
-│   ├── main.py              # 主训练脚本
-│   ├── utils.py             # 通用工具函数
-│   ├── trainer.py           # 训练模块
-│   ├── tester.py            # 测试模块
-│   ├── visualizer.py        # UMAP 可视化模块
-│   ├── resnet_lightweight.py # 轻量级 ResNet 模型
-│   ├── resnet_standard.py  # 标准 ResNet 模型
-│   ├── dataset_npy.py       # .npy 数据集加载器
-│   ├── confusionMatrix.py    # 混淆矩阵工具
-│   └── lr_scheduler.py      # 学习率调度器
+│   ├── base_model_main.py   # 基座模型训练入口（项目根目录执行）
+│   ├── base_model/          # 基座模型核心模块
+│   │   ├── dataset.py
+│   │   ├── utils.py
+│   │   ├── trainer.py
+│   │   ├── tester.py
+│   │   ├── visualizer.py
+│   │   ├── resnet_lightweight.py
+│   │   ├── resnet_standard.py
+│   │   ├── confusionMatrix.py
+│   │   └── lr_scheduler.py
+│   ├── pruning/             # 剪枝阶段目录（待实现）
+│   └── qat/                 # QAT 阶段目录（待实现）
 ├── docs/                    # 文档目录
 ├── Data/                    # 数据集目录
 ├── output/                  # 训练输出目录
@@ -118,7 +121,7 @@ ResNet/
 
 | 参数             | 默认值             | 说明     |
 | -------------- | --------------- | ------ |
-| `--epochs`     | 1               | 训练轮数   |
+| `--epochs`     | 60              | 训练轮数   |
 | `--lr`         | 0.0003          | 学习率    |
 | `--batch_size` | 64              | 批次大小   |
 | `--model_path` | best\_model.pth | 模型保存路径 |
@@ -131,9 +134,7 @@ ResNet/
 | 参数           | 默认值   | 说明          |
 | ------------ | ----- | ----------- |
 | `--Train`    | True  | 启用训练        |
-| `--no-Train` | -     | 禁用训练        |
 | `--Test`     | True  | 启用测试        |
-| `--no-Test`  | -     | 禁用测试        |
 | `--UMAP`     | False | 启用 UMAP 可视化 |
 
 ### 正则化参数
@@ -151,7 +152,7 @@ ResNet/
 | `--warmup_steps`        | 0    | Warmup 步数（优先使用） |
 | `--min_lr`              | 1e-6 | 最小学习率           |
 | `--plot_lr_schedule`    | True | 绘制学习率曲线         |
-| `--no-plot_lr_schedule` | -    | 禁用学习率曲线绘制       |
+| `--plot_lr_schedule False` | - | 禁用学习率曲线绘制    |
 
 详细参数说明请参考 [命令行参数](docs/CLI_ARGUMENTS.md)。
 

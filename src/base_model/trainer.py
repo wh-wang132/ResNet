@@ -19,28 +19,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-try:
-    from .lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
-    from .utils import (
-        get_gpu_memory_info,
-        print_training_summary,
-        configure_cudnn,
-        compile_model,
-        get_raw_model,
-        load_state_dict_safely,
-    )
-except ImportError:
-    # 兼容脚本方式运行: python src/base_model/main.py
-    from lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
-    from utils import (
-        get_gpu_memory_info,
-        print_training_summary,
-        configure_cudnn,
-        compile_model,
-        get_raw_model,
-        load_state_dict_safely,
-    )
-
+from .lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
+from .utils import (
+    get_gpu_memory_info,
+    print_training_summary,
+    configure_cudnn,
+    compile_model,
+    get_raw_model,
+    load_state_dict_safely,
+)
 
 def build_architecture_signature(model):
     """

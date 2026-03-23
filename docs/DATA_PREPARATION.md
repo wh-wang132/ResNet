@@ -64,7 +64,7 @@ np.save("Data/0/sample.npy", data)
 
 ### 修改划分比例
 
-如需修改划分比例，编辑 `src/dataset.py` 中的 `data_set_split()` 函数参数：
+如需修改划分比例，编辑 `src/base_model_main.py` 中的 `data_set_split()` 调用参数：
 
 ```python
 train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(

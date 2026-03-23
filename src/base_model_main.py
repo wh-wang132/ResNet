@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 .npy 数据集 2D ResNet 训练脚本（FP16 全流程版本）
-使用轻量级架构，GPU 加速，内存监控，过拟合缓解，自动混合精度 (AMP)
-模块化重构版本
+
+该文件作为新的统一入口，用于替代 src/base_model/main.py。
 """
 
 import sys
-import torch
 import gc
+import torch
 import matplotlib
 
 matplotlib.use("Agg")
@@ -17,36 +17,19 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"] = ["Times New Roman"]
 plt.rcParams["axes.unicode_minus"] = False
 
-# 导入项目模块
-try:
-    from .dataset import data_set_split
-    from .utils import (
-        release_gpu_memory,
-        setup_device,
-        parse_args,
-        create_output_directory,
-        load_model_map,
-        print_model_info,
-        create_optimized_dataloader,
-    )
-    from .trainer import train_model
-    from .tester import test_model
-    from .visualizer import visualize_umap
-except ImportError:
-    # 兼容脚本方式运行: python src/base_model/main.py
-    from dataset import data_set_split
-    from utils import (
-        release_gpu_memory,
-        setup_device,
-        parse_args,
-        create_output_directory,
-        load_model_map,
-        print_model_info,
-        create_optimized_dataloader,
-    )
-    from trainer import train_model
-    from tester import test_model
-    from visualizer import visualize_umap
+from base_model.dataset import data_set_split
+from base_model.utils import (
+    release_gpu_memory,
+    setup_device,
+    parse_args,
+    create_output_directory,
+    load_model_map,
+    print_model_info,
+    create_optimized_dataloader,
+)
+from base_model.trainer import train_model
+from base_model.tester import test_model
+from base_model.visualizer import visualize_umap
 
 
 def main():
@@ -116,7 +99,6 @@ def main():
     train_num = len(train_dataset)
     val_num = len(validate_dataset)
     test_num = len(test_dataset)
-
     print(f"训练样本数: {train_num}, 验证样本数: {val_num}, 测试样本数: {test_num}")
 
     # 设置随机种子
@@ -171,34 +153,26 @@ def main():
     print("所有任务完成")
     print(f"{'='*80}")
 
-    # 清理所有资源，确保程序正常退出
     cleanup_resources()
-
-    # 显式退出程序
     sys.exit(0)
 
 
 def cleanup_resources():
-    """
-    清理所有资源，防止程序阻塞
-    """
+    """清理所有资源，防止程序阻塞"""
     print("\n正在清理资源...")
 
-    # 1. 清理 matplotlib 资源
     try:
         plt.close("all")
         print("  ✓ 已关闭所有 matplotlib 图形")
     except Exception as e:
         print(f"  ⚠️  清理 matplotlib 时出错: {e}")
 
-    # 2. 释放 GPU 内存
     try:
         release_gpu_memory()
         print("  ✓ 已释放 GPU 内存")
     except Exception as e:
         print(f"  ⚠️  释放 GPU 内存时出错: {e}")
 
-    # 3. 强制垃圾回收
     try:
         gc.collect()
         print("  ✓ 已执行垃圾回收")
