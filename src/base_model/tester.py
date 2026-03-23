@@ -69,10 +69,11 @@ def test_model(model, device, test_loader, args, folder_path, labels__):
         for val_data in tqdm(test_loader):
             val_images, val_labels = val_data
             val_images = val_images.to(device)
-            outputs = model(val_images)
-            outputs = torch.softmax(outputs, dim=1)
-            outputs = torch.argmax(outputs, dim=1)
-            confusion.update(outputs.to("cpu").numpy(), val_labels.numpy())
+            logits = model(val_images)
+            # 评估后处理保持在测试流程中，不进入模型导出图
+            probabilities = torch.softmax(logits, dim=1)
+            predictions = torch.argmax(probabilities, dim=1)
+            confusion.update(predictions.to("cpu").numpy(), val_labels.numpy())
 
     confusion.plot(folder_path)
     confusion.summary()
