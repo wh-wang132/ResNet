@@ -8,7 +8,6 @@
 
 import torch
 import torch.nn as nn
-from torch.amp import autocast
 
 
 class BasicBlock(nn.Module):
@@ -26,7 +25,7 @@ class BasicBlock(nn.Module):
         width_per_group=64,
         dropout_p=0.0,
     ):
-        super(BasicBlock, self).__init__()
+        super().__init__()
 
         if groups != 1 or width_per_group != 64:
             raise ValueError("BasicBlock only supports groups=1 and width_per_group=64")
@@ -92,7 +91,7 @@ class Bottleneck(nn.Module):
         width_per_group=64,
         dropout_p=0.0,
     ):
-        super(Bottleneck, self).__init__()
+        super().__init__()
 
         width = int(out_channel * (width_per_group / 64.0)) * groups
 
@@ -270,54 +269,52 @@ class ResNet2D(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        with autocast("cuda", enabled=torch.cuda.is_available()):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        if self.include_top:
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.dropout(x)
+            x = self.fc(x)
+
+        return x
+
+    def get_features(self, x, layer=None):
+        """提取中间层特征（FP16 兼容）"""
+        if layer is None:
+            return self.forward(x)
+        else:
+            out = {}
             x = self.conv1(x)
             x = self.bn1(x)
             x = self.relu(x)
             x = self.maxpool(x)
 
             x = self.layer1(x)
+            if "layer1" in layer:
+                out["layer1"] = x
+
             x = self.layer2(x)
+            if "layer2" in layer:
+                out["layer2"] = x
+
             x = self.layer3(x)
+            if "layer3" in layer:
+                out["layer3"] = x
+
             x = self.layer4(x)
+            if "layer4" in layer:
+                out["layer4"] = x
 
-            if self.include_top:
-                x = self.avgpool(x)
-                x = torch.flatten(x, 1)
-                x = self.dropout(x)
-                x = self.fc(x)
-
-            return x
-
-    def get_features(self, x, layer=None):
-        """提取中间层特征（FP16 兼容）"""
-        with autocast("cuda", enabled=torch.cuda.is_available()):
-            if layer is None:
-                return self.forward(x)
-            else:
-                out = {}
-                x = self.conv1(x)
-                x = self.bn1(x)
-                x = self.relu(x)
-                x = self.maxpool(x)
-
-                x = self.layer1(x)
-                if "layer1" in layer:
-                    out["layer1"] = x
-
-                x = self.layer2(x)
-                if "layer2" in layer:
-                    out["layer2"] = x
-
-                x = self.layer3(x)
-                if "layer3" in layer:
-                    out["layer3"] = x
-
-                x = self.layer4(x)
-                if "layer4" in layer:
-                    out["layer4"] = x
-
-                return x if len(out) == 0 else out
+            return x if len(out) == 0 else out
 
 
 def resnet18_2d(num_classes=24, dropout_p=0.0):
