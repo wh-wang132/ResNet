@@ -23,6 +23,8 @@
 - Python 3.12+
 - CUDA 13.0+（如需 GPU 加速）
 - NVIDIA GPU（推荐 8GB+ 显存）
+- Pixi（用于提供 GCC/构建工具链环境）
+- direnv（可选，用于自动激活环境变量）
 
 ### 安装部署
 
@@ -35,7 +37,22 @@
    ```bash
    uv sync
    ```
-3. 准备数据集：
+3. 同步 Pixi 工具链环境（模型编译依赖）：
+   ```bash
+   pixi install
+   ```
+   当前 `pixi.toml` 已包含：
+   - `gxx`
+   - `make`
+   - `cmake`
+4. 启用 direnv 自动激活（推荐）：
+   项目根目录已提供 `.envrc`，内容会通过 `pixi shell-hook` 自动注入环境变量。
+   ```bash
+   # 首次安装 direnv 后执行一次
+   direnv allow
+   ```
+   之后每次进入项目根目录会自动激活 Pixi 环境。
+5. 准备数据集：
    - 将 .npy 格式数据集放入 `Data/` 目录
    - 数据集结构详见 [数据准备](docs/DATA_PREPARATION.md)
 
