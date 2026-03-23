@@ -13,6 +13,5 @@ extra-index-urls = ["https://mirrors.ustc.edu.cn/pypi/web/simple"]
 
 [dependencies]
 gxx = ">=15.2.0,<15.3"
-gcc = ">=15.2.0,<15.3"
 make = ">=4.4.1,<5"
 cmake = ">=4.2.3,<5"
