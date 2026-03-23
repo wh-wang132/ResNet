@@ -7,6 +7,7 @@
 
 import os
 import sys
+import hashlib
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -39,6 +40,31 @@ except ImportError:
         get_raw_model,
         load_state_dict_safely,
     )
+
+
+def build_architecture_signature(model):
+    """
+    基于 state_dict 形状信息生成结构签名，用于跨阶段一致性校验
+    """
+    state_dict = model.state_dict()
+    shape_items = []
+    for key, value in state_dict.items():
+        shape = list(value.shape)
+        shape_items.append((key, shape))
+
+    # 以键名排序保证签名稳定
+    shape_items.sort(key=lambda x: x[0])
+    canonical_text = "|".join(
+        f"{key}:{','.join(map(str, shape))}" for key, shape in shape_items
+    )
+    signature_hash = hashlib.sha256(canonical_text.encode("utf-8")).hexdigest()
+
+    return {
+        "signature_algo": "sha256",
+        "signature_hash": signature_hash,
+        "state_dict_shapes": {key: shape for key, shape in shape_items},
+        "parameter_count": int(sum(param.numel() for param in model.parameters())),
+    }
 
 
 def train_model(
@@ -126,6 +152,23 @@ def train_model(
     best_val_losses = []
     best_val_accs = []
     lr_history = []
+    input_tensor_meta = None
+    train_context = {
+        "model_name": args.model,
+        "class_num": args.class_num,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "lr": args.lr,
+        "weight_decay": args.weight_decay,
+        "dropout_p": args.dropout_p,
+        "warmup_ratio": args.warmup_ratio,
+        "warmup_steps": args.warmup_steps,
+        "min_lr": args.min_lr,
+        "compile_model": args.compile_model,
+        "compile_mode": args.compile_mode,
+        "cudnn_benchmark": args.cudnn_benchmark,
+        "cudnn_deterministic": args.cudnn_deterministic,
+    }
 
     save_path = os.path.join(folder_path, args.model_path)
     best_acc_info_path = os.path.join(folder_path, "best_val_acc_info.txt")
@@ -142,6 +185,15 @@ def train_model(
         for step, data in enumerate(train_bar):
             images, labels = data
             images, labels = images.to(device), labels.to(device)
+
+            # 记录一次实际训练输入信息，供后续剪枝/量化流程读取
+            if input_tensor_meta is None:
+                input_tensor_meta = {
+                    "batch_shape_nchw": list(images.shape),
+                    "sample_shape_chw": list(images.shape[1:]),
+                    "dtype": str(images.dtype),
+                    "device_type": str(images.device.type),
+                }
 
             optimizer.zero_grad()
 
@@ -243,6 +295,7 @@ def train_model(
 
             # 优先使用保存的原始模型引用，其次从当前模型中提取原始模型
             model_to_save = get_raw_model(original_model)
+            architecture_signature = build_architecture_signature(model_to_save)
 
             checkpoint = {
                 "model_state_dict": model_to_save.state_dict(),
@@ -251,6 +304,29 @@ def train_model(
                 ),
                 "epoch": epoch,
                 "best_acc": best_acc,
+                "train_context": train_context,
+                "model_structure": {
+                    "model_structure_version": 1,
+                    "model_name": args.model,
+                    "model_class": model_to_save.__class__.__name__,
+                    "model_kwargs": {
+                        "num_classes": args.class_num,
+                        "dropout_p": args.dropout_p,
+                    },
+                    "include_top": bool(getattr(model_to_save, "include_top", True)),
+                    "in_channels": (
+                        int(model_to_save.conv1.in_channels)
+                        if hasattr(model_to_save, "conv1")
+                        else None
+                    ),
+                    "init_channels": (
+                        int(model_to_save.conv1.out_channels)
+                        if hasattr(model_to_save, "conv1")
+                        else None
+                    ),
+                    "input_tensor_meta": input_tensor_meta,
+                    "architecture_signature": architecture_signature,
+                },
             }
             torch.save(checkpoint, save_path)
             print(
