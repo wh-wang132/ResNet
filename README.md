@@ -84,6 +84,8 @@ uv run src/base_model_main.py --model resnet18_2d
 | UMAP-learn   | 0.5.11+ | 降维可视化  |
 | TensorBoard  | 2.20.0+ | 训练日志记录 |
 | uv           | -       | 包管理工具  |
+| Pixi         | -       | GCC/Make/CMake 工具链环境管理 |
+| direnv       | -       | 自动激活项目环境变量 |
 
 ## 项目结构
 
@@ -106,6 +108,9 @@ ResNet/
 ├── docs/                    # 文档目录
 ├── Data/                    # 数据集目录
 ├── output/                  # 训练输出目录
+├── .envrc                   # direnv 自动激活（调用 pixi shell-hook）
+├── pixi.toml                # Pixi 环境定义（含 gxx/make/cmake）
+├── pixi.lock                # Pixi 锁文件
 ├── pyproject.toml           # 项目依赖配置
 ├── uv.lock                  # 锁定依赖版本
 ├── README.md                # 本文件
