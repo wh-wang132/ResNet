@@ -61,14 +61,14 @@ def test_model(model, device, test_loader, args, folder_path, labels__):
     model.eval()
 
     with torch.no_grad(), autocast("cuda", enabled=torch.cuda.is_available()):
-        for val_data in tqdm(test_loader):
-            val_images, val_labels = val_data
-            val_images = val_images.to(device)
-            logits = model(val_images)
+        for test_data in tqdm(test_loader):
+            test_images, test_labels = test_data
+            test_images = test_images.to(device)
+            logits = model(test_images)
             # 评估后处理保持在测试流程中，不进入模型导出图
             probabilities = torch.softmax(logits, dim=1)
             predictions = torch.argmax(probabilities, dim=1)
-            confusion.update(predictions.to("cpu").numpy(), val_labels.numpy())
+            confusion.update(predictions.to("cpu").numpy(), test_labels.numpy())
 
     confusion.plot(folder_path)
     confusion.summary()

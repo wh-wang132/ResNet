@@ -135,6 +135,7 @@ def train_model(
         )
 
     best_acc = 0.0
+    best_val_loss = float("inf")
     best_epoch = 0
     best_train_losses = []
     best_val_losses = []
@@ -277,8 +278,11 @@ def train_model(
         writer.add_scalar("GPU/peak_gb", gpu_info["peak_gb"], epoch)
 
         # 保存最佳模型（同时保存 scaler 状态用于恢复训练）
-        if val_accurate > best_acc:
+        if val_accurate > best_acc or (
+            val_accurate == best_acc and val_loss_epoch < best_val_loss
+        ):
             best_acc = val_accurate
+            best_val_loss = val_loss_epoch
             best_epoch = epoch + 1
 
             # 优先使用保存的原始模型引用，其次从当前模型中提取原始模型
@@ -292,6 +296,7 @@ def train_model(
                 ),
                 "epoch": epoch,
                 "best_acc": best_acc,
+                "best_val_loss": best_val_loss,
                 "train_context": train_context,
                 "model_structure": {
                     "model_structure_version": 1,
@@ -321,18 +326,21 @@ def train_model(
             }
             torch.save(checkpoint, save_path)
             print(
-                f"\n✓ 保存最佳模型 (Acc: {best_acc:.4f} at Epoch {best_epoch}, 包含 AMP scaler 状态)"
+                f"\n✓ 保存最佳模型 (Acc: {best_acc:.4f}, Val Loss: {best_val_loss:.4f} at Epoch {best_epoch}, 包含 AMP scaler 状态)"
             )
 
             # 记录最优验证准确率信息到文本文件
             with open(best_acc_info_path, "a", encoding="utf-8") as f:
                 f.write(
-                    f"Best Validation Accuracy: {best_acc:.4f} at Epoch: {best_epoch}\n"
+                    "Best Validation Accuracy: "
+                    f"{best_acc:.4f}, Best Validation Loss: {best_val_loss:.4f} "
+                    f"at Epoch: {best_epoch}\n"
                 )
 
     print(f"\n{'='*80}")
     print(f"训练完成")
     print(f"最佳验证准确率: {best_acc:.4f} (Epoch: {best_epoch})")
+    print(f"最佳验证损失: {best_val_loss:.4f}")
     print(f"{'='*80}")
     writer.close()
 

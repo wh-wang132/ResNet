@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib
+import os
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -82,6 +83,6 @@ class ConfusionMatrix(object):
         plt.tight_layout()
         # DPI设为原来的2倍（默认约为100，设为200）
         plt.savefig(
-            folder_path + "/" + " Confusion_matrix.png", dpi=100, bbox_inches="tight"
+            os.path.join(folder_path, "Confusion_matrix.png"), dpi=100, bbox_inches="tight"
         )
         plt.close()

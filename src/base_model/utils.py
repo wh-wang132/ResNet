@@ -46,11 +46,6 @@ def print_training_summary(table_title, train_loss, val_loss, val_acc, gpu_info,
 
 def create_output_directory(args):
     """创建输出目录"""
-    folder_name = (
-        os.path.basename(args.data_dir)
-        if os.path.basename(args.data_dir)
-        else "npy_dataset"
-    )
     output_path = "./output/base_model"
     folder_path = os.path.join(
         output_path,
