@@ -56,6 +56,7 @@ src/
 - `train_model(...)`：训练与验证主循环
 - `plot_training_curves(...)`：训练曲线绘制
 - 训练产物：最佳模型 checkpoint、TensorBoard 日志、曲线图
+- 默认输出目录：`output/base_model/<model>/epochs<epochs>_bs<batch_size>/`
 
 ### base_model/tester.py
 

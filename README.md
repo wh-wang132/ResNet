@@ -187,13 +187,14 @@ ResNet/
 训练完成后，输出目录会包含以下文件：
 
 ```
-output/<model>_Data/<config>/
+output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 ├── best_model.pth           # 最佳模型权重
+├── best_val_acc_info.txt    # 最佳验证准确率摘要
 ├── lr_schedule.png           # 学习率调度曲线
 ├── training_curves.png        # 训练曲线（损失、准确率、学习率）
 ├── Confusion matrix.png      # 混淆矩阵图
 ├── umap_plot.png            # UMAP 可视化图（如启用）
-└── runs/                    # TensorBoard 日志目录
+└── runs/                    # 当前实验目录下的 TensorBoard 日志
 ```
 
 ## 文档

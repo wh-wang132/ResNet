@@ -40,7 +40,7 @@ uv run src/base_model_main.py ...
 训练输出默认写入：
 
 ```text
-output/base_model/<model>_<dataset>/<config>/
+output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 ```
 
 典型文件包括：

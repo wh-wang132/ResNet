@@ -117,6 +117,12 @@
 tensorboard --logdir output/
 ```
 
+更精确地只查看基座模型实验目录时，可使用：
+
+```bash
+tensorboard --logdir output/base_model/
+```
+
 ## 常见问题及解决方案
 
 ### 训练不收敛
