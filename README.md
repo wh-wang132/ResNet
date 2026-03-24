@@ -241,6 +241,7 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
 
 - [数据准备指南](docs/DATA_PREPARATION.md) - 如何准备和组织数据集
 - [模型架构说明](docs/MODEL_ARCHITECTURE.md) - 各种 ResNet 架构的详细说明
+- [项目架构分析](docs/PROJECT_ARCHITECTURE.md) - 当前项目分层架构与阶段完成度分析
 - [训练参数调优](docs/TRAINING_GUIDE.md) - 训练参数调优建议
 - [剪枝指南](docs/PRUNING_GUIDE.md) - 基于 torch-pruning 的结构化剪枝与微调说明
 - [命令行参数详解](docs/CLI_ARGUMENTS.md) - 完整的命令行参数说明
