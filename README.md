@@ -75,6 +75,26 @@ uv run src/base_model_main.py --model resnet18_2d
 uv run src/base_model_main.py --data_dtype fp32
 ```
 
+### 剪枝 + 微调
+
+```bash
+# 最小剪枝 + 微调命令
+uv run src/pruning_main.py --base_checkpoint output/base_model/resnet6_2d/epochs20_bs64/best_model.pth
+
+# 调整剪枝比例并开启全局剪枝
+uv run src/pruning_main.py \
+  --base_checkpoint output/base_model/resnet18_2d/epochs20_bs64/best_model.pth \
+  --pruning_ratio 0.30 \
+  --global_pruning True \
+  --finetune_epochs 10
+
+# 仅执行剪枝并保存结果，不做微调
+uv run src/pruning_main.py \
+  --base_checkpoint output/base_model/resnet14_2d/epochs20_bs64/best_model.pth \
+  --finetune_epochs 0 \
+  --evaluate_test False
+```
+
 ## 技术栈选型
 
 | 技术           | 版本      | 用途     |
@@ -96,6 +116,7 @@ uv run src/base_model_main.py --data_dtype fp32
 ResNet/
 ├── src/
 │   ├── base_model_main.py   # 基座模型训练入口（项目根目录执行）
+│   ├── pruning_main.py      # 剪枝 + 微调入口（项目根目录执行）
 │   ├── base_model/          # 基座模型核心模块
 │   │   ├── dataset.py
 │   │   ├── utils.py
@@ -106,7 +127,16 @@ ResNet/
 │   │   ├── resnet_standard.py
 │   │   ├── confusionMatrix.py
 │   │   └── lr_scheduler.py
-│   ├── pruning/             # 剪枝阶段目录（待实现）
+│   ├── pruning/             # 剪枝阶段核心模块
+│   │   ├── args.py
+│   │   ├── checkpoint.py
+│   │   ├── evaluator.py
+│   │   ├── output.py
+│   │   ├── pruner.py
+│   │   ├── topology.py
+│   │   ├── trainer.py
+│   │   ├── utils.py
+│   │   └── README.md
 │   └── qat/                 # QAT 阶段目录（待实现）
 ├── docs/                    # 文档目录
 ├── Data/                    # 数据集目录
@@ -197,11 +227,22 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 └── runs/                    # 当前实验目录下的 TensorBoard 日志
 ```
 
+剪枝 + 微调阶段默认输出：
+
+```
+output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
+├── best_pruned_model.pth    # 最佳剪枝模型 checkpoint
+├── best_pruned_info.txt     # 最佳剪枝模型验证指标摘要
+├── pruning_summary.json     # 剪枝前后统计与流程摘要
+└── runs/                    # 当前实验目录下的 TensorBoard 日志
+```
+
 ## 文档
 
 - [数据准备指南](docs/DATA_PREPARATION.md) - 如何准备和组织数据集
 - [模型架构说明](docs/MODEL_ARCHITECTURE.md) - 各种 ResNet 架构的详细说明
 - [训练参数调优](docs/TRAINING_GUIDE.md) - 训练参数调优建议
+- [剪枝指南](docs/PRUNING_GUIDE.md) - 基于 torch-pruning 的结构化剪枝与微调说明
 - [命令行参数详解](docs/CLI_ARGUMENTS.md) - 完整的命令行参数说明
 - [模块说明](docs/MODULES.md) - 代码模块结构和功能说明
 

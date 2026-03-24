@@ -4,6 +4,17 @@
 
 本文档详细说明所有可用的命令行参数及其用法。所有布尔参数使用 `--arg True`（启用）或 `--arg False`（禁用）的方式控制。
 
+## 剪枝入口
+
+剪枝 + 微调阶段使用独立入口：
+
+```bash
+uv run src/pruning_main.py --help
+```
+
+当前 pruning CLI 参数以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准。  
+详细说明与示例请参考 [剪枝指南](PRUNING_GUIDE.md)。
+
 ## 基本参数
 
 ### --epochs
