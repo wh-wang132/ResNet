@@ -181,7 +181,7 @@ class ResNet2D(nn.Module):
             in_channels: 输入通道数（默认 1，单通道灰度/特征）
             init_channels: 初始通道数（默认 64，与标准 ResNet 一致）
         """
-        super(ResNet2D, self).__init__()
+        super().__init__()
         self.include_top = include_top
         self.in_channel = init_channels
         self.groups = groups
