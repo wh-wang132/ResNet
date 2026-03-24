@@ -7,7 +7,6 @@
 
 import os
 import sys
-import hashlib
 import copy
 import torch
 import torch.nn as nn
@@ -22,6 +21,7 @@ import matplotlib.pyplot as plt
 
 from .lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
 from .utils import (
+    build_architecture_signature,
     get_gpu_memory_info,
     print_training_summary,
     configure_cudnn,
@@ -29,30 +29,6 @@ from .utils import (
     get_raw_model,
     load_state_dict_safely,
 )
-
-def build_architecture_signature(model):
-    """
-    基于 state_dict 形状信息生成结构签名，用于跨阶段一致性校验
-    """
-    state_dict = model.state_dict()
-    shape_items = []
-    for key, value in state_dict.items():
-        shape = list(value.shape)
-        shape_items.append((key, shape))
-
-    # 以键名排序保证签名稳定
-    shape_items.sort(key=lambda x: x[0])
-    canonical_text = "|".join(
-        f"{key}:{','.join(map(str, shape))}" for key, shape in shape_items
-    )
-    signature_hash = hashlib.sha256(canonical_text.encode("utf-8")).hexdigest()
-
-    return {
-        "signature_algo": "sha256",
-        "signature_hash": signature_hash,
-        "state_dict_shapes": {key: shape for key, shape in shape_items},
-        "parameter_count": int(sum(param.numel() for param in model.parameters())),
-    }
 
 
 def train_model(

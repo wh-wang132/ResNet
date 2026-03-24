@@ -7,6 +7,7 @@
 
 import os
 import gc
+import hashlib
 import torch
 import argparse
 from torch.amp import autocast
@@ -28,6 +29,31 @@ def get_gpu_memory_info():
         peak = torch.cuda.max_memory_allocated() / (1024**3)
         return {"allocated_gb": allocated, "cached_gb": cached, "peak_gb": peak}
     return {"allocated_gb": 0, "cached_gb": 0, "peak_gb": 0}
+
+
+def build_architecture_signature(model):
+    """
+    基于 state_dict 形状信息生成结构签名，用于跨阶段一致性校验
+    """
+    state_dict = model.state_dict()
+    shape_items = []
+    for key, value in state_dict.items():
+        shape = list(value.shape)
+        shape_items.append((key, shape))
+
+    # 以键名排序保证签名稳定
+    shape_items.sort(key=lambda x: x[0])
+    canonical_text = "|".join(
+        f"{key}:{','.join(map(str, shape))}" for key, shape in shape_items
+    )
+    signature_hash = hashlib.sha256(canonical_text.encode("utf-8")).hexdigest()
+
+    return {
+        "signature_algo": "sha256",
+        "signature_hash": signature_hash,
+        "state_dict_shapes": {key: shape for key, shape in shape_items},
+        "parameter_count": int(sum(param.numel() for param in model.parameters())),
+    }
 
 
 def print_training_summary(table_title, train_loss, val_loss, val_acc, gpu_info, epoch):

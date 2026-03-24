@@ -8,6 +8,7 @@
 """
 
 from base_model.utils import (
+    build_architecture_signature,
     create_optimized_dataloader,
     get_raw_model,
     load_model_map,
@@ -23,6 +24,7 @@ INPUT_SIZE_CHW = (1, 543, 512)
 __all__ = [
     "INPUT_SHAPE_NCHW",
     "INPUT_SIZE_CHW",
+    "build_architecture_signature",
     "create_optimized_dataloader",
     "get_raw_model",
     "load_model_map",
