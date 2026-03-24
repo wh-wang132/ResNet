@@ -47,7 +47,7 @@ def main():
     print(f"\n输出目录: {folder_path}")
 
     # 数据加载
-    print("\n开始加载数据 (FP16)...")
+    print(f"\n开始加载数据 ({args.data_dtype})...")
     train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(
         args.data_dir,
         train_ratio=0.6,
@@ -55,6 +55,7 @@ def main():
         test_ratio=0.2,
         full_load=args.full_load,
         num_workers=args.num_workers,
+        data_dtype=args.data_dtype,
     )
 
     # 检查是否使用GPU

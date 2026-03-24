@@ -77,6 +77,17 @@
   uv run src/base_model_main.py --data_dir ./my_dataset
   ```
 
+### --data_dtype
+
+- **类型**: str
+- **默认值**: "fp16"
+- **可选值**: "fp16", "fp32"
+- **说明**: 数据加载后的 tensor 精度，仅影响数据集输出，不改变 AMP、模型权重和 checkpoint 保存精度
+- **示例**:
+  ```bash
+  uv run src/base_model_main.py --data_dtype fp32
+  ```
+
 ## 数据加载选项
 
 ### --full_load

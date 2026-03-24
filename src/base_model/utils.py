@@ -130,6 +130,13 @@ def parse_args():
 
     # 数据路径
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")
+    parser.add_argument(
+        "--data_dtype",
+        type=str,
+        default="fp16",
+        choices=["fp16", "fp32"],
+        help="数据加载后的 tensor 精度，仅影响数据集输出 (默认 fp16)",
+    )
 
     # 数据加载选项
     parser.add_argument(
@@ -251,13 +258,8 @@ def parse_args():
 
 def load_model_map():
     """加载模型映射"""
-    try:
-        from .resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
-        from .resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
-    except ImportError:
-        # 兼容脚本方式运行: python src/base_model/main.py
-        from resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
-        from resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
+    from .resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
+    from .resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
 
     return {
         "resnet6_2d": resnet6_2d,

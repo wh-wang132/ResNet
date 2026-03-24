@@ -18,12 +18,23 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 Sample: TypeAlias = tuple[torch.Tensor, int]
 
+DTYPE_MAP = {
+    "fp16": (np.float16, torch.float16),
+    "fp32": (np.float32, torch.float32),
+}
+
 
 class NPYDataset(Dataset):
-    """自定义 Dataset 类用于加载.npy 文件（FP16 版本，支持多线程预加载）"""
+    """自定义 Dataset 类用于加载 .npy 文件，支持可配置精度和多线程预加载"""
 
     def __init__(
-        self, file_paths, labels, transform=None, full_load=False, num_workers=None
+        self,
+        file_paths,
+        labels,
+        transform=None,
+        full_load=False,
+        num_workers=None,
+        data_dtype="fp16",
     ):
         """
         Args:
@@ -32,11 +43,17 @@ class NPYDataset(Dataset):
             transform: 数据变换
             full_load: 是否全量加载到内存
             num_workers: 预加载使用的线程数（None表示自动检测）
+            data_dtype: 数据加载后的 tensor 精度（fp16 或 fp32）
         """
+        if data_dtype not in DTYPE_MAP:
+            raise ValueError(f"不支持的数据精度: {data_dtype}")
+
         self.file_paths = file_paths
         self.labels = labels
         self.transform = transform
         self.full_load = full_load
+        self.data_dtype = data_dtype
+        self.numpy_dtype, self.tensor_dtype = DTYPE_MAP[data_dtype]
         self.data_cache: Optional[list[Optional[Sample]]] = None
         cpu_count = os.cpu_count() or 1
         self.num_workers = num_workers if num_workers is not None else max(1, cpu_count)
@@ -54,16 +71,21 @@ class NPYDataset(Dataset):
             data = np.load(self.file_paths[idx])
             label = self.labels[idx]
 
-            if data.dtype != np.float16:
-                data = data.astype(np.float16)
+            if data.dtype != self.numpy_dtype:
+                data = data.astype(self.numpy_dtype)
 
-            data = torch.from_numpy(data).to(torch.float16)
+            data = torch.from_numpy(data).to(self.tensor_dtype)
             data = data.unsqueeze(0)
 
             load_time = time.time() - start_time
             return idx, (data, int(label)), load_time, None
         except Exception as e:
-            return idx, (torch.zeros(1, 543, 512, dtype=torch.float16), 0), 0.0, str(e)
+            return (
+                idx,
+                (torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0),
+                0.0,
+                str(e),
+            )
 
     def _preload_data_multithreaded(self):
         """多线程预加载所有数据到内存"""
@@ -127,7 +149,7 @@ class NPYDataset(Dataset):
         return len(self.file_paths)
 
     def __getitem__(self, idx):
-        """加载单个样本（FP16，带性能监控）"""
+        """加载单个样本（可配置精度，带性能监控）"""
         start_time = time.time()
 
         if self.full_load and self.data_cache is not None:
@@ -135,7 +157,7 @@ class NPYDataset(Dataset):
             cached_sample = cache[idx]
             if cached_sample is None:
                 # 理论上不应发生；兜底保证类型安全和运行稳定性
-                return torch.zeros(1, 543, 512, dtype=torch.float16), 0
+                return torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0
             data, label = cached_sample
             if self.transform:
                 data = self.transform(data)
@@ -148,12 +170,12 @@ class NPYDataset(Dataset):
             data = np.load(self.file_paths[idx])
             label = self.labels[idx]
 
-            # 确保数据类型为 float16
-            if data.dtype != np.float16:
-                data = data.astype(np.float16)
+            # 确保数据类型与配置一致
+            if data.dtype != self.numpy_dtype:
+                data = data.astype(self.numpy_dtype)
 
-            # 转换为 torch tensor (保持 float16)
-            data = torch.from_numpy(data).to(torch.float16)
+            # 转换为 torch tensor
+            data = torch.from_numpy(data).to(self.tensor_dtype)
 
             # 添加通道维度 (H, W) -> (1, H, W)
             data = data.unsqueeze(0)
@@ -171,7 +193,7 @@ class NPYDataset(Dataset):
             load_time = (time.time() - start_time) * 1000
             self._record_load_time(load_time)
             # 返回空样本（为了训练继续）
-            return torch.zeros(1, 543, 512, dtype=torch.float16), 0
+            return torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0
 
     def _record_load_time(self, load_time_ms):
         """记录加载时间用于性能监控"""
@@ -197,9 +219,10 @@ def data_set_split(
     random_state=42,
     full_load=False,
     num_workers=None,
+    data_dtype="fp16",
 ):
     """
-    划分数据集（FP16 版本，支持多线程预加载）
+    划分数据集（支持可配置精度和多线程预加载）
 
     Args:
         data_dir: 数据根目录（如./Data）
@@ -209,6 +232,7 @@ def data_set_split(
         random_state: 随机种子
         full_load: 是否全量加载到内存
         num_workers: 预加载使用的线程数（None表示自动检测）
+        data_dtype: 数据加载后的 tensor 精度（fp16 或 fp32）
 
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
@@ -264,15 +288,27 @@ def data_set_split(
     print(f"验证集：{len(val_paths)} 样本")
     print(f"测试集：{len(test_paths)} 样本")
 
-    # 创建数据集（FP16 版本）
+    # 创建数据集
     train_dataset = NPYDataset(
-        train_paths, train_labels, full_load=full_load, num_workers=num_workers
+        train_paths,
+        train_labels,
+        full_load=full_load,
+        num_workers=num_workers,
+        data_dtype=data_dtype,
     )
     validate_dataset = NPYDataset(
-        val_paths, val_labels, full_load=full_load, num_workers=num_workers
+        val_paths,
+        val_labels,
+        full_load=full_load,
+        num_workers=num_workers,
+        data_dtype=data_dtype,
     )
     test_dataset = NPYDataset(
-        test_paths, test_labels, full_load=full_load, num_workers=num_workers
+        test_paths,
+        test_labels,
+        full_load=full_load,
+        num_workers=num_workers,
+        data_dtype=data_dtype,
     )
 
     return train_dataset, validate_dataset, test_dataset, labels__
