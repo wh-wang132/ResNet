@@ -252,7 +252,7 @@ def data_set_split(
         label_folder_path = os.path.join(data_dir, label_folder)
         if os.path.isdir(label_folder_path):
             labels__.append(label_folder)
-            for file_name in os.listdir(label_folder_path):
+            for file_name in sorted(os.listdir(label_folder_path), key=natural_sort_key):
                 if file_name.endswith(".npy"):
                     file_path = os.path.join(label_folder_path, file_name)
                     file_paths.append(file_path)

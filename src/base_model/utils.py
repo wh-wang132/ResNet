@@ -235,7 +235,7 @@ def parse_args():
         "--warmup_ratio",
         type=float,
         default=0.05,
-        help="Warmup 占总步数的比例 (默认 0.05, 即 5%%)",
+        help="Warmup 占总步数的比例 (默认 0.05, 即 5%)",
     )
     parser.add_argument(
         "--warmup_steps",
@@ -550,7 +550,6 @@ def load_state_dict_safely(model, state_dict, strict=True):
     Returns:
         bool: 是否成功加载
     """
-    import torch
 
     try:
         # 首先尝试直接加载到原始模型（如果是编译模型）
