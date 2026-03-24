@@ -8,6 +8,7 @@
 import os
 import sys
 import hashlib
+import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -312,6 +313,9 @@ def train_model(
                         else None
                     ),
                     "input_tensor_meta": input_tensor_meta,
+                    "channel_cfg": copy.deepcopy(
+                        getattr(model_to_save, "channel_cfg", None)
+                    ),
                     "architecture_signature": architecture_signature,
                 },
             }

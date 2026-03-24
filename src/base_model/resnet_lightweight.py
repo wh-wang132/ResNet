@@ -9,6 +9,60 @@
 
 import torch
 import torch.nn as nn
+import copy
+
+
+def build_lightweight_resnet2d_channel_cfg(
+    block,
+    blocks_num,
+    init_channels=32,
+    in_channels=1,
+    groups=1,
+    include_top=True,
+    num_classes=24,
+):
+    """构建轻量 ResNet 的默认逐层通道配置。"""
+    cfg = {
+        "block_type": block.__name__,
+        "stem": {"in_channels": in_channels, "out_channels": init_channels},
+        "layers": [],
+        "fc": None,
+        "include_top": include_top,
+        "groups": groups,
+    }
+
+    in_ch = init_channels
+    stage_channels = [init_channels, init_channels * 2, init_channels * 4]
+
+    for stage_idx, (block_num, out_channel) in enumerate(zip(blocks_num, stage_channels)):
+        layer_cfg = {"blocks": []}
+        for block_idx in range(block_num):
+            stride = 2 if stage_idx > 0 and block_idx == 0 else 1
+            downsample = None
+            if stride != 1 or in_ch != out_channel * block.expansion:
+                downsample = {
+                    "out_channels": out_channel * block.expansion,
+                    "stride": stride,
+                }
+
+            block_cfg = {
+                "in_channels": in_ch,
+                "mid_channels": out_channel,
+                "out_channels": out_channel,
+                "stride": stride,
+                "downsample": downsample,
+            }
+            layer_cfg["blocks"].append(block_cfg)
+            in_ch = out_channel * block.expansion
+        cfg["layers"].append(layer_cfg)
+
+    if include_top:
+        cfg["fc"] = {
+            "in_features": in_ch,
+            "out_features": num_classes,
+        }
+
+    return cfg
 
 
 class LightweightBasicBlock2D(nn.Module):
@@ -24,6 +78,8 @@ class LightweightBasicBlock2D(nn.Module):
         downsample=None,
         groups=1,
         dropout_p=0.2,
+        mid_channels=None,
+        downsample_out_channels=None,
     ):
         super().__init__()
 
@@ -89,6 +145,7 @@ class LightweightResNet2D(nn.Module):
         dropout_p=0.2,
         in_channels=1,
         init_channels=32,
+        channel_cfg=None,
     ):
         """
         Args:
@@ -104,32 +161,46 @@ class LightweightResNet2D(nn.Module):
         """
         super().__init__()
         self.include_top = include_top
-        self.in_channel = init_channels
         self.groups = groups
         self.width_per_group = width_per_group
 
+        if channel_cfg is None:
+            channel_cfg = build_lightweight_resnet2d_channel_cfg(
+                block=block,
+                blocks_num=blocks_num,
+                init_channels=init_channels,
+                in_channels=in_channels,
+                groups=groups,
+                include_top=include_top,
+                num_classes=num_classes,
+            )
+        self.channel_cfg = copy.deepcopy(channel_cfg)
+        self.include_top = self.channel_cfg.get("include_top", include_top)
+
+        stem_cfg = self.channel_cfg["stem"]
+
         # 初始卷积层（使用更小的通道数和核）
         self.conv1 = nn.Conv2d(
-            in_channels,
-            self.in_channel,
+            stem_cfg["in_channels"],
+            stem_cfg["out_channels"],
             kernel_size=5,  # 比 7 更小
             stride=2,
             padding=2,
             bias=False,
         )
-        self.bn1 = nn.BatchNorm2d(self.in_channel)
+        self.bn1 = nn.BatchNorm2d(stem_cfg["out_channels"])
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         # 四个残差层（使用更少的块）
-        self.layer1 = self._make_layer(
-            block, init_channels, blocks_num[0], dropout_p=dropout_p
+        self.layer1 = self._make_layer_from_cfg(
+            block, self.channel_cfg["layers"][0], dropout_p=dropout_p
         )
-        self.layer2 = self._make_layer(
-            block, init_channels * 2, blocks_num[1], stride=2, dropout_p=dropout_p
+        self.layer2 = self._make_layer_from_cfg(
+            block, self.channel_cfg["layers"][1], dropout_p=dropout_p
         )
-        self.layer3 = self._make_layer(
-            block, init_channels * 4, blocks_num[2], stride=2, dropout_p=dropout_p
+        self.layer3 = self._make_layer_from_cfg(
+            block, self.channel_cfg["layers"][2], dropout_p=dropout_p
         )
 
         # 移除 layer4 以减少复杂度
@@ -138,45 +209,51 @@ class LightweightResNet2D(nn.Module):
 
         if self.include_top:
             self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Linear(init_channels * 4 * block.expansion, num_classes)
+            fc_cfg = self.channel_cfg["fc"]
+            self.fc = nn.Linear(fc_cfg["in_features"], fc_cfg["out_features"])
 
         # Kaiming 初始化
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
 
-    def _make_layer(self, block, channel, block_num, stride=1, dropout_p=0.2):
-        """构建残差层"""
-        downsample = None
-        if stride != 1 or self.in_channel != channel * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(
-                    self.in_channel,
-                    channel * block.expansion,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False,
-                    groups=self.groups,
-                ),
-                nn.BatchNorm2d(channel * block.expansion),
-            )
-
-        layers = []
-        layers.append(
-            block(
-                self.in_channel,
-                channel,
-                downsample=downsample,
-                stride=stride,
+    def _make_downsample(self, in_channels, downsample_cfg):
+        if downsample_cfg is None:
+            return None
+        return nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                downsample_cfg["out_channels"],
+                kernel_size=1,
+                stride=downsample_cfg["stride"],
+                bias=False,
                 groups=self.groups,
-                dropout_p=dropout_p,
-            )
+            ),
+            nn.BatchNorm2d(downsample_cfg["out_channels"]),
         )
-        self.in_channel = channel * block.expansion
 
-        for _ in range(1, block_num):
+    def _make_layer_from_cfg(self, block, layer_cfg, dropout_p=0.2):
+        """按逐层通道配置构建残差层。"""
+        layers = []
+        for block_cfg in layer_cfg["blocks"]:
+            downsample = self._make_downsample(
+                block_cfg["in_channels"], block_cfg.get("downsample")
+            )
             layers.append(
-                block(self.in_channel, channel, groups=self.groups, dropout_p=dropout_p)
+                block(
+                    block_cfg["in_channels"],
+                    block_cfg["out_channels"],
+                    downsample=downsample,
+                    stride=block_cfg["stride"],
+                    groups=self.groups,
+                    dropout_p=dropout_p,
+                    mid_channels=block_cfg.get("mid_channels"),
+                    downsample_out_channels=(
+                        None
+                        if block_cfg.get("downsample") is None
+                        else block_cfg["downsample"]["out_channels"]
+                    ),
+                )
             )
 
         return nn.Sequential(*layers)
@@ -255,4 +332,63 @@ def resnet14_2d(num_classes=24, dropout_p=0.2):
         num_classes=num_classes,
         init_channels=48,
         dropout_p=dropout_p,
+    )
+
+
+def lightweight_resnet2d_from_cfg(
+    blocks_num,
+    channel_cfg,
+    num_classes=24,
+    dropout_p=0.2,
+    include_top=True,
+    in_channels=1,
+):
+    return LightweightResNet2D(
+        LightweightBasicBlock2D,
+        blocks_num,
+        num_classes=num_classes,
+        include_top=channel_cfg.get("include_top", include_top),
+        in_channels=in_channels,
+        init_channels=channel_cfg["stem"]["out_channels"],
+        dropout_p=dropout_p,
+        channel_cfg=channel_cfg,
+    )
+
+
+def resnet6_2d_from_cfg(
+    channel_cfg, num_classes=24, dropout_p=0.2, include_top=True, in_channels=1
+):
+    return lightweight_resnet2d_from_cfg(
+        [1, 1, 1],
+        channel_cfg,
+        num_classes=num_classes,
+        dropout_p=dropout_p,
+        include_top=include_top,
+        in_channels=in_channels,
+    )
+
+
+def resnet10_2d_from_cfg(
+    channel_cfg, num_classes=24, dropout_p=0.2, include_top=True, in_channels=1
+):
+    return lightweight_resnet2d_from_cfg(
+        [1, 1, 1],
+        channel_cfg,
+        num_classes=num_classes,
+        dropout_p=dropout_p,
+        include_top=include_top,
+        in_channels=in_channels,
+    )
+
+
+def resnet14_2d_from_cfg(
+    channel_cfg, num_classes=24, dropout_p=0.2, include_top=True, in_channels=1
+):
+    return lightweight_resnet2d_from_cfg(
+        [2, 2, 1],
+        channel_cfg,
+        num_classes=num_classes,
+        dropout_p=dropout_p,
+        include_top=include_top,
+        in_channels=in_channels,
     )
