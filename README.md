@@ -70,6 +70,9 @@ uv run src/base_model_main.py --Train False --UMAP True
 
 # 使用不同的模型
 uv run src/base_model_main.py --model resnet18_2d
+
+# 指定数据集输出精度
+uv run src/base_model_main.py --data_dtype fp32
 ```
 
 ## 技术栈选型
@@ -150,6 +153,7 @@ ResNet/
 | `--class_num`  | 24              | 分类数    |
 | `--model`      | resnet6\_2d     | 选择模型架构 |
 | `--data_dir`   | Data            | 数据集路径  |
+| `--data_dtype` | fp16            | 数据集输出 tensor 精度，可选 `fp16`/`fp32` |
 
 ### 功能开关
 
