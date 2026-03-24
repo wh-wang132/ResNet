@@ -54,8 +54,8 @@ def create_output_directory(args):
     output_path = "./output/base_model"
     folder_path = os.path.join(
         output_path,
-        f"{args.model}_{folder_name}",
-        f"epochs{args.epochs}_bs{args.batch_size}_lr{args.lr}_drop{args.dropout_p}",
+        args.model,
+        f"epochs{args.epochs}_bs{args.batch_size}",
     )
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
