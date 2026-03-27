@@ -36,9 +36,8 @@ def main():
     device = setup_device()
 
     model, checkpoint_meta, raw_checkpoint = load_base_checkpoint(
-        args.base_checkpoint,
+        args.model,
         device,
-        expected_model_name=args.model,
     )
     model_name = checkpoint_meta["model_name"]
 
@@ -108,7 +107,9 @@ def main():
         global_pruning=args.global_pruning,
         ignore_fc=args.ignore_fc,
     )
-    pruning_meta["source_checkpoint"] = args.base_checkpoint
+    pruning_meta["checkpoint_link_path"] = checkpoint_meta["checkpoint_link_path"]
+    pruning_meta["resolved_checkpoint_path"] = checkpoint_meta["resolved_checkpoint_path"]
+    pruning_meta["source_checkpoint"] = checkpoint_meta["resolved_checkpoint_path"]
     pruning_meta["source_best_acc"] = checkpoint_meta.get("best_acc")
     pruning_meta["source_best_val_loss"] = checkpoint_meta.get("best_val_loss")
 
@@ -175,7 +176,9 @@ def main():
         "pruning_meta": pruning_meta,
         "finetune_summary": finetune_summary,
         "final_test": final_test_metrics,
-        "source_checkpoint": args.base_checkpoint,
+        "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
+        "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
+        "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
     }
 
     summary_path = save_summary(folder_path, summary)

@@ -88,7 +88,9 @@ def finetune_model(
 
     train_context = {
         "stage": "pruning_finetune",
-        "source_checkpoint": checkpoint_meta["checkpoint_path"],
+        "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
+        "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
+        "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
         "model_name": checkpoint_meta["model_name"],
         "class_num": checkpoint_meta["model_kwargs"].get("num_classes", 24),
         "finetune_epochs": args.finetune_epochs,
@@ -250,7 +252,9 @@ def save_pruned_checkpoint_without_finetune(
         best_val_loss=metrics["loss"],
         train_context={
             "stage": "pruning_only",
-            "source_checkpoint": checkpoint_meta["checkpoint_path"],
+            "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
+            "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
+            "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
             "model_name": checkpoint_meta["model_name"],
             "batch_size": args.batch_size,
             "data_dtype": args.data_dtype,

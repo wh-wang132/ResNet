@@ -93,6 +93,7 @@ src/
 
 - 剪枝 + 微调入口
 - 负责组织：
+  - 按模型名解析基座模型根目录下的 `best_model.pth` 符号链接
   - 基座 checkpoint 恢复
   - torch-pruning 结构化剪枝
   - 剪枝后评估
@@ -101,6 +102,7 @@ src/
 
 ### pruning/checkpoint.py
 
+- 解析 `output/base_model/<model>/best_model.pth`
 - 读取基座 checkpoint
 - 用 `load_model_map()` 恢复默认模型并严格加载权重
 

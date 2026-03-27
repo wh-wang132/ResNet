@@ -4,16 +4,7 @@
 
 import argparse
 
-
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    value = v.lower()
-    if value in {"yes", "true", "t", "y", "1"}:
-        return True
-    if value in {"no", "false", "f", "n", "0"}:
-        return False
-    raise argparse.ArgumentTypeError("Boolean value expected.")
+from .utils import str2bool
 
 
 def parse_args():
@@ -21,11 +12,10 @@ def parse_args():
         description="Structured pruning + finetuning pipeline based on torch-pruning"
     )
 
-    parser.add_argument("--base_checkpoint", type=str, required=True, help="基座模型 checkpoint 路径")
     parser.add_argument(
         "--model",
         type=str,
-        default=None,
+        required=True,
         choices=[
             "resnet6_2d",
             "resnet10_2d",
@@ -34,7 +24,7 @@ def parse_args():
             "resnet34_2d",
             "resnet50_2d",
         ],
-        help="可选：显式指定模型名，用于与 checkpoint 里的模型名做一致性校验",
+        help="基座模型名，将自动解析 output/base_model/<model>/best_model.pth 符号链接",
     )
     parser.add_argument("--model_path", type=str, default="best_pruned_model.pth", help="剪枝后最佳模型保存文件名")
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")
@@ -58,11 +48,11 @@ def parse_args():
 
     parser.add_argument("--finetune_epochs", type=int, default=10, help="剪枝后微调轮数")
     parser.add_argument("--batch_size", type=int, default=64, help="批次大小")
-    parser.add_argument("--lr", type=float, default=3e-4, help="微调学习率")
+    parser.add_argument("--lr", type=float, default=1e-4, help="微调学习率")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="权重衰减")
     parser.add_argument("--warmup_ratio", type=float, default=0.05, help="Warmup 占总步数比例")
     parser.add_argument("--warmup_steps", type=int, default=0, help="Warmup 步数，0 表示使用 warmup_ratio")
-    parser.add_argument("--min_lr", type=float, default=1e-6, help="最小学习率")
+    parser.add_argument("--min_lr", type=float, default=1e-7, help="最小学习率")
     parser.add_argument("--cudnn_benchmark", type=str2bool, default=True, help="是否启用 cuDNN benchmark")
     parser.add_argument("--cudnn_deterministic", type=str2bool, default=False, help="是否启用 cuDNN 确定性算法")
     parser.add_argument("--evaluate_test", type=str2bool, default=True, help="微调结束后是否评估测试集")

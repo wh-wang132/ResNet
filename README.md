@@ -79,21 +79,25 @@ uv run src/base_model_main.py --data_dtype fp32
 
 ```bash
 # 最小剪枝 + 微调命令
-uv run src/pruning_main.py --base_checkpoint output/base_model/resnet6_2d/epochs20_bs64/best_model.pth
+uv run src/pruning_main.py --model resnet6_2d
 
 # 调整剪枝比例并开启全局剪枝
 uv run src/pruning_main.py \
-  --base_checkpoint output/base_model/resnet18_2d/epochs20_bs64/best_model.pth \
+  --model resnet18_2d \
   --pruning_ratio 0.30 \
   --global_pruning True \
   --finetune_epochs 10
 
 # 仅执行剪枝并保存结果，不做微调
 uv run src/pruning_main.py \
-  --base_checkpoint output/base_model/resnet14_2d/epochs20_bs64/best_model.pth \
+  --model resnet14_2d \
   --finetune_epochs 0 \
   --evaluate_test False
 ```
+
+剪枝阶段会自动读取 `output/base_model/<model>/best_model.pth`。  
+这里的 `best_model.pth` 应由你在每个基座模型根目录下预先建立为指向最佳实验权重的符号链接。
+剪枝微调当前复用基座模型的 Warmup + Cosine 调度器实现，但默认学习率已下调为更适合微调恢复的 `1e-4`，默认 `min_lr=1e-7`。
 
 ## 技术栈选型
 

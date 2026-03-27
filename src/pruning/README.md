@@ -8,12 +8,20 @@
 uv run src/pruning_main.py --help
 ```
 
+当前入口按 `--model` 自动读取：
+
+```text
+output/base_model/<model>/best_model.pth
+```
+
+这里的 `best_model.pth` 应是你在对应基座模型根目录下建立的最佳权重符号链接。
+
 ## 模块说明
 
 - `args.py`
   - pruning CLI 参数解析
 - `checkpoint.py`
-  - 基座 checkpoint 读取与默认模型恢复
+  - 基座模型符号链接解析、checkpoint 读取与默认模型恢复
 - `evaluator.py`
   - 剪枝前后指标与参数量/MACs 统计
 - `output.py`
@@ -30,7 +38,7 @@ uv run src/pruning_main.py --help
 ## 当前流程
 
 ```text
-基座 checkpoint
+基座模型根目录下的 best_model.pth 符号链接
   -> 恢复默认模型
   -> 结构化通道剪枝
   -> 评估

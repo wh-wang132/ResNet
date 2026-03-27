@@ -15,6 +15,12 @@ uv run src/pruning_main.py --help
 当前 pruning CLI 参数以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准。  
 详细说明与示例请参考 [剪枝指南](PRUNING_GUIDE.md)。
 
+当前 pruning 入口约定直接通过 `--model` 解析基座模型符号链接：
+
+```text
+output/base_model/<model>/best_model.pth
+```
+
 ## 基本参数
 
 ### --epochs

@@ -4,7 +4,7 @@
 
 当前项目已提供基于 `torch-pruning` 的结构化通道剪枝 + 微调框架，支持从基座模型 checkpoint 出发，完成：
 
-1. 读取基座模型 checkpoint
+1. 按模型名读取基座模型根目录下的 `best_model.pth` 符号链接
 2. 恢复默认模型结构并严格加载权重
 3. 执行一次结构化通道剪枝
 4. 评估剪枝后的验证集表现
@@ -12,6 +12,8 @@
 6. 保存包含权重、拓扑与元数据的剪枝 checkpoint
 
 当前阶段暂不包含 ONNX/ATC 导出，也不包含 QAT。
+
+剪枝阶段当前复用基座模型的 Warmup + Cosine 调度器实现，但默认超参已针对“剪枝后微调恢复”做了下调。
 
 ## 工作流
 
@@ -27,7 +29,7 @@ base checkpoint
 ## 当前支持范围
 
 - `torch-pruning` 结构化通道剪枝
-- 基座 checkpoint 作为输入
+- 基座模型按 `output/base_model/<model>/best_model.pth` 自动解析
 - 剪枝后拓扑通过 `channel_cfg` 显式保存
 - 剪枝 checkpoint 作为后续 QAT 的上游输入
 
@@ -43,8 +45,7 @@ uv run src/pruning_main.py --help
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `--base_checkpoint` | 必填 | 基座模型 checkpoint 路径 |
-| `--model` | None | 可选：显式指定模型名，用于与 checkpoint 中记录值做一致性校验 |
+| `--model` | 必填 | 基座模型名，将自动解析 `output/base_model/<model>/best_model.pth` |
 | `--model_path` | `best_pruned_model.pth` | 剪枝后最佳模型文件名 |
 | `--data_dir` | `Data` | 数据集路径 |
 | `--class_num` | `24` | 分类数 |
@@ -59,11 +60,11 @@ uv run src/pruning_main.py --help
 | `--ignore_fc` | `True` | 是否默认忽略分类头 |
 | `--finetune_epochs` | `10` | 剪枝后微调轮数 |
 | `--batch_size` | `64` | 批次大小 |
-| `--lr` | `3e-4` | 微调学习率 |
+| `--lr` | `1e-4` | 微调学习率 |
 | `--weight_decay` | `1e-4` | 权重衰减 |
 | `--warmup_ratio` | `0.05` | Warmup 占总步数比例 |
 | `--warmup_steps` | `0` | Warmup 步数，`0` 表示使用 `warmup_ratio` |
-| `--min_lr` | `1e-6` | 最小学习率 |
+| `--min_lr` | `1e-7` | 最小学习率 |
 | `--cudnn_benchmark` | `True` | 是否启用 cuDNN benchmark |
 | `--cudnn_deterministic` | `False` | 是否启用 cuDNN 确定性算法 |
 | `--evaluate_test` | `True` | 微调结束后是否评估测试集 |
@@ -73,15 +74,14 @@ uv run src/pruning_main.py --help
 ### 最小剪枝命令
 
 ```bash
-uv run src/pruning_main.py \
-  --base_checkpoint output/base_model/resnet6_2d/epochs20_bs64/best_model.pth
+uv run src/pruning_main.py --model resnet6_2d
 ```
 
 ### 关闭全局剪枝
 
 ```bash
 uv run src/pruning_main.py \
-  --base_checkpoint output/base_model/resnet18_2d/epochs20_bs64/best_model.pth \
+  --model resnet18_2d \
   --pruning_ratio 0.25 \
   --global_pruning False \
   --finetune_epochs 12
@@ -91,10 +91,26 @@ uv run src/pruning_main.py \
 
 ```bash
 uv run src/pruning_main.py \
-  --base_checkpoint output/base_model/resnet14_2d/epochs20_bs64/best_model.pth \
+  --model resnet14_2d \
   --finetune_epochs 0 \
   --evaluate_test False
 ```
+
+## 基座模型符号链接约定
+
+剪枝入口不会手动接收外部 checkpoint 路径，而是固定读取：
+
+```text
+output/base_model/<model>/best_model.pth
+```
+
+要求：
+
+- 该路径存在
+- 若为符号链接，则链接必须可正常解析
+- 加载后的 checkpoint 中 `model_structure.model_name` 必须与 `--model` 一致
+
+若上述任一条件不满足，剪枝入口会直接报错退出。
 
 ## 剪枝输出目录
 
@@ -118,6 +134,8 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
   - `channel_cfg`
   - `architecture_signature`
 - `pruning_meta`
+  - `checkpoint_link_path`
+  - `resolved_checkpoint_path`
   - `pruning_ratio`
   - `global_pruning`
   - `ignored_layers`

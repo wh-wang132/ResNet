@@ -12,24 +12,45 @@ class CheckpointRestoreError(RuntimeError):
     """剪枝阶段 checkpoint 恢复错误。"""
 
 
-def load_base_checkpoint(checkpoint_path, device, expected_model_name=None):
-    if not os.path.exists(checkpoint_path):
-        raise FileNotFoundError(f"找不到基座 checkpoint: {checkpoint_path}")
+def resolve_base_checkpoint_path(model_name):
+    checkpoint_link_path = os.path.join("output", "base_model", model_name, "best_model.pth")
+    if not os.path.lexists(checkpoint_link_path):
+        raise FileNotFoundError(
+            f"找不到基座模型符号链接: {checkpoint_link_path}\n"
+            f"期望路径: output/base_model/{model_name}/best_model.pth"
+        )
 
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    if os.path.islink(checkpoint_link_path):
+        resolved_checkpoint_path = os.path.realpath(checkpoint_link_path)
+        if not os.path.exists(resolved_checkpoint_path):
+            raise FileNotFoundError(
+                f"基座模型符号链接已断开: {checkpoint_link_path}\n"
+                f"当前指向: {resolved_checkpoint_path}"
+            )
+    else:
+        resolved_checkpoint_path = checkpoint_link_path
+        if not os.path.isfile(resolved_checkpoint_path):
+            raise FileNotFoundError(f"基座模型路径不是可读文件: {resolved_checkpoint_path}")
+
+    return checkpoint_link_path, resolved_checkpoint_path
+
+
+def load_base_checkpoint(model_name, device):
+    checkpoint_link_path, resolved_checkpoint_path = resolve_base_checkpoint_path(model_name)
+
+    checkpoint = torch.load(resolved_checkpoint_path, map_location=device, weights_only=True)
     if not isinstance(checkpoint, dict) or "model_state_dict" not in checkpoint:
         raise CheckpointRestoreError("输入 checkpoint 不包含 model_state_dict，无法作为基座模型恢复")
 
     model_structure = checkpoint.get("model_structure", {})
-    model_name = model_structure.get("model_name")
-    if expected_model_name is not None and model_name is not None and model_name != expected_model_name:
+    checkpoint_model_name = model_structure.get("model_name")
+    if checkpoint_model_name is not None and checkpoint_model_name != model_name:
         raise CheckpointRestoreError(
-            f"checkpoint 中模型名为 {model_name}，与命令行指定的 {expected_model_name} 不一致"
+            f"checkpoint 中模型名为 {checkpoint_model_name}，与命令行指定的 {model_name} 不一致"
         )
 
-    model_name = expected_model_name or model_name
-    if model_name is None:
-        raise CheckpointRestoreError("checkpoint 中缺少 model_name，且命令行未指定 --model")
+    if checkpoint_model_name is None:
+        raise CheckpointRestoreError("checkpoint 中缺少 model_name，无法校验与命令行指定模型的一致性")
 
     model_kwargs = dict(model_structure.get("model_kwargs", {}))
     model_kwargs.setdefault(
@@ -50,7 +71,9 @@ def load_base_checkpoint(checkpoint_path, device, expected_model_name=None):
     model.to(device)
 
     checkpoint_meta = {
-        "checkpoint_path": checkpoint_path,
+        "checkpoint_link_path": checkpoint_link_path,
+        "resolved_checkpoint_path": resolved_checkpoint_path,
+        "checkpoint_path": resolved_checkpoint_path,
         "model_name": model_name,
         "model_kwargs": model_kwargs,
         "train_context": checkpoint.get("train_context", {}),
