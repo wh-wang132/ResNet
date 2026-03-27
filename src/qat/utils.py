@@ -16,6 +16,7 @@ from base_model.utils import (
     release_gpu_memory,
     remove_orig_mod_prefix,
     setup_device,
+    str2bool,
 )
 
 INPUT_SHAPE_NCHW = (1, 1, 543, 512)
@@ -32,4 +33,5 @@ __all__ = [
     "release_gpu_memory",
     "remove_orig_mod_prefix",
     "setup_device",
+    "str2bool",
 ]

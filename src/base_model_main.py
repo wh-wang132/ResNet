@@ -17,11 +17,11 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"] = ["Times New Roman"]
 plt.rcParams["axes.unicode_minus"] = False
 
+from base_model.args import parse_args
 from base_model.dataset import data_set_split
 from base_model.utils import (
     release_gpu_memory,
     setup_device,
-    parse_args,
     create_output_directory,
     load_model_map,
     print_model_info,
