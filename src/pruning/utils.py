@@ -7,6 +7,8 @@
 避免将基座训练专用参数解析和输出目录逻辑耦合进来。
 """
 
+import os
+
 from base_model.utils import (
     build_architecture_signature,
     create_optimized_dataloader,
@@ -21,10 +23,23 @@ from base_model.utils import (
 
 INPUT_SHAPE_NCHW = (1, 1, 543, 512)
 INPUT_SIZE_CHW = (1, 543, 512)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def to_repo_relative_path(path):
+    if path is None:
+        return None
+
+    normalized_path = os.path.normpath(path)
+    if not os.path.isabs(normalized_path):
+        return normalized_path
+
+    return os.path.relpath(normalized_path, REPO_ROOT)
 
 __all__ = [
     "INPUT_SHAPE_NCHW",
     "INPUT_SIZE_CHW",
+    "REPO_ROOT",
     "build_architecture_signature",
     "create_optimized_dataloader",
     "get_raw_model",
@@ -34,4 +49,5 @@ __all__ = [
     "remove_orig_mod_prefix",
     "setup_device",
     "str2bool",
+    "to_repo_relative_path",
 ]

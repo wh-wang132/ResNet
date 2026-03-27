@@ -16,7 +16,7 @@ from tqdm import tqdm
 from base_model.lr_scheduler import WarmupCosineAnnealingLR
 from base_model.utils import configure_cudnn
 from pruning.topology import build_topology_metadata
-from pruning.utils import get_raw_model, load_state_dict_safely
+from pruning.utils import get_raw_model, load_state_dict_safely, to_repo_relative_path
 
 
 def _build_pruning_checkpoint(
@@ -230,7 +230,7 @@ def finetune_model(
         "best_acc": best_acc,
         "best_val_loss": best_val_loss,
         "best_epoch": best_epoch,
-        "checkpoint_path": save_path,
+        "checkpoint_path": to_repo_relative_path(save_path),
     }
 
 
@@ -265,4 +265,4 @@ def save_pruned_checkpoint_without_finetune(
         input_tensor_meta=checkpoint_meta.get("input_tensor_meta"),
     )
     torch.save(checkpoint, save_path)
-    return save_path
+    return to_repo_relative_path(save_path)

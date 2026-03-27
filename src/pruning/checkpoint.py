@@ -5,7 +5,7 @@
 import os
 import torch
 
-from pruning.utils import load_model_map, load_state_dict_safely
+from pruning.utils import load_model_map, load_state_dict_safely, to_repo_relative_path
 
 
 class CheckpointRestoreError(RuntimeError):
@@ -71,8 +71,8 @@ def load_base_checkpoint(model_name, device):
     model.to(device)
 
     checkpoint_meta = {
-        "checkpoint_link_path": checkpoint_link_path,
-        "resolved_checkpoint_path": resolved_checkpoint_path,
+        "checkpoint_link_path": to_repo_relative_path(checkpoint_link_path),
+        "resolved_checkpoint_path": to_repo_relative_path(resolved_checkpoint_path),
         "checkpoint_path": resolved_checkpoint_path,
         "model_name": model_name,
         "model_kwargs": model_kwargs,
