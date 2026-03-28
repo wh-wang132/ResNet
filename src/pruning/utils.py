@@ -36,10 +36,20 @@ def to_repo_relative_path(path):
 
     return os.path.relpath(normalized_path, REPO_ROOT)
 
+
+def build_compact_pruning_meta(pruning_meta, baseline_stats):
+    compact_pruning_meta = dict(pruning_meta)
+    compact_pruning_meta["params_before"] = baseline_stats["params"]
+    compact_pruning_meta["macs_before"] = baseline_stats["macs"]
+    compact_pruning_meta.pop("source_best_acc", None)
+    compact_pruning_meta.pop("source_best_val_loss", None)
+    return compact_pruning_meta
+
 __all__ = [
     "INPUT_SHAPE_NCHW",
     "INPUT_SIZE_CHW",
     "REPO_ROOT",
+    "build_compact_pruning_meta",
     "build_architecture_signature",
     "create_optimized_dataloader",
     "get_raw_model",
