@@ -105,6 +105,14 @@ def main():
         validate_loader,
         len(validate_dataset),
     )
+    baseline_test_metrics = None
+    if args.evaluate_test:
+        baseline_test_metrics = evaluate_model(
+            pre_prune_model,
+            device,
+            test_loader,
+            len(test_dataset),
+        )
 
     print(f"\n开始执行 iterative structured pruning，共 {args.pruning_steps} 轮...")
     rounds = []
@@ -206,6 +214,7 @@ def main():
         final_before_finetune_metrics = pruned_val_metrics
 
     final_test_metrics = None
+    final_stats = count_model_stats(current_model, example_inputs)
     if args.evaluate_test:
         final_test_metrics = evaluate_model(
             current_model,
@@ -220,17 +229,26 @@ def main():
         "labels": labels__,
         "baseline": {
             "val": baseline_val_metrics,
+            "test": baseline_test_metrics,
             "stats": baseline_stats,
         },
         "rounds": rounds,
         "after_pruning_before_finetune": {
             "val": final_before_finetune_metrics,
-            "topology": final_topology_meta,
         },
         "pruning_meta": final_pruning_meta,
         "finetune_summary": final_finetune_summary,
+        "final": {
+            "val": {
+                "acc": final_finetune_summary["best_acc"],
+                "loss": final_finetune_summary["best_val_loss"],
+            }
+            if final_finetune_summary is not None
+            else None,
+            "test": final_test_metrics,
+            "stats": final_stats,
+        },
         "final_topology": final_topology_meta,
-        "final_test": final_test_metrics,
         "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
         "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
