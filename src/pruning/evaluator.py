@@ -13,7 +13,7 @@ def count_model_stats(model, example_inputs):
     try:
         import torch_pruning as tp
 
-        macs, params_from_tp = tp.utils.count_ops_and_params(model, example_inputs)
+        macs, params_from_tp = tp.utils.count_ops_and_params(model, example_inputs)[0:2]
         params = int(params_from_tp)
         macs = int(macs)
     except Exception:
