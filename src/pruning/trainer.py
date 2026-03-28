@@ -56,6 +56,16 @@ def _build_pruning_checkpoint(
     return checkpoint
 
 
+def append_round_best_info(best_info_path, round_index, summary):
+    with open(best_info_path, "a", encoding="utf-8") as f:
+        f.write(
+            f"Round: {round_index}, "
+            f"Best Validation Accuracy: {summary['best_acc']:.4f}, "
+            f"Best Validation Loss: {summary['best_val_loss']:.4f}, "
+            f"Best Epoch: {summary['best_epoch']}\n"
+        )
+
+
 def finetune_model(
     model,
     device,
@@ -67,6 +77,8 @@ def finetune_model(
     checkpoint_meta,
     pruning_meta,
     initial_val_metrics,
+    round_index,
+    save_checkpoint=False,
 ):
     os.makedirs(folder_path, exist_ok=True)
     writer = SummaryWriter(os.path.join(folder_path, "runs"))
@@ -92,6 +104,7 @@ def finetune_model(
         "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
         "model_name": checkpoint_meta["model_name"],
+        "round_index": int(round_index),
         "class_num": checkpoint_meta["model_kwargs"].get("num_classes", 24),
         "finetune_epochs": args.finetune_epochs,
         "batch_size": args.batch_size,
@@ -105,10 +118,6 @@ def finetune_model(
     }
 
     save_path = os.path.join(folder_path, args.model_path)
-    best_info_path = os.path.join(folder_path, "best_pruned_info.txt")
-    if os.path.exists(best_info_path):
-        os.remove(best_info_path)
-
     best_acc = float(initial_val_metrics["acc"])
     best_val_loss = float(initial_val_metrics["loss"])
     best_epoch = 0
@@ -190,22 +199,6 @@ def finetune_model(
             best_val_loss = val_loss_epoch
             best_epoch = epoch + 1
             best_state_dict = copy.deepcopy(get_raw_model(model).state_dict())
-            checkpoint = _build_pruning_checkpoint(
-                model=model,
-                epoch=epoch,
-                best_acc=best_acc,
-                best_val_loss=best_val_loss,
-                train_context=train_context,
-                checkpoint_meta=checkpoint_meta,
-                pruning_meta=pruning_meta,
-                input_tensor_meta=input_tensor_meta,
-            )
-            torch.save(checkpoint, save_path)
-            with open(best_info_path, "a", encoding="utf-8") as f:
-                f.write(
-                    f"Best Validation Accuracy: {best_acc:.4f}, "
-                    f"Best Validation Loss: {best_val_loss:.4f} at Epoch: {best_epoch}\n"
-                )
 
     writer.close()
 
@@ -214,23 +207,27 @@ def finetune_model(
     if not success:
         raise RuntimeError("无法重新加载最佳剪枝模型权重")
 
-    checkpoint = _build_pruning_checkpoint(
-        model=raw_model,
-        epoch=best_epoch - 1 if best_epoch > 0 else -1,
-        best_acc=best_acc,
-        best_val_loss=best_val_loss,
-        train_context=train_context,
-        checkpoint_meta=checkpoint_meta,
-        pruning_meta=pruning_meta,
-        input_tensor_meta=input_tensor_meta,
-    )
-    torch.save(checkpoint, save_path)
+    checkpoint_path = None
+    if save_checkpoint:
+        checkpoint = _build_pruning_checkpoint(
+            model=raw_model,
+            epoch=best_epoch - 1 if best_epoch > 0 else -1,
+            best_acc=best_acc,
+            best_val_loss=best_val_loss,
+            train_context=train_context,
+            checkpoint_meta=checkpoint_meta,
+            pruning_meta=pruning_meta,
+            input_tensor_meta=input_tensor_meta,
+        )
+        torch.save(checkpoint, save_path)
+        checkpoint_path = to_repo_relative_path(save_path)
 
     return model, {
+        "round_index": int(round_index),
         "best_acc": best_acc,
         "best_val_loss": best_val_loss,
         "best_epoch": best_epoch,
-        "checkpoint_path": to_repo_relative_path(save_path),
+        "checkpoint_path": checkpoint_path,
     }
 
 

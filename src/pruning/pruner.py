@@ -2,13 +2,31 @@
 # -*- coding: utf-8 -*-
 """torch-pruning 封装。"""
 
+import math
 import torch
 
 from pruning.evaluator import count_model_stats
 from pruning.utils import get_raw_model
 
 
-def prune_model(model, example_inputs, pruning_ratio, global_pruning=True, ignore_fc=True):
+def compute_step_pruning_ratio(target_total_ratio, pruning_steps):
+    if pruning_steps <= 0:
+        raise ValueError("pruning_steps 必须大于 0")
+    if not 0.0 <= target_total_ratio < 1.0:
+        raise ValueError("pruning_ratio 必须位于 [0, 1) 区间内")
+
+    return 1.0 - math.pow(1.0 - target_total_ratio, 1.0 / pruning_steps)
+
+
+def prune_model(
+    model,
+    example_inputs,
+    pruning_ratio,
+    global_pruning=True,
+    ignore_fc=True,
+    step_index=1,
+    pruning_steps=1,
+):
     try:
         import torch_pruning as tp
     except ImportError as exc:
@@ -16,6 +34,7 @@ def prune_model(model, example_inputs, pruning_ratio, global_pruning=True, ignor
 
     raw_model = get_raw_model(model)
     raw_model.eval()
+    step_ratio = compute_step_pruning_ratio(pruning_ratio, pruning_steps)
 
     pre_stats = count_model_stats(raw_model, example_inputs)
 
@@ -33,7 +52,7 @@ def prune_model(model, example_inputs, pruning_ratio, global_pruning=True, ignor
         raw_model,
         example_inputs=example_inputs,
         importance=importance,
-        pruning_ratio=pruning_ratio,
+        pruning_ratio=step_ratio,
         global_pruning=global_pruning,
         ignored_layers=ignored_layers,
     )
@@ -42,7 +61,11 @@ def prune_model(model, example_inputs, pruning_ratio, global_pruning=True, ignor
 
     post_stats = count_model_stats(raw_model, example_inputs)
     pruning_meta = {
+        "step_index": int(step_index),
+        "pruning_steps": int(pruning_steps),
         "pruning_ratio": float(pruning_ratio),
+        "target_total_ratio": float(pruning_ratio),
+        "step_ratio": float(step_ratio),
         "global_pruning": bool(global_pruning),
         "ignored_layers": ignored_layer_names,
         "example_input_shape": list(example_inputs.shape),

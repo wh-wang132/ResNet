@@ -42,11 +42,12 @@ def parse_args():
     parser.add_argument("--persistent_workers", type=str2bool, default=True, help="是否保持 DataLoader 工作线程")
     parser.add_argument("--pin_memory", type=str2bool, default=True, help="是否启用 pin_memory")
 
-    parser.add_argument("--pruning_ratio", type=float, default=0.3, help="结构化通道剪枝比例")
+    parser.add_argument("--pruning_ratio", type=float, default=0.3, help="iterative pruning 的最终总剪枝率")
+    parser.add_argument("--pruning_steps", type=int, default=5, help="多轮 iterative pruning 的剪枝轮数")
     parser.add_argument("--global_pruning", type=str2bool, default=True, help="是否启用全局剪枝")
     parser.add_argument("--ignore_fc", type=str2bool, default=True, help="是否默认忽略分类头")
 
-    parser.add_argument("--finetune_epochs", type=int, default=10, help="剪枝后微调轮数")
+    parser.add_argument("--finetune_epochs", type=int, default=10, help="每轮剪枝后的微调轮数")
     parser.add_argument("--batch_size", type=int, default=64, help="批次大小")
     parser.add_argument("--lr", type=float, default=1e-4, help="微调学习率")
     parser.add_argument("--weight_decay", type=float, default=1e-4, help="权重衰减")

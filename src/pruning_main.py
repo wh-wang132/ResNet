@@ -15,7 +15,11 @@ from pruning.evaluator import count_model_stats, evaluate_model
 from pruning.output import create_output_directory, save_summary
 from pruning.pruner import prune_model
 from pruning.topology import build_topology_metadata
-from pruning.trainer import finetune_model, save_pruned_checkpoint_without_finetune
+from pruning.trainer import (
+    append_round_best_info,
+    finetune_model,
+    save_pruned_checkpoint_without_finetune,
+)
 from pruning.utils import (
     INPUT_SHAPE_NCHW,
     create_optimized_dataloader,
@@ -43,6 +47,9 @@ def main():
 
     folder_path = create_output_directory(args, model_name)
     print(f"\n剪枝输出目录: {folder_path}")
+    best_info_path = f"{folder_path}/best_pruned_info.txt"
+    if os.path.exists(best_info_path):
+        os.remove(best_info_path)
 
     train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(
         args.data_dir,
@@ -99,64 +106,109 @@ def main():
         len(validate_dataset),
     )
 
-    print("\n开始执行结构化剪枝...")
-    pruned_model, pruning_meta = prune_model(
-        model=model,
-        example_inputs=example_inputs,
-        pruning_ratio=args.pruning_ratio,
-        global_pruning=args.global_pruning,
-        ignore_fc=args.ignore_fc,
-    )
-    pruning_meta["checkpoint_link_path"] = checkpoint_meta["checkpoint_link_path"]
-    pruning_meta["resolved_checkpoint_path"] = checkpoint_meta["resolved_checkpoint_path"]
-    pruning_meta["source_checkpoint"] = checkpoint_meta["resolved_checkpoint_path"]
-    pruning_meta["source_best_acc"] = checkpoint_meta.get("best_acc")
-    pruning_meta["source_best_val_loss"] = checkpoint_meta.get("best_val_loss")
+    print(f"\n开始执行 iterative structured pruning，共 {args.pruning_steps} 轮...")
+    rounds = []
+    current_model = model
+    final_pruning_meta = None
+    final_topology_meta = None
+    final_finetune_summary = None
+    final_before_finetune_metrics = None
 
-    topology_meta = build_topology_metadata(pruned_model)
-    pruned_model.channel_cfg = topology_meta["channel_cfg"]
-
-    pruned_val_metrics = evaluate_model(
-        pruned_model,
-        device,
-        validate_loader,
-        len(validate_dataset),
-    )
-
-    if args.finetune_epochs > 0:
-        pruned_model, finetune_summary = finetune_model(
-            model=pruned_model,
-            device=device,
-            train_loader=train_loader,
-            validate_loader=validate_loader,
-            val_num=len(validate_dataset),
-            args=args,
-            folder_path=folder_path,
-            checkpoint_meta=checkpoint_meta,
-            pruning_meta=pruning_meta,
-            initial_val_metrics=pruned_val_metrics,
+    for step_index in range(1, args.pruning_steps + 1):
+        print(f"\n开始第 {step_index}/{args.pruning_steps} 轮剪枝...")
+        pruned_model, pruning_meta = prune_model(
+            model=current_model,
+            example_inputs=example_inputs,
+            pruning_ratio=args.pruning_ratio,
+            global_pruning=args.global_pruning,
+            ignore_fc=args.ignore_fc,
+            step_index=step_index,
+            pruning_steps=args.pruning_steps,
         )
-    else:
-        checkpoint_path = save_pruned_checkpoint_without_finetune(
-            model=pruned_model,
-            device=device,
-            folder_path=folder_path,
-            args=args,
-            checkpoint_meta=checkpoint_meta,
-            pruning_meta=pruning_meta,
-            metrics=pruned_val_metrics,
+        pruning_meta["checkpoint_link_path"] = checkpoint_meta["checkpoint_link_path"]
+        pruning_meta["resolved_checkpoint_path"] = checkpoint_meta["resolved_checkpoint_path"]
+        pruning_meta["source_checkpoint"] = checkpoint_meta["resolved_checkpoint_path"]
+        pruning_meta["source_best_acc"] = checkpoint_meta.get("best_acc")
+        pruning_meta["source_best_val_loss"] = checkpoint_meta.get("best_val_loss")
+        pruning_meta["final_step_index"] = args.pruning_steps
+
+        topology_meta = build_topology_metadata(pruned_model)
+        pruned_model.channel_cfg = topology_meta["channel_cfg"]
+
+        pruned_val_metrics = evaluate_model(
+            pruned_model,
+            device,
+            validate_loader,
+            len(validate_dataset),
         )
-        finetune_summary = {
-            "best_acc": pruned_val_metrics["acc"],
-            "best_val_loss": pruned_val_metrics["loss"],
-            "best_epoch": 0,
-            "checkpoint_path": checkpoint_path,
-        }
+
+        is_final_round = step_index == args.pruning_steps
+        if args.finetune_epochs > 0:
+            pruned_model, finetune_summary = finetune_model(
+                model=pruned_model,
+                device=device,
+                train_loader=train_loader,
+                validate_loader=validate_loader,
+                val_num=len(validate_dataset),
+                args=args,
+                folder_path=folder_path,
+                checkpoint_meta=checkpoint_meta,
+                pruning_meta=pruning_meta,
+                initial_val_metrics=pruned_val_metrics,
+                round_index=step_index,
+                save_checkpoint=is_final_round,
+            )
+            append_round_best_info(best_info_path, step_index, finetune_summary)
+        else:
+            checkpoint_path = None
+            if is_final_round:
+                checkpoint_path = save_pruned_checkpoint_without_finetune(
+                    model=pruned_model,
+                    device=device,
+                    folder_path=folder_path,
+                    args=args,
+                    checkpoint_meta=checkpoint_meta,
+                    pruning_meta=pruning_meta,
+                    metrics=pruned_val_metrics,
+                )
+            finetune_summary = {
+                "round_index": step_index,
+                "best_acc": pruned_val_metrics["acc"],
+                "best_val_loss": pruned_val_metrics["loss"],
+                "best_epoch": 0,
+                "checkpoint_path": checkpoint_path,
+            }
+
+        rounds.append(
+            {
+                "step_index": step_index,
+                "step_ratio": pruning_meta["step_ratio"],
+                "before_finetune": {
+                    "val": pruned_val_metrics,
+                    "topology": topology_meta,
+                },
+                "after_finetune": {
+                    "val": {
+                        "acc": finetune_summary["best_acc"],
+                        "loss": finetune_summary["best_val_loss"],
+                    },
+                    "best_epoch": finetune_summary["best_epoch"],
+                },
+                "pruning_meta": pruning_meta,
+                "finetune_summary": finetune_summary,
+            }
+        )
+
+        current_model = pruned_model
+        final_pruning_meta = pruning_meta
+        final_topology_meta = topology_meta
+        final_finetune_summary = finetune_summary
+        final_before_finetune_metrics = pruned_val_metrics
 
     final_test_metrics = None
     if args.evaluate_test:
         final_test_metrics = evaluate_model(
-            pruned_model,
+            current_model,
             device,
             test_loader,
             len(test_dataset),
@@ -164,17 +216,20 @@ def main():
 
     summary = {
         "model_name": model_name,
+        "pruning_steps": args.pruning_steps,
         "labels": labels__,
         "baseline": {
             "val": baseline_val_metrics,
             "stats": baseline_stats,
         },
+        "rounds": rounds,
         "after_pruning_before_finetune": {
-            "val": pruned_val_metrics,
-            "topology": topology_meta,
+            "val": final_before_finetune_metrics,
+            "topology": final_topology_meta,
         },
-        "pruning_meta": pruning_meta,
-        "finetune_summary": finetune_summary,
+        "pruning_meta": final_pruning_meta,
+        "finetune_summary": final_finetune_summary,
+        "final_topology": final_topology_meta,
         "final_test": final_test_metrics,
         "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],

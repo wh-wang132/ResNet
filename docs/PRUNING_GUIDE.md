@@ -6,10 +6,9 @@
 
 1. 按模型名读取基座模型根目录下的 `best_model.pth` 符号链接
 2. 恢复默认模型结构并严格加载权重
-3. 执行一次结构化通道剪枝
-4. 评估剪枝后的验证集表现
-5. 进行微调恢复（可选）
-6. 保存包含权重、拓扑与元数据的剪枝 checkpoint
+3. 执行多轮 iterative structured pruning
+4. 每轮剪枝后进行微调恢复（可选）
+5. 仅在最终轮保存包含权重、拓扑与元数据的剪枝 checkpoint
 
 当前阶段暂不包含 ONNX/ATC 导出，也不包含 QAT。
 
@@ -20,15 +19,16 @@
 ```text
 base checkpoint
   -> 恢复基座模型
-  -> torch-pruning 结构化通道剪枝
-  -> 提取剪枝后 channel_cfg / architecture_signature
-  -> 微调恢复（可选）
-  -> 保存 pruning checkpoint
+  -> iterative structured pruning
+  -> 每轮提取 channel_cfg / architecture_signature
+  -> 每轮微调恢复（可选）
+  -> 仅最终轮保存 pruning checkpoint
 ```
 
 ## 当前支持范围
 
 - `torch-pruning` 结构化通道剪枝
+- iterative pruning 多轮剪枝
 - 基座模型按 `output/base_model/<model>/best_model.pth` 自动解析
 - 剪枝后拓扑通过 `channel_cfg` 显式保存
 - 剪枝 checkpoint 作为后续 QAT 的上游输入
@@ -55,10 +55,11 @@ uv run src/pruning_main.py --help
 | `--prefetch_factor` | `2` | DataLoader 预取因子 |
 | `--persistent_workers` | `True` | 是否保持 DataLoader 工作线程 |
 | `--pin_memory` | `True` | 是否启用 `pin_memory` |
-| `--pruning_ratio` | `0.3` | 结构化通道剪枝比例 |
+| `--pruning_ratio` | `0.3` | 最终总剪枝率 |
+| `--pruning_steps` | `5` | iterative pruning 的剪枝轮数 |
 | `--global_pruning` | `True` | 是否启用全局剪枝 |
 | `--ignore_fc` | `True` | 是否默认忽略分类头 |
-| `--finetune_epochs` | `10` | 剪枝后微调轮数 |
+| `--finetune_epochs` | `10` | 每轮剪枝后的微调轮数 |
 | `--batch_size` | `64` | 批次大小 |
 | `--lr` | `1e-4` | 微调学习率 |
 | `--weight_decay` | `1e-4` | 权重衰减 |
@@ -83,6 +84,7 @@ uv run src/pruning_main.py --model resnet6_2d
 uv run src/pruning_main.py \
   --model resnet18_2d \
   --pruning_ratio 0.25 \
+  --pruning_steps 5 \
   --global_pruning False \
   --finetune_epochs 12
 ```
@@ -121,7 +123,7 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
 典型产物包括：
 
 - `best_pruned_model.pth`
-- `best_pruned_info.txt`
+- `best_pruned_info.txt`（每轮一行最佳摘要）
 - `pruning_summary.json`
 - `runs/`
 
@@ -137,6 +139,8 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
   - `checkpoint_link_path`
   - `resolved_checkpoint_path`
   - `pruning_ratio`
+  - `pruning_steps`
+  - `step_ratio`
   - `global_pruning`
   - `ignored_layers`
   - `example_input_shape`
@@ -151,4 +155,5 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
 
 - 剪枝阶段当前读取的是基座模型 checkpoint，因此模型恢复入口优先使用默认 `load_model_map()`。
 - 剪枝后的完整拓扑通过实际模型提取，不依赖默认模板反推。
+- 多轮剪枝过程中，中间轮的最佳权重只保留在内存中作为下一轮输入，不落盘。
 - 后续 QAT 可直接以剪枝 checkpoint 中保存的 `channel_cfg` 和权重为输入继续恢复。
