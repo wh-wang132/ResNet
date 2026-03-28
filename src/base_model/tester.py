@@ -14,6 +14,7 @@ from .confusionMatrix import ConfusionMatrix
 from .utils import load_state_dict_safely
 
 
+@torch.no_grad()
 def test_model(model, device, test_loader, args, folder_path, labels__):
     """
     测试模型并生成混淆矩阵
@@ -60,7 +61,7 @@ def test_model(model, device, test_loader, args, folder_path, labels__):
     confusion = ConfusionMatrix(num_classes=args.class_num, labels=labels__)
     model.eval()
 
-    with torch.no_grad(), autocast("cuda", enabled=torch.cuda.is_available()):
+    with autocast("cuda", enabled=torch.cuda.is_available()):
         for test_data in tqdm(test_loader):
             test_images, test_labels = test_data
             test_images = test_images.to(device)
