@@ -22,6 +22,7 @@ from pruning.trainer import (
 )
 from pruning.utils import (
     INPUT_SHAPE_NCHW,
+    build_compact_pruning_meta,
     create_optimized_dataloader,
     release_gpu_memory,
     setup_device,
@@ -139,6 +140,7 @@ def main():
         pruning_meta["source_best_acc"] = checkpoint_meta.get("best_acc")
         pruning_meta["source_best_val_loss"] = checkpoint_meta.get("best_val_loss")
         pruning_meta["final_step_index"] = args.pruning_steps
+        compact_pruning_meta = build_compact_pruning_meta(pruning_meta, baseline_stats)
 
         topology_meta = build_topology_metadata(pruned_model)
         pruned_model.channel_cfg = topology_meta["channel_cfg"]
@@ -161,7 +163,7 @@ def main():
                 args=args,
                 folder_path=folder_path,
                 checkpoint_meta=checkpoint_meta,
-                pruning_meta=pruning_meta,
+                pruning_meta=compact_pruning_meta,
                 initial_val_metrics=pruned_val_metrics,
                 round_index=step_index,
                 save_checkpoint=is_final_round,
@@ -176,7 +178,7 @@ def main():
                     folder_path=folder_path,
                     args=args,
                     checkpoint_meta=checkpoint_meta,
-                    pruning_meta=pruning_meta,
+                    pruning_meta=compact_pruning_meta,
                     metrics=pruned_val_metrics,
                 )
             finetune_summary = {
@@ -197,18 +199,19 @@ def main():
                 },
                 "after_finetune": {
                     "val": {
-                        "acc": finetune_summary["best_acc"],
                         "loss": finetune_summary["best_val_loss"],
+                        "acc": finetune_summary["best_acc"],
+                        "samples": len(validate_dataset),
                     },
                     "best_epoch": finetune_summary["best_epoch"],
                 },
-                "pruning_meta": pruning_meta,
+                "pruning_meta": compact_pruning_meta,
                 "finetune_summary": finetune_summary,
             }
         )
 
         current_model = pruned_model
-        final_pruning_meta = pruning_meta
+        final_pruning_meta = compact_pruning_meta
         final_topology_meta = topology_meta
         final_finetune_summary = finetune_summary
         final_before_finetune_metrics = pruned_val_metrics
@@ -233,15 +236,13 @@ def main():
             "stats": baseline_stats,
         },
         "rounds": rounds,
-        "after_pruning_before_finetune": {
-            "val": final_before_finetune_metrics,
-        },
         "pruning_meta": final_pruning_meta,
         "finetune_summary": final_finetune_summary,
         "final": {
             "val": {
-                "acc": final_finetune_summary["best_acc"],
                 "loss": final_finetune_summary["best_val_loss"],
+                "acc": final_finetune_summary["best_acc"],
+                "samples": len(validate_dataset),
             }
             if final_finetune_summary is not None
             else None,

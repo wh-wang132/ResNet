@@ -81,7 +81,7 @@ def finetune_model(
     save_checkpoint=False,
 ):
     os.makedirs(folder_path, exist_ok=True)
-    writer = SummaryWriter(os.path.join(folder_path, "runs"))
+    writer = SummaryWriter(os.path.join(folder_path, "runs", f"round_{round_index}"))
 
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)

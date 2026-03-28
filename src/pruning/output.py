@@ -9,11 +9,12 @@ import os
 def create_output_directory(args, model_name):
     output_root = os.path.join("output", "pruning")
     ratio_tag = f"ratio{args.pruning_ratio:.2f}"
+    steps_tag = f"steps{args.pruning_steps}"
     scope_tag = "global" if args.global_pruning else "local"
     folder_path = os.path.join(
         output_root,
         model_name,
-        f"{ratio_tag}_{scope_tag}_ft{args.finetune_epochs}_bs{args.batch_size}",
+        f"{ratio_tag}_{steps_tag}_{scope_tag}_ft{args.finetune_epochs}_bs{args.batch_size}",
     )
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
