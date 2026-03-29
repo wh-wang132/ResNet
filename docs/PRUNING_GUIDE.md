@@ -124,6 +124,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `best_pruned_model.pth`
 - `best_pruned_info.txt`（每轮一行最佳摘要）
 - `pruning_summary.json`
+- `Confusion_matrix.png`（仅最终测试阶段生成）
 - `runs/`
 
 ## 剪枝 checkpoint 主要字段
@@ -156,4 +157,5 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `--pruning_ratio` 的有效精度固定为 2 位小数；summary、checkpoint 和输出目录都会使用同一个规范值。
 - 剪枝后的完整拓扑通过实际模型提取，不依赖默认模板反推。
 - 多轮剪枝过程中，中间轮的最佳权重只保留在内存中作为下一轮输入，不落盘。
+- 若开启 `--evaluate_test`，仅最终模型测试阶段会生成一次 `Confusion_matrix.png`。
 - 后续 QAT 可直接以剪枝 checkpoint 中保存的 `channel_cfg` 和权重为输入继续恢复。

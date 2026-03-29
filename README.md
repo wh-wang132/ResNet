@@ -241,6 +241,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 ├── best_pruned_model.pth    # 最佳剪枝模型 checkpoint
 ├── best_pruned_info.txt     # 最佳剪枝模型验证指标摘要
 ├── pruning_summary.json     # 剪枝前后统计与流程摘要
+├── Confusion_matrix.png     # 仅最终测试阶段生成的混淆矩阵
 └── runs/                    # 当前实验目录下的 TensorBoard 日志
 ```
 

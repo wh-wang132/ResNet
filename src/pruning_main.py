@@ -7,11 +7,22 @@ import json
 import os
 
 import torch
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+plt.rcParams["font.sans-serif"] = ["Times New Roman"]
+plt.rcParams["axes.unicode_minus"] = False
 
 from base_model.dataset import data_set_split
 from pruning.args import parse_args
 from pruning.checkpoint import load_base_checkpoint
-from pruning.evaluator import count_model_stats, evaluate_model
+from pruning.evaluator import (
+    count_model_stats,
+    evaluate_model,
+    evaluate_model_with_confusion_matrix,
+)
 from pruning.output import create_output_directory, save_summary
 from pruning.pruner import prune_model
 from pruning.topology import build_topology_metadata
@@ -211,11 +222,13 @@ def main():
     final_test_metrics = None
     final_stats = count_model_stats(current_model, example_inputs)
     if args.evaluate_test:
-        final_test_metrics = evaluate_model(
+        final_test_metrics = evaluate_model_with_confusion_matrix(
             current_model,
             device,
             test_loader,
             len(test_dataset),
+            labels__,
+            folder_path,
         )
 
     summary = {
