@@ -40,7 +40,7 @@ def main():
     release_gpu_memory()
     device = setup_device()
 
-    model, checkpoint_meta, raw_checkpoint = load_base_checkpoint(
+    model, checkpoint_meta, _ = load_base_checkpoint(
         args.model,
         device,
     )
@@ -121,25 +121,18 @@ def main():
     final_pruning_meta = None
     final_topology_meta = None
     final_finetune_summary = None
-    final_before_finetune_metrics = None
 
     for step_index in range(1, args.pruning_steps + 1):
         print(f"\n开始第 {step_index}/{args.pruning_steps} 轮剪枝...")
         pruned_model, pruning_meta = prune_model(
             model=current_model,
             example_inputs=example_inputs,
-            pruning_ratio=args.pruning_ratio,
+            target_total_ratio=args.pruning_ratio,
             global_pruning=args.global_pruning,
             ignore_fc=args.ignore_fc,
             step_index=step_index,
             pruning_steps=args.pruning_steps,
         )
-        pruning_meta["checkpoint_link_path"] = checkpoint_meta["checkpoint_link_path"]
-        pruning_meta["resolved_checkpoint_path"] = checkpoint_meta["resolved_checkpoint_path"]
-        pruning_meta["source_checkpoint"] = checkpoint_meta["resolved_checkpoint_path"]
-        pruning_meta["source_best_acc"] = checkpoint_meta.get("best_acc")
-        pruning_meta["source_best_val_loss"] = checkpoint_meta.get("best_val_loss")
-        pruning_meta["final_step_index"] = args.pruning_steps
         compact_pruning_meta = build_compact_pruning_meta(pruning_meta, baseline_stats)
 
         topology_meta = build_topology_metadata(pruned_model)
@@ -214,7 +207,6 @@ def main():
         final_pruning_meta = compact_pruning_meta
         final_topology_meta = topology_meta
         final_finetune_summary = finetune_summary
-        final_before_finetune_metrics = pruned_val_metrics
 
     final_test_metrics = None
     final_stats = count_model_stats(current_model, example_inputs)
@@ -252,7 +244,6 @@ def main():
         "final_topology": final_topology_meta,
         "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
-        "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
     }
 
     summary_path = save_summary(folder_path, summary)

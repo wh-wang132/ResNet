@@ -100,7 +100,6 @@ def finetune_model(
 
     train_context = {
         "stage": "pruning_finetune",
-        "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
         "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
         "model_name": checkpoint_meta["model_name"],
@@ -249,7 +248,6 @@ def save_pruned_checkpoint_without_finetune(
         best_val_loss=metrics["loss"],
         train_context={
             "stage": "pruning_only",
-            "source_checkpoint": checkpoint_meta["resolved_checkpoint_path"],
             "checkpoint_link_path": checkpoint_meta["checkpoint_link_path"],
             "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
             "model_name": checkpoint_meta["model_name"],

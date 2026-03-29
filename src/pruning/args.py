@@ -3,8 +3,22 @@
 """剪枝阶段参数解析。"""
 
 import argparse
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .utils import str2bool
+
+
+def normalize_pruning_ratio(value):
+    try:
+        decimal_value = Decimal(str(value))
+    except InvalidOperation as exc:
+        raise argparse.ArgumentTypeError("pruning_ratio 必须是合法浮点数") from exc
+
+    quantized = decimal_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    normalized = float(quantized)
+    if not 0.0 <= normalized < 1.0:
+        raise argparse.ArgumentTypeError("pruning_ratio 规范到 2 位小数后必须位于 [0, 1) 区间内")
+    return normalized
 
 
 def parse_args():
@@ -28,7 +42,6 @@ def parse_args():
     )
     parser.add_argument("--model_path", type=str, default="best_pruned_model.pth", help="剪枝后最佳模型保存文件名")
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")
-    parser.add_argument("--class_num", type=int, default=24, help="分类数")
     parser.add_argument(
         "--data_dtype",
         type=str,
@@ -42,7 +55,12 @@ def parse_args():
     parser.add_argument("--persistent_workers", type=str2bool, default=True, help="是否保持 DataLoader 工作线程")
     parser.add_argument("--pin_memory", type=str2bool, default=True, help="是否启用 pin_memory")
 
-    parser.add_argument("--pruning_ratio", type=float, default=0.3, help="iterative pruning 的最终总剪枝率")
+    parser.add_argument(
+        "--pruning_ratio",
+        type=normalize_pruning_ratio,
+        default=normalize_pruning_ratio("0.30"),
+        help="iterative pruning 的最终总剪枝率，会按十进制四舍五入规范到 2 位小数",
+    )
     parser.add_argument("--pruning_steps", type=int, default=5, help="多轮 iterative pruning 的剪枝轮数")
     parser.add_argument("--global_pruning", type=str2bool, default=True, help="是否启用全局剪枝")
     parser.add_argument("--ignore_fc", type=str2bool, default=True, help="是否默认忽略分类头")

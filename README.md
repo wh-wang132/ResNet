@@ -98,6 +98,7 @@ uv run src/pruning_main.py \
 
 剪枝阶段会自动读取 `output/base_model/<model>/best_model.pth`。  
 这里的 `best_model.pth` 应由你在每个基座模型根目录下预先建立为指向最佳实验权重的符号链接。
+`--pruning_ratio` 会在入口按十进制四舍五入规范为 2 位小数，输出目录中的 `ratioXX` 与实际执行的目标剪枝率保持一致。
 剪枝微调当前复用基座模型的 Warmup + Cosine 调度器实现，但默认学习率已下调为更适合微调恢复的 `1e-4`，默认 `min_lr=1e-7`。
 当前 pruning 已采用 iterative pruning，多轮剪枝过程中仅最终轮的最佳模型会保存为 `best_pruned_model.pth`，而 `best_pruned_info.txt` 会按“每轮一行”记录该轮最佳验证结果。
 
@@ -236,7 +237,7 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 剪枝 + 微调阶段默认输出：
 
 ```
-output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
+output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
 ├── best_pruned_model.pth    # 最佳剪枝模型 checkpoint
 ├── best_pruned_info.txt     # 最佳剪枝模型验证指标摘要
 ├── pruning_summary.json     # 剪枝前后统计与流程摘要

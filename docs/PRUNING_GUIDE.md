@@ -48,14 +48,13 @@ uv run src/pruning_main.py --help
 | `--model` | 必填 | 基座模型名，将自动解析 `output/base_model/<model>/best_model.pth` |
 | `--model_path` | `best_pruned_model.pth` | 剪枝后最佳模型文件名 |
 | `--data_dir` | `Data` | 数据集路径 |
-| `--class_num` | `24` | 分类数 |
 | `--data_dtype` | `fp16` | 数据集输出 tensor 精度，可选 `fp16` / `fp32` |
 | `--full_load` | `False` | 是否全量加载数据集 |
 | `--num_workers` | `None` | DataLoader 工作线程数 |
 | `--prefetch_factor` | `2` | DataLoader 预取因子 |
 | `--persistent_workers` | `True` | 是否保持 DataLoader 工作线程 |
 | `--pin_memory` | `True` | 是否启用 `pin_memory` |
-| `--pruning_ratio` | `0.3` | 最终总剪枝率 |
+| `--pruning_ratio` | `0.3` | 最终总剪枝率，会按十进制四舍五入规范到 2 位小数 |
 | `--pruning_steps` | `5` | iterative pruning 的剪枝轮数 |
 | `--global_pruning` | `True` | 是否启用全局剪枝 |
 | `--ignore_fc` | `True` | 是否默认忽略分类头 |
@@ -117,7 +116,7 @@ output/base_model/<model>/best_model.pth
 ## 剪枝输出目录
 
 ```text
-output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
+output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
 ```
 
 典型产物包括：
@@ -136,10 +135,8 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
   - `channel_cfg`
   - `architecture_signature`
 - `pruning_meta`
-  - `checkpoint_link_path`
-  - `resolved_checkpoint_path`
-  - `pruning_ratio`
   - `pruning_steps`
+  - `target_total_ratio`
   - `step_ratio`
   - `global_pruning`
   - `ignored_layers`
@@ -148,12 +145,15 @@ output/pruning/<model>/ratio<ratio>_<global|local>_ft<epochs>_bs<batch_size>/
   - `params_before / params_after`
   - `macs_before / macs_after`
 - `train_context`
+  - `checkpoint_link_path`
+  - `resolved_checkpoint_path`
 - `best_acc`
 - `best_val_loss`
 
 ## 说明
 
 - 剪枝阶段当前读取的是基座模型 checkpoint，因此模型恢复入口优先使用默认 `load_model_map()`。
+- `--pruning_ratio` 的有效精度固定为 2 位小数；summary、checkpoint 和输出目录都会使用同一个规范值。
 - 剪枝后的完整拓扑通过实际模型提取，不依赖默认模板反推。
 - 多轮剪枝过程中，中间轮的最佳权重只保留在内存中作为下一轮输入，不落盘。
 - 后续 QAT 可直接以剪枝 checkpoint 中保存的 `channel_cfg` 和权重为输入继续恢复。

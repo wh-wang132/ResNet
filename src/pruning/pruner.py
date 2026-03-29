@@ -21,7 +21,7 @@ def compute_step_pruning_ratio(target_total_ratio, pruning_steps):
 def prune_model(
     model,
     example_inputs,
-    pruning_ratio,
+    target_total_ratio,
     global_pruning=True,
     ignore_fc=True,
     step_index=1,
@@ -34,7 +34,7 @@ def prune_model(
 
     raw_model = get_raw_model(model)
     raw_model.eval()
-    step_ratio = compute_step_pruning_ratio(pruning_ratio, pruning_steps)
+    step_ratio = compute_step_pruning_ratio(target_total_ratio, pruning_steps)
 
     pre_stats = count_model_stats(raw_model, example_inputs)
 
@@ -63,8 +63,7 @@ def prune_model(
     pruning_meta = {
         "step_index": int(step_index),
         "pruning_steps": int(pruning_steps),
-        "pruning_ratio": float(pruning_ratio),
-        "target_total_ratio": float(pruning_ratio),
+        "target_total_ratio": float(target_total_ratio),
         "step_ratio": float(step_ratio),
         "global_pruning": bool(global_pruning),
         "ignored_layers": ignored_layer_names,

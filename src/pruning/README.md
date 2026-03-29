@@ -15,6 +15,7 @@ output/base_model/<model>/best_model.pth
 ```
 
 这里的 `best_model.pth` 应是你在对应基座模型根目录下建立的最佳权重符号链接。
+`--pruning_ratio` 会在入口按十进制四舍五入规范到 2 位小数，并贯穿输出目录、summary 和 checkpoint。
 
 ## 模块说明
 
@@ -40,8 +41,7 @@ output/base_model/<model>/best_model.pth
 ```text
 基座模型根目录下的 best_model.pth 符号链接
   -> 恢复默认模型
-  -> 结构化通道剪枝
-  -> 评估
-  -> 微调恢复（可选）
-  -> 保存 pruning checkpoint
+  -> iterative structured pruning
+  -> 每轮评估 / 微调恢复（可选）
+  -> 仅最终轮保存 pruning checkpoint
 ```

@@ -38,11 +38,20 @@ def to_repo_relative_path(path):
 
 
 def build_compact_pruning_meta(pruning_meta, baseline_stats):
-    compact_pruning_meta = dict(pruning_meta)
-    compact_pruning_meta["params_before"] = baseline_stats["params"]
-    compact_pruning_meta["macs_before"] = baseline_stats["macs"]
-    compact_pruning_meta.pop("source_best_acc", None)
-    compact_pruning_meta.pop("source_best_val_loss", None)
+    compact_pruning_meta = {
+        "step_index": pruning_meta["step_index"],
+        "pruning_steps": pruning_meta["pruning_steps"],
+        "step_ratio": pruning_meta["step_ratio"],
+        "target_total_ratio": pruning_meta["target_total_ratio"],
+        "global_pruning": pruning_meta["global_pruning"],
+        "ignored_layers": pruning_meta["ignored_layers"],
+        "example_input_shape": pruning_meta["example_input_shape"],
+        "torch_pruning_version": pruning_meta["torch_pruning_version"],
+        "params_before": baseline_stats["params"],
+        "params_after": pruning_meta["params_after"],
+        "macs_before": baseline_stats["macs"],
+        "macs_after": pruning_meta["macs_after"],
+    }
     return compact_pruning_meta
 
 __all__ = [

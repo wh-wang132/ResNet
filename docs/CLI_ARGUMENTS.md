@@ -14,6 +14,7 @@ uv run src/pruning_main.py --help
 
 当前 pruning CLI 参数以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准。  
 详细说明与示例请参考 [剪枝指南](PRUNING_GUIDE.md)。
+其中 `--pruning_ratio` 会在入口统一规范到 2 位小数，并作为输出目录、summary 与 checkpoint 的权威目标剪枝率。
 
 当前 pruning 入口约定直接通过 `--model` 解析基座模型符号链接：
 
