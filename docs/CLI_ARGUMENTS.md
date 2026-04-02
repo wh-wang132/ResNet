@@ -2,409 +2,109 @@
 
 ## 概述
 
-本文档详细说明所有可用的命令行参数及其用法。所有布尔参数使用 `--arg True`（启用）或 `--arg False`（禁用）的方式控制。
+当前项目包含两套独立 CLI：
 
-## 剪枝入口
+- 基座训练入口：`uv run src/base_model_main.py ...`
+- 剪枝入口：`uv run src/pruning_main.py ...`
 
-剪枝 + 微调阶段使用独立入口：
+两套入口的参数并不完全相同，阅读文档时需要区分阶段。
+
+## 基座模型 CLI
+
+### 入口
+
+```bash
+uv run src/base_model_main.py --help
+```
+
+### 核心参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--epochs` | `60` | 训练轮数 |
+| `--lr` | `0.0003` | 学习率 |
+| `--batch_size` | `64` | 批次大小 |
+| `--model_path` | `best_model.pth` | 模型保存文件名 |
+| `--class_num` | `24` | 分类数 |
+| `--model` | `resnet6_2d` | 模型名 |
+| `--data_dir` | `Data` | 数据集路径 |
+| `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |
+
+### 数据加载参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--full_load` | `False` | 是否全量加载数据集 |
+| `--num_workers` | `None` | DataLoader 工作线程数 |
+| `--prefetch_factor` | `2` | DataLoader 预取因子 |
+| `--persistent_workers` | `True` | 是否保持 DataLoader 工作线程 |
+| `--pin_memory` | `True` | 是否启用 `pin_memory` |
+
+### 性能与训练行为参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--cudnn_benchmark` | `True` | 是否启用 cuDNN benchmark |
+| `--cudnn_deterministic` | `False` | 是否启用确定性算法 |
+| `--compile_model` | `True` | 是否启用 `torch.compile` |
+| `--compile_mode` | `default` | 编译模式 |
+| `--Train` | `True` | 是否执行训练 |
+| `--Test` | `True` | 是否执行测试 |
+| `--UMAP` | `False` | 是否执行 UMAP 可视化 |
+| `--dropout_p` | `0.3` | Dropout 概率 |
+| `--weight_decay` | `1e-4` | 权重衰减 |
+| `--warmup_ratio` | `0.05` | Warmup 占总步数比例 |
+| `--warmup_steps` | `0` | Warmup 步数 |
+| `--min_lr` | `1e-6` | 最小学习率 |
+| `--plot_lr_schedule` | `True` | 是否绘制学习率曲线 |
+
+### 示例
+
+```bash
+uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet18_2d
+```
+
+## 剪枝 CLI
+
+### 入口
 
 ```bash
 uv run src/pruning_main.py --help
 ```
 
-当前 pruning CLI 参数以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准。  
-详细说明与示例请参考 [剪枝指南](PRUNING_GUIDE.md)。
-其中 `--pruning_ratio` 会在入口统一规范到 2 位小数，并作为输出目录、summary 与 checkpoint 的权威目标剪枝率。
-
-当前 pruning 入口约定直接通过 `--model` 解析基座模型符号链接：
-
-```text
-output/base_model/<model>/best_model.pth
-```
-
-## 基本参数
-
-### --epochs
-
-- **类型**: int
-- **默认值**: 60
-- **说明**: 训练轮数
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --epochs 60
-  ```
-
-### --lr
-
-- **类型**: float
-- **默认值**: 0.0003
-- **说明**: 学习率
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --lr 0.001
-  ```
-
-### --batch_size
-
-- **类型**: int
-- **默认值**: 64
-- **说明**: 批次大小
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --batch_size 32
-  ```
-
-### --model_path
-
-- **类型**: str
-- **默认值**: "best_model.pth"
-- **说明**: 模型保存路径（相对于输出目录）
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --model_path checkpoint.pth
-  ```
-
-### --class_num
-
-- **类型**: int
-- **默认值**: 24
-- **说明**: 分类数
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --class_num 10
-  ```
-
-### --model
-
-- **类型**: str
-- **默认值**: "resnet6_2d"
-- **可选值**: "resnet6_2d", "resnet10_2d", "resnet14_2d", "resnet18_2d", "resnet34_2d", "resnet50_2d"
-- **说明**: 选择模型架构
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --model resnet18_2d
-  ```
-
-### --data_dir
-
-- **类型**: str
-- **默认值**: "Data"
-- **说明**: 数据集路径
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --data_dir ./my_dataset
-  ```
-
-### --data_dtype
-
-- **类型**: str
-- **默认值**: "fp16"
-- **可选值**: "fp16", "fp32"
-- **说明**: 数据加载后的 tensor 精度，仅影响数据集输出，不改变 AMP、模型权重和 checkpoint 保存精度
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --data_dtype fp32
-  ```
-
-## 数据加载选项
-
-### --full_load
-
-- **类型**: bool
-- **默认值**: False
-- **说明**: 全量加载数据集到内存
-  - True：将整个数据集一次性加载到内存中，优化数据访问速度（适用于内存充足的情况）
-  - False：保持原有的增量加载机制，按需从磁盘加载数据（适用于内存受限的情况）
-- **使用场景**:
-  - 内存充足且追求训练速度：`--full_load True`
-  - 内存受限或数据集过大：`--full_load False`（默认）
-- **示例**:
-  ```bash
-  # 启用全量加载
-  uv run src/base_model_main.py --full_load True
-
-  # 禁用全量加载（默认）
-  uv run src/base_model_main.py --full_load False
-  ```
-
-### --num_workers
-
-- **类型**: int
-- **默认值**: None
-- **说明**: 数据加载工作线程数
-  - None：自动检测CPU核心数（推荐）
-  - 0：单线程加载（主线程）
-  - >0：指定工作线程数
-- **使用场景**:
-  - 自动检测（推荐）：不添加该参数
-  - 手动控制：根据系统资源调整
-- **示例**:
-  ```bash
-  # 自动检测（推荐）
-  uv run src/base_model_main.py
-
-  # 指定4个工作线程
-  uv run src/base_model_main.py --num_workers 4
-  ```
-
-### --prefetch_factor
-
-- **类型**: int
-- **默认值**: 2
-- **说明**: DataLoader预取因子（每个工作线程预取的样本数）
-  - 较高值：提高吞吐量但增加内存使用
-  - 较低值：减少内存使用但可能降低吞吐量
-- **使用场景**:
-  - 内存充足：3-4
-  - 内存受限：1-2
-- **示例**:
-  ```bash
-  # 预取因子设为4（内存充足）
-  uv run src/base_model_main.py --prefetch_factor 4
-  ```
-
-### --persistent_workers
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 保持DataLoader工作线程活跃
-  - True：训练过程中保持工作线程存活，减少线程创建开销
-  - False：每个epoch后销毁工作线程，节省资源
-- **使用场景**:
-  - 长时间训练：`--persistent_workers True`（默认）
-  - 快速测试或资源受限：`--persistent_workers False`
-- **示例**:
-  ```bash
-  # 禁用持久化工作线程
-  uv run src/base_model_main.py --persistent_workers False
-  ```
-
-### --pin_memory
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 启用CUDA内存钉住（GPU训练时推荐）
-  - True：将数据固定在页锁定内存中，加速CPU到GPU的数据传输
-  - False：使用常规内存
-- **注意**: 仅在使用GPU训练时有效
-- **示例**:
-  ```bash
-  # 禁用内存钉住（CPU训练时）
-  uv run src/base_model_main.py --pin_memory False
-  ```
-
-## cuDNN和性能优化选项
-
-### --cudnn_benchmark
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 启用cuDNN自动调优
-  - True：自动为每个卷积层选择最优算法，显著提升卷积操作性能
-  - False：使用固定算法，减少启动时间但可能降低性能
-- **注意**: 当启用确定性算法时，此选项会被自动禁用
-- **使用场景**:
-  - 追求最佳性能：`--cudnn_benchmark True`（默认）
-  - 需要快速启动或确定性：`--cudnn_benchmark False`
-- **示例**:
-  ```bash
-  # 禁用cuDNN自动调优
-  uv run src/base_model_main.py --cudnn_benchmark False
-  ```
-
-### --cudnn_deterministic
-
-- **类型**: bool
-- **默认值**: False
-- **说明**: 启用cuDNN确定性算法
-  - True：使用确定性算法，确保结果可复现，但会降低训练速度
-  - False：使用非确定性算法，提高训练速度（推荐用于训练）
-- **使用场景**:
-  - 训练阶段：`--cudnn_deterministic False`（默认）以获得最佳性能
-  - 调试/研究/需要可复现结果：`--cudnn_deterministic True`
-- **示例**:
-  ```bash
-  # 启用确定性算法（结果可复现）
-  uv run src/base_model_main.py --cudnn_deterministic True
-  ```
-
-### --compile_model
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 启用模型编译
-  - True：使用torch.compile编译模型，优化前向和反向传播
-  - False：不编译模型，直接使用原始模型
-- **注意**: 仅在CUDA可用时生效
-- **使用场景**:
-  - 追求最佳性能：`--compile_model True`（默认）
-  - 调试或快速测试：`--compile_model False`
-- **示例**:
-  ```bash
-  # 禁用模型编译
-  uv run src/base_model_main.py --compile_model False
-  ```
-
-### --compile_mode
-
-- **类型**: str
-- **默认值**: "default"
-- **可选值**: "default", "reduce-overhead", "max-autotune", "max-autotune-no-cudagraphs"
-- **说明**: 模型编译模式
-  - default: 平衡编译时间和性能
-  - reduce-overhead: 优先减少CPU开销
-  - max-autotune: 最大程度自动调优（编译时间最长，性能最佳）
-  - max-autotune-no-cudagraphs: 最大自动调优但不使用CUDA Graphs
-- **使用场景**:
-  - 常规使用：default
-  - 追求极致性能：max-autotune
-  - 内存受限：max-autotune-no-cudagraphs
-- **示例**:
-  ```bash
-  # 使用最大自动调优模式
-  uv run src/base_model_main.py --compile_mode max-autotune
-  ```
-
-## 功能开关
-
-### --Train
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 启用/禁用训练
-- **示例**:
-  ```bash
-  # 启用训练（默认）
-  uv run src/base_model_main.py --Train True
-
-  # 禁用训练
-  uv run src/base_model_main.py --Train False
-  ```
-
-### --Test
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 启用/禁用测试
-- **示例**:
-  ```bash
-  # 启用测试（默认）
-  uv run src/base_model_main.py --Test True
-
-  # 禁用测试
-  uv run src/base_model_main.py --Test False
-  ```
-
-### --UMAP
-
-- **类型**: bool
-- **默认值**: False
-- **说明**: 启用UMAP可视化
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --UMAP True
-  ```
-
-## 正则化参数
-
-### --dropout_p
-
-- **类型**: float
-- **默认值**: 0.3
-- **说明**: Dropout概率
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --dropout_p 0.5
-  ```
-
-### --weight_decay
-
-- **类型**: float
-- **默认值**: 0.0001
-- **说明**: 权重衰减（L2正则化）
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --weight_decay 0.001
-  ```
-
-## 学习率调度器参数
-
-### --warmup_ratio
-
-- **类型**: float
-- **默认值**: 0.05
-- **说明**: Warmup占总步数的比例
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --warmup_ratio 0.1
-  ```
-
-### --warmup_steps
-
-- **类型**: int
-- **默认值**: 0
-- **说明**: Warmup步数（如果为0，则使用warmup_ratio）
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --warmup_steps 1000
-  ```
-
-### --min_lr
-
-- **类型**: float
-- **默认值**: 1e-6
-- **说明**: 最小学习率
-- **示例**:
-  ```bash
-  uv run src/base_model_main.py --min_lr 1e-7
-  ```
-
-### --plot_lr_schedule
-
-- **类型**: bool
-- **默认值**: True
-- **说明**: 是否绘制学习率调度曲线
-- **示例**:
-  ```bash
-  # 绘制学习率曲线（默认）
-  uv run src/base_model_main.py --plot_lr_schedule True
-
-  # 禁用学习率曲线
-  uv run src/base_model_main.py --plot_lr_schedule False
-  ```
-
-## 常用组合示例
-
-### 完整训练流程
+当前 pruning 参数定义以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准，完整流程说明见 [剪枝指南](PRUNING_GUIDE.md)。
+
+### 核心参数概览
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--model` | 必填 | 基座模型名，将自动解析 `output/base_model/<model>/best_model.pth` |
+| `--model_path` | `best_pruned_model.pth` | 最终剪枝模型文件名 |
+| `--data_dir` | `Data` | 数据集路径 |
+| `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |
+| `--full_load` | `False` | 是否全量加载数据集 |
+| `--pruning_ratio` | `0.30` | 最终总剪枝率，入口会规范到 2 位小数 |
+| `--pruning_steps` | `5` | iterative pruning 的剪枝轮数 |
+| `--global_pruning` | `True` | 是否启用全局剪枝 |
+| `--ignore_fc` | `True` | 是否忽略分类头 |
+| `--finetune_epochs` | `10` | 每轮剪枝后的微调轮数 |
+| `--batch_size` | `64` | 批次大小 |
+| `--lr` | `1e-4` | 微调学习率 |
+| `--weight_decay` | `1e-4` | 权重衰减 |
+| `--warmup_ratio` | `0.05` | Warmup 占总步数比例 |
+| `--warmup_steps` | `0` | Warmup 步数 |
+| `--min_lr` | `1e-7` | 最小学习率 |
+| `--evaluate_test` | `True` | 是否在最终阶段评估测试集 |
+
+### 与基座 CLI 的差异
+
+- pruning 不提供 `--class_num`
+- pruning 不提供 `--Train / --Test / --UMAP`
+- pruning 不手动接收基座 checkpoint 路径，而是按 `--model` 自动解析符号链接
+- pruning 的 `--pruning_ratio` 是 2 位小数权威值，并会同步体现在输出目录、summary 和 checkpoint 中
+
+### 示例
 
 ```bash
-uv run src/base_model_main.py --epochs 60 --model resnet10_2d
+uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.80 --pruning_steps 8
 ```
-
-### 仅训练
-
-```bash
-uv run src/base_model_main.py --epochs 60 --Test False
-```
-
-### 仅测试和可视化
-
-```bash
-uv run src/base_model_main.py --Train False --UMAP True
-```
-
-### 自定义超参数
-
-```bash
-uv run src/base_model_main.py \
-  --epochs 60 \
-  --lr 0.001 \
-  --batch_size 128 \
-  --model resnet18_2d \
-  --dropout_p 0.5 \
-  --weight_decay 0.0001
-```
-
-## 参数调优建议
-
-详细的参数调优建议请参考 [训练参数调优指南](TRAINING_GUIDE.md)。

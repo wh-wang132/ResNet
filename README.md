@@ -2,86 +2,95 @@
 
 ## 概述
 
-本项目是本科毕设"基于昇腾AI架构的高效化无人机射频信号识别"的训练代码实现，提供轻量级和标准的 ResNet 模型，用于 2D .npy 格式数据集的训练、评估和可视化。
+本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练代码实现，围绕 2D `.npy` 数据集构建了三阶段工程主线：
 
-## 核心功能
+- `base_model`：基座模型训练、验证、测试与可视化
+- `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
+- `qat`：当前仅保留占位目录与公共工具入口，尚未实现完整训练链路
 
-- ✅ 多种 ResNet 架构（轻量级和标准）
-- ✅ FP16 混合精度训练（AMP）
-- ✅ Warmup + Cosine Annealing 学习率调度
-- ✅ 完整的训练、验证和测试流程
-- ✅ 混淆矩阵生成和统计
-- ✅ UMAP 可视化（内存优化版本）
-- ✅ TensorBoard 日志记录
-- ✅ GPU 内存监控和管理
-- ✅ 模块化代码架构，易于扩展
+当前代码主线已经完整覆盖：
 
-## 快速开始
+```text
+基座训练 checkpoint -> pruning checkpoint -> （后续预留）QAT / ONNX 恢复
+```
+
+## 当前完成度
+
+- `base_model`：已稳定，可直接用于训练、测试、混淆矩阵与 UMAP 可视化
+- `pruning`：已收敛，可直接从基座模型符号链接出发执行多轮剪枝、微调并导出 pruning checkpoint
+- `qat`：当前为占位阶段，未来负责消费 pruning checkpoint 完成恢复与量化训练
+
+## 核心能力
+
+- 多种 2D ResNet 架构：轻量级与标准版
+- FP16 AMP 混合精度训练
+- Warmup + Cosine Annealing 学习率调度
+- 稳定的数据集划分与多线程加载
+- 基座 checkpoint 的结构化保存
+- iterative structured pruning
+- 剪枝后完整拓扑导出：`channel_cfg` + `architecture_signature`
+- 最终测试混淆矩阵生成
+- TensorBoard 日志记录
+
+## 环境与安装
 
 ### 环境要求
 
 - Python 3.12+
 - CUDA 13.0+（如需 GPU 加速）
 - NVIDIA GPU（推荐 8GB+ 显存）
-- Pixi（用于提供 GCC/构建工具链环境）
-- direnv（可选，用于自动激活环境变量）
+- `uv`
+- `pixi`（用于 GCC / Make / CMake 工具链环境）
+- `direnv`（可选，用于自动激活环境）
 
-### 安装部署
+### 安装步骤
 
-1. 克隆项目：
+1. 克隆项目
    ```bash
    git clone git@github.com:wh-wang132/ResNet.git
    cd ResNet
    ```
-2. 安装依赖（使用 uv）：
+2. 安装 Python 依赖
    ```bash
    uv sync
    ```
-3. 同步 Pixi 工具链环境（模型编译依赖）：
+3. 安装 Pixi 工具链环境
    ```bash
    pixi install
    ```
-   当前 `pixi.toml` 已包含：
-   - `gxx`
-   - `make`
-   - `cmake`
-4. 启用 direnv 自动激活（推荐）：
-   项目根目录已提供 `.envrc`，内容会通过 `pixi shell-hook` 自动注入环境变量。
+4. 启用 `direnv`（推荐）
    ```bash
-   # 首次安装 direnv 后执行一次
    direnv allow
    ```
-   之后每次进入项目根目录会自动激活 Pixi 环境。
-5. 准备数据集：
-   - 将 .npy 格式数据集放入 `Data/` 目录
-   - 数据集结构详见 [数据准备](docs/DATA_PREPARATION.md)
+   当前项目根目录的 [`.envrc`](/root/ResNet/.envrc) 会：
+   - 注入 `pixi shell-hook`
+   - 将 `PYTHONPATH` 固定为项目根目录下的 `src`
+5. 准备数据集
+   - 将 `.npy` 数据集放入 `Data/`
+   - 目录结构说明见 [数据准备指南](docs/DATA_PREPARATION.md)
 
-### 基本使用
+## 基本使用
+
+### 基座模型训练
 
 ```bash
-# 完整训练流程（训练 + 测试）
+# 完整训练 + 测试
 uv run src/base_model_main.py --epochs 20 --model resnet6_2d
 
 # 仅训练
 uv run src/base_model_main.py --epochs 20 --Test False
 
-# 仅测试和可视化
+# 仅测试 + UMAP
 uv run src/base_model_main.py --Train False --UMAP True
-
-# 使用不同的模型
-uv run src/base_model_main.py --model resnet18_2d
-
-# 指定数据集输出精度
-uv run src/base_model_main.py --data_dtype fp32
 ```
 
 ### 剪枝 + 微调
 
 ```bash
-# 最小剪枝 + 微调命令
+# 最小剪枝命令
 uv run src/pruning_main.py --model resnet6_2d
 
-# 调整总剪枝比例和轮数
+# 指定总剪枝率与轮数
 uv run src/pruning_main.py \
   --model resnet18_2d \
   --pruning_ratio 0.30 \
@@ -89,52 +98,55 @@ uv run src/pruning_main.py \
   --global_pruning True \
   --finetune_epochs 10
 
-# 仅执行剪枝并保存结果，不做微调
+# 不做微调，只保存最终剪枝结果
 uv run src/pruning_main.py \
   --model resnet14_2d \
   --finetune_epochs 0 \
   --evaluate_test False
 ```
 
-剪枝阶段会自动读取 `output/base_model/<model>/best_model.pth`。  
-这里的 `best_model.pth` 应由你在每个基座模型根目录下预先建立为指向最佳实验权重的符号链接。
-`--pruning_ratio` 会在入口按十进制四舍五入规范为 2 位小数，输出目录中的 `ratioXX` 与实际执行的目标剪枝率保持一致。
-剪枝微调当前复用基座模型的 Warmup + Cosine 调度器实现，但默认学习率已下调为更适合微调恢复的 `1e-4`，默认 `min_lr=1e-7`。
-当前 pruning 已采用 iterative pruning，多轮剪枝过程中仅最终轮的最佳模型会保存为 `best_pruned_model.pth`，而 `best_pruned_info.txt` 会按“每轮一行”记录该轮最佳验证结果。
+### 基座模型符号链接约定
 
-## 技术栈选型
+剪枝入口不会手动接收基座 checkpoint 路径，而是固定读取：
 
-| 技术           | 版本      | 用途     |
-| ------------ | ------- | ------ |
-| Python       | 3.12+   | 开发语言   |
-| PyTorch      | 2.10.0+ | 深度学习框架 |
-| NumPy        | 2.4.3+  | 数值计算   |
-| Matplotlib   | 3.10.8+ | 数据可视化  |
-| Scikit-learn | 1.8.0+  | 机器学习工具 |
-| UMAP-learn   | 0.5.11+ | 降维可视化  |
-| TensorBoard  | 2.20.0+ | 训练日志记录 |
-| uv           | -       | 包管理工具  |
-| Pixi         | -       | GCC/Make/CMake 工具链环境管理 |
-| direnv       | -       | 自动激活项目环境变量 |
+```text
+output/base_model/<model>/best_model.pth
+```
+
+这里的 `best_model.pth` 由你在对应基座模型根目录下维护为指向最佳实验权重的符号链接。
+
+## 自动化脚本
+
+项目根目录当前提供两份顺序执行脚本：
+
+- [base_model_autorun.sh](/root/ResNet/base_model_autorun.sh)
+  - 批量训练全部 6 个基座模型
+  - 主要搜索模型与 `batch_size`
+- [pruning_autorun.sh](/root/ResNet/pruning_autorun.sh)
+  - 批量运行 pruning 实验
+  - 主要搜索模型、`pruning_ratio` 与 `pruning_steps`
+
+两份脚本都采用“逐行命令、顺序执行、无复杂控制流”的风格，适合在服务器终端直接监控。
 
 ## 项目结构
 
-```
+```text
 ResNet/
 ├── src/
-│   ├── base_model_main.py   # 基座模型训练入口（项目根目录执行）
-│   ├── pruning_main.py      # 剪枝 + 微调入口（项目根目录执行）
-│   ├── base_model/          # 基座模型核心模块
+│   ├── base_model_main.py      # 基座模型训练入口
+│   ├── pruning_main.py         # 剪枝 + 微调入口
+│   ├── base_model/
+│   │   ├── args.py
 │   │   ├── dataset.py
 │   │   ├── utils.py
 │   │   ├── trainer.py
 │   │   ├── tester.py
 │   │   ├── visualizer.py
-│   │   ├── resnet_lightweight.py
-│   │   ├── resnet_standard.py
 │   │   ├── confusionMatrix.py
-│   │   └── lr_scheduler.py
-│   ├── pruning/             # 剪枝阶段核心模块
+│   │   ├── lr_scheduler.py
+│   │   ├── resnet_lightweight.py
+│   │   └── resnet_standard.py
+│   ├── pruning/
 │   │   ├── args.py
 │   │   ├── checkpoint.py
 │   │   ├── evaluator.py
@@ -144,136 +156,105 @@ ResNet/
 │   │   ├── trainer.py
 │   │   ├── utils.py
 │   │   └── README.md
-│   └── qat/                 # QAT 阶段目录（待实现）
-├── docs/                    # 文档目录
-├── Data/                    # 数据集目录
-├── output/                  # 训练输出目录
-├── .envrc                   # direnv 自动激活（调用 pixi shell-hook）
-├── pixi.toml                # Pixi 环境定义（含 gxx/make/cmake）
-├── pixi.lock                # Pixi 锁文件
-├── pyproject.toml           # 项目依赖配置
-├── uv.lock                  # 锁定依赖版本
-├── README.md                # 本文件
-└── LICENSE                  # 许可证
+│   └── qat/
+│       ├── README.md           # 当前占位说明
+│       └── utils.py            # 未来 QAT 复用入口
+├── docs/
+├── Data/
+├── output/
+├── base_model_autorun.sh
+├── pruning_autorun.sh
+├── .envrc
+├── pixi.toml
+├── pixi.lock
+├── pyproject.toml
+├── uv.lock
+└── README.md
 ```
 
-## 模型架构
+## 模型概览
 
 ### 轻量级模型
 
-| 模型        | 参数量     | 适用场景        |
-| --------- | ------- | ----------- |
-| ResNet-6  | 310,392 | 快速实验，资源受限环境 |
-| ResNet-10 | 694,440 | 平衡精度与速度     |
-| ResNet-14 | 902,376 | 更高精度，轻量级架构  |
+| 模型 | 参数量 | 结构特点 |
+| --- | --- | --- |
+| `resnet6_2d` | 约 310,392 | 3 个残差层，`init_channels=32` |
+| `resnet10_2d` | 约 694,440 | 3 个残差层，`init_channels=48` |
+| `resnet14_2d` | 约 902,376 | 3 个残差层，残差块配置 `[2, 2, 1]` |
 
 ### 标准模型
 
-| 模型        | 参数量   | 残差块        |
-| --------- | ----- | ---------- |
-| ResNet-18 | 11.2M | BasicBlock |
-| ResNet-34 | 21.3M | BasicBlock |
-| ResNet-50 | 23.6M | Bottleneck |
+| 模型 | 参数量 | 残差块 |
+| --- | --- | --- |
+| `resnet18_2d` | 约 11.2M | `BasicBlock` |
+| `resnet34_2d` | 约 21.3M | `BasicBlock` |
+| `resnet50_2d` | 约 23.6M | `Bottleneck` |
 
-详细模型说明请参考 [模型架构](docs/MODEL_ARCHITECTURE.md)。
-
-## 命令行参数
-
-### 基本参数
-
-| 参数             | 默认值             | 说明     |
-| -------------- | --------------- | ------ |
-| `--epochs`     | 60              | 训练轮数   |
-| `--lr`         | 0.0003          | 学习率    |
-| `--batch_size` | 64              | 批次大小   |
-| `--model_path` | best\_model.pth | 模型保存路径 |
-| `--class_num`  | 24              | 分类数    |
-| `--model`      | resnet6\_2d     | 选择模型架构 |
-| `--data_dir`   | Data            | 数据集路径  |
-| `--data_dtype` | fp16            | 数据集输出 tensor 精度，可选 `fp16`/`fp32` |
-
-### 功能开关
-
-| 参数           | 默认值   | 说明          |
-| ------------ | ----- | ----------- |
-| `--Train`    | True  | 启用训练        |
-| `--Test`     | True  | 启用测试        |
-| `--UMAP`     | False | 启用 UMAP 可视化 |
-
-### 正则化参数
-
-| 参数               | 默认值    | 说明         |
-| ---------------- | ------ | ---------- |
-| `--dropout_p`    | 0.3    | Dropout 概率 |
-| `--weight_decay` | 0.0001 | 权重衰减       |
-
-### 学习率调度器
-
-| 参数                      | 默认值  | 说明              |
-| ----------------------- | ---- | --------------- |
-| `--warmup_ratio`        | 0.05 | Warmup 占总步数的比例  |
-| `--warmup_steps`        | 0    | Warmup 步数（优先使用） |
-| `--min_lr`              | 1e-6 | 最小学习率           |
-| `--plot_lr_schedule`    | True | 绘制学习率曲线         |
-| `--plot_lr_schedule False` | - | 禁用学习率曲线绘制    |
-
-详细参数说明请参考 [命令行参数](docs/CLI_ARGUMENTS.md)。
+详细说明见 [模型架构说明](docs/MODEL_ARCHITECTURE.md)。
 
 ## 输出文件
 
-训练完成后，输出目录会包含以下文件：
+### 基座训练输出
 
-```
+```text
 output/base_model/<model>/epochs<epochs>_bs<batch_size>/
-├── best_model.pth           # 最佳模型权重
-├── best_val_acc_info.txt    # 最佳验证准确率摘要
-├── lr_schedule.png           # 学习率调度曲线
-├── training_curves.png        # 训练曲线（损失、准确率、学习率）
-├── Confusion matrix.png      # 混淆矩阵图
-├── umap_plot.png            # UMAP 可视化图（如启用）
-└── runs/                    # 当前实验目录下的 TensorBoard 日志
+├── best_model.pth
+├── best_val_acc_info.txt
+├── lr_schedule.png
+├── training_curves.png
+├── Confusion_matrix.png
+├── umap_plot.png            # 仅启用 UMAP 时生成
+└── runs/
 ```
 
-剪枝 + 微调阶段默认输出：
+另外，若你希望将某个实验指定为 pruning 上游输入，还会在：
 
+```text
+output/base_model/<model>/best_model.pth
 ```
+
+维护一个指向最佳实验 checkpoint 的符号链接。
+
+### 剪枝输出
+
+```text
 output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
-├── best_pruned_model.pth    # 最佳剪枝模型 checkpoint
-├── best_pruned_info.txt     # 最佳剪枝模型验证指标摘要
-├── pruning_summary.json     # 剪枝前后统计与流程摘要
-├── Confusion_matrix.png     # 仅最终测试阶段生成的混淆矩阵
-└── runs/                    # 当前实验目录下的 TensorBoard 日志
+├── best_pruned_model.pth
+├── best_pruned_info.txt
+├── pruning_summary.json
+├── Confusion_matrix.png     # 仅最终测试阶段生成
+└── runs/
+    ├── round_1/
+    ├── round_2/
+    └── ...
 ```
 
-## 文档
+其中：
 
-- [数据准备指南](docs/DATA_PREPARATION.md) - 如何准备和组织数据集
-- [模型架构说明](docs/MODEL_ARCHITECTURE.md) - 各种 ResNet 架构的详细说明
-- [项目架构分析](docs/PROJECT_ARCHITECTURE.md) - 当前项目分层架构与阶段完成度分析
-- [训练参数调优](docs/TRAINING_GUIDE.md) - 训练参数调优建议
-- [剪枝指南](docs/PRUNING_GUIDE.md) - 基于 torch-pruning 的结构化剪枝与微调说明
-- [命令行参数详解](docs/CLI_ARGUMENTS.md) - 完整的命令行参数说明
-- [模块说明](docs/MODULES.md) - 代码模块结构和功能说明
+- `best_pruned_model.pth`：仅最终轮保存的 pruning checkpoint
+- `best_pruned_info.txt`：每轮一行，记录该轮最佳验证结果
+- `pruning_summary.json`：记录 `baseline / rounds / pruning_meta / final / final_topology` 等摘要信息
 
-## 贡献规范
+## 文档导航
 
-欢迎提交 Issue 和 Pull Request！请遵循以下规范：
+- [数据准备指南](docs/DATA_PREPARATION.md)
+- [命令行参数详解](docs/CLI_ARGUMENTS.md)
+- [模型架构说明](docs/MODEL_ARCHITECTURE.md)
+- [训练参数调优](docs/TRAINING_GUIDE.md)
+- [自动化脚本说明](docs/AUTOMATED_TRAINING.md)
+- [剪枝指南](docs/PRUNING_GUIDE.md)
+- [模块说明](docs/MODULES.md)
+- [项目架构分析](docs/PROJECT_ARCHITECTURE.md)
 
-1. 代码风格遵循 PEP 8
-2. 提交前运行测试
-3. 新功能请添加相应文档
-4. 提交信息清晰明确
+## 当前阶段边界
 
-详细规范请参考 [贡献指南](docs/CONTRIBUTING.md)。
+- `base_model` 负责产出稳定的基座 checkpoint
+- `pruning` 负责读取基座 checkpoint，执行剪枝与微调，并导出 pruning checkpoint
+- `qat` 与后续 ONNX/部署模块将负责读取 pruning checkpoint 并继续恢复、训练或导出
 
-## 许可证
+也就是说，当前 pruning 模块的职责是“产出 pruning checkpoint”，而不是负责下游恢复入口。
 
-本项目采用 [GPLv3 许可证](LICENSE)。
+## 贡献与许可证
 
-## 联系方式
-
-如有问题或建议，请通过 Issue 联系。
-
-***
-
-**项目维护**: 持续更新中
+- 贡献方式与开发规范见 [贡献指南](docs/CONTRIBUTING.md)
+- 项目许可证见 [LICENSE](LICENSE)

@@ -1,59 +1,85 @@
-# 自动化训练使用指南
+# 自动化脚本说明
 
 ## 概述
 
-当前仓库的自动化训练入口是项目根目录的 `autorun.sh`，用于批量运行不同模型和批次大小组合。
+当前仓库在项目根目录提供两份顺序执行脚本：
 
-> 说明：历史文档中提到的 `automated_training.py`、`quick_test.py`、`run_automated_training.sh` 当前仓库未提供。
+- `base_model_autorun.sh`
+- `pruning_autorun.sh`
 
-## 快速开始
+两份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
 
-在项目根目录执行：
+## 基座模型自动训练
+
+入口脚本：
 
 ```bash
-bash autorun.sh
+bash base_model_autorun.sh
 ```
 
-脚本内部调用统一训练入口：
+脚本内部逐行调用：
 
 ```bash
 uv run src/base_model_main.py ...
 ```
 
-## 当前脚本覆盖范围
+当前覆盖范围：
 
 - 模型：`resnet6_2d` / `resnet10_2d` / `resnet14_2d` / `resnet18_2d` / `resnet34_2d` / `resnet50_2d`
-- 批次大小：`32` / `64` / `128`
-- 每个模型对应预设训练轮数（见 `autorun.sh`）
+- 搜索维度：模型对应的训练轮数 + `batch_size`
+- 固定设置：每条命令显式传入 `--full_load True`
 
-## 如何自定义
-
-直接编辑 `autorun.sh` 中的参数组合：
-
-- 调整 `--epochs`
-- 调整 `--batch_size`
-- 调整 `--model`
-- 增加或移除命令行参数（如 `--full_load`、`--compile_model`）
-
-## 输出位置
-
-训练输出默认写入：
+输出默认写入：
 
 ```text
 output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 ```
 
-典型文件包括：
+## 剪枝自动运行
 
-- `best_model.pth`
-- `best_val_acc_info.txt`
-- `training_curves.png`
-- `lr_schedule.png`
-- `Confusion matrix.png`
-- `runs/`（TensorBoard 日志）
+入口脚本：
+
+```bash
+bash pruning_autorun.sh
+```
+
+脚本内部逐行调用：
+
+```bash
+uv run src/pruning_main.py ...
+```
+
+当前覆盖范围：
+
+- 模型：全部 6 个基座模型
+- 搜索维度：
+  - `--model`
+  - `--pruning_ratio`
+  - `--pruning_steps`
+- 固定设置：每条命令显式传入 `--full_load True`
+- 其他 pruning 参数使用 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 的默认值，例如：
+  - `batch_size=64`
+  - `finetune_epochs=10`
+  - `global_pruning=True`
+  - `ignore_fc=True`
+  - `evaluate_test=True`
+
+输出默认写入：
+
+```text
+output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
+```
+
+## 使用建议
+
+1. 先单独运行一条命令确认环境与数据路径正常。
+2. 服务器长时运行时建议直接进入项目根目录后执行脚本。
+3. 若你依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
+4. pruning 自动脚本依赖：
+   - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
 
 ## 注意事项
 
-1. 批量实验耗时较长，请先用单条命令验证环境。
-2. 如遇显存不足，优先降低 `--batch_size` 或切换更轻量模型。
-3. 如仅需训练可设置 `--Test False`，减少评估开销。
+- 当前脚本不做并行调度。
+- 当前脚本不做失败重试、断点续跑或日志切分。
+- 若需要修改搜索网格，直接编辑脚本中的命令列表即可。
