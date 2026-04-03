@@ -95,6 +95,10 @@ class BasicBlock(nn.Module):
         if mid_channels is None:
             mid_channels = out_channel
 
+        # Keep the configured downsample width as topology metadata for
+        # channel_cfg-driven reconstruction. It is not used in forward.
+        self._configured_downsample_out_channels = downsample_out_channels
+
         self.conv1 = nn.Conv2d(
             in_channels=in_channel,
             out_channels=mid_channels,
@@ -165,6 +169,10 @@ class Bottleneck(nn.Module):
             if mid_channels is not None
             else int(out_channel * (width_per_group / 64.0)) * groups
         )
+
+        # Keep the configured downsample width as topology metadata for
+        # channel_cfg-driven reconstruction. It is not used in forward.
+        self._configured_downsample_out_channels = downsample_out_channels
 
         self.conv1 = nn.Conv2d(
             in_channels=in_channel,
