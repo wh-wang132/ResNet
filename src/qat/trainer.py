@@ -135,13 +135,30 @@ def finetune_qat_model(
             )
             global_step += 1
 
+        model.eval()
+        val_loss = 0.0
+        acc = 0.0
+        with torch.no_grad():
+            val_bar = tqdm(validate_loader, file=sys.stdout)
+            for images, labels in val_bar:
+                images = images.to(device=device, dtype=torch.float32)
+                labels = labels.to(device)
+
+                outputs = model(images)
+                loss = loss_function(outputs, labels)
+
+                predict_y = torch.argmax(outputs, dim=1)
+                acc += torch.eq(predict_y, labels).sum().item()
+                val_loss += loss.item()
+
+                val_bar.desc = f"QAT valid[{epoch+1}/{args.qat_epochs}]"
+
         train_loss_epoch = running_loss / train_steps_per_epoch
-        val_metrics = evaluate_model(
-            model=model,
-            device=device,
-            dataloader=validate_loader,
-            num_samples=val_num,
-        )
+        val_metrics = {
+            "loss": float(val_loss / max(len(validate_loader), 1)),
+            "acc": float(acc / max(val_num, 1)),
+            "samples": int(val_num),
+        }
 
         writer.add_scalar("Loss/train", train_loss_epoch, epoch)
         writer.add_scalar("Loss/val", val_metrics["loss"], epoch)
