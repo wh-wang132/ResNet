@@ -265,7 +265,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 ### QAT 输出
 
 ```text
-output/qat/<model>/from_<pruning_exp>/ep<epochs>_lr<lr>_bs<batch_size>/
+output/qat/<model>/from_<pruning_exp>/
 ├── best_qat_prepare_model.pth
 ├── best_qat_info.txt
 ├── qat_summary.json

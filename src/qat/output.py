@@ -6,12 +6,6 @@ import json
 import os
 
 
-def _format_lr_tag(lr):
-    lr_tag = f"{lr:.0e}"
-    lr_tag = lr_tag.replace("e-0", "e-").replace("e+0", "e+")
-    return lr_tag
-
-
 def create_output_directory(args, checkpoint_meta):
     output_root = os.path.join("output", "qat")
     model_name = checkpoint_meta["model_name"]
@@ -20,7 +14,6 @@ def create_output_directory(args, checkpoint_meta):
         output_root,
         model_name,
         f"from_{pruning_exp_name}",
-        f"ep{args.qat_epochs}_lr{_format_lr_tag(args.lr)}_bs{args.batch_size}",
     )
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
