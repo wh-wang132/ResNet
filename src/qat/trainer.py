@@ -44,11 +44,13 @@ def _build_qat_checkpoint(
     return checkpoint
 
 
-def write_best_qat_info(best_info_path, summary):
-    with open(best_info_path, "w", encoding="utf-8") as f:
-        f.write(f"Best Validation Accuracy: {summary['best_acc']:.4f},")
-        f.write(f"Best Validation Loss: {summary['best_val_loss']:.4f},")
-        f.write(f"Best Epoch: {summary['best_epoch']}\n")
+def write_best_qat_info(best_info_path, best_acc, best_val_loss, best_epoch):
+    with open(best_info_path, "a", encoding="utf-8") as f:
+        f.write(
+            "Best Validation Accuracy: "
+            f"{best_acc:.4f}, Best Validation Loss: {best_val_loss:.4f} "
+            f"at Epoch: {best_epoch}\n"
+        )
 
 
 def finetune_qat_model(
@@ -97,6 +99,7 @@ def finetune_qat_model(
     }
 
     save_path = os.path.join(folder_path, args.model_path)
+    best_info_path = os.path.join(folder_path, "best_qat_info.txt")
     best_acc = float(initial_val_metrics["acc"])
     best_val_loss = float(initial_val_metrics["loss"])
     best_epoch = 0
@@ -151,6 +154,12 @@ def finetune_qat_model(
             best_val_loss = val_metrics["loss"]
             best_epoch = epoch + 1
             best_state_dict = copy.deepcopy(get_raw_model(model).state_dict())
+            write_best_qat_info(
+                best_info_path=best_info_path,
+                best_acc=best_acc,
+                best_val_loss=best_val_loss,
+                best_epoch=best_epoch,
+            )
 
     writer.close()
 

@@ -129,7 +129,6 @@ def main():
             quantization_meta=quantization_meta,
             initial_val_metrics=initial_qat_val_metrics,
         )
-        write_best_qat_info(best_info_path, finetune_summary)
     else:
         initial_qat_val_metrics = evaluate_model(
             prepared_model,
@@ -151,7 +150,12 @@ def main():
             "best_epoch": 0,
             "checkpoint_path": checkpoint_path,
         }
-        write_best_qat_info(best_info_path, finetune_summary)
+        write_best_qat_info(
+            best_info_path=best_info_path,
+            best_acc=finetune_summary["best_acc"],
+            best_val_loss=finetune_summary["best_val_loss"],
+            best_epoch=finetune_summary["best_epoch"],
+        )
 
     final_test_metrics = None
     if args.evaluate_test:
