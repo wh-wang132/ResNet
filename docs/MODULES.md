@@ -7,7 +7,7 @@
 - `base_model`：基座训练、测试与可视化
 - `pruning`：结构化剪枝、微调与 pruning checkpoint 导出
 
-`qat` 当前仍是占位阶段，只保留少量公共工具入口与阶段说明。
+`qat` 当前已经具备独立主链，负责消费 pruning checkpoint 并导出 QAT prepare checkpoint。
 
 ## 项目结构
 
@@ -15,6 +15,7 @@
 src/
 ├── base_model_main.py
 ├── pruning_main.py
+├── qat_main.py
 ├── base_model/
 │   ├── args.py
 │   ├── dataset.py
@@ -37,8 +38,14 @@ src/
 │   ├── utils.py
 │   └── README.md
 └── qat/
-    ├── README.md
-    └── utils.py
+    ├── args.py
+    ├── checkpoint.py
+    ├── evaluator.py
+    ├── output.py
+    ├── quantization.py
+    ├── trainer.py
+    ├── utils.py
+    └── README.md
 ```
 
 ## 入口脚本
@@ -62,6 +69,17 @@ src/
 - 执行 iterative pruning
 - 每轮评估与可选微调
 - 导出 pruning checkpoint 与 summary
+
+### `src/qat_main.py`
+
+负责：
+
+- 解析 QAT 参数
+- 读取 pruning checkpoint
+- 恢复剪枝后的浮点模型
+- 执行 `prepare_qat_fx`
+- 执行保守单路径 QAT 微调
+- 导出 QAT prepare checkpoint 与 summary
 
 ## `base_model` 模块职责
 
@@ -165,19 +183,49 @@ src/
 - 复用 `base_model` 中稳定的公共函数
 - 提供 pruning 阶段自己的路径与 `pruning_meta` 收敛工具
 
-## `qat` 当前状态
+## `qat` 模块职责
 
 ### `qat/README.md`
 
-- 说明当前阶段边界与后续目标
+- 说明当前 QAT 目标、输出产物与阶段边界
+
+### `qat/args.py`
+
+- 定义 QAT CLI 参数
+
+### `qat/checkpoint.py`
+
+- 读取 pruning checkpoint
+- 按 `*_from_cfg()` 重建剪枝后的浮点模型
+- 严格加载 pruning 权重
+
+### `qat/quantization.py`
+
+- 构建保守量化约束下的 `QConfigMapping`
+- 执行 `prepare_qat_fx`
+- 管理 observer / BN 冻结策略
+
+### `qat/trainer.py`
+
+- QAT 微调主循环
+- 最优模型判定与 prepare checkpoint 保存
+
+### `qat/evaluator.py`
+
+- 复用 pruning 阶段稳定的验证、测试与混淆矩阵逻辑
+
+### `qat/output.py`
+
+- QAT 输出目录命名
+- `qat_summary.json` 保存
 
 ### `qat/utils.py`
 
-- 仅复用 `base_model` 中与未来 QAT 兼容的公共工具
-- 当前尚无独立 `qat_main.py` 或完整训练链路
+- 复用 `base_model` 中稳定的公共工具
+- 提供 QAT 阶段自己的路径工具
 
 ## 当前阶段边界
 
 - `base_model`：产出稳定的基座 checkpoint
 - `pruning`：消费基座 checkpoint，产出 pruning checkpoint
-- `qat`：后续将消费 pruning checkpoint，负责恢复与量化训练
+- `qat`：消费 pruning checkpoint，负责恢复与量化训练，并产出 QAT prepare checkpoint

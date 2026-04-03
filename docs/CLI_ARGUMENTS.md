@@ -2,10 +2,11 @@
 
 ## 概述
 
-当前项目包含两套独立 CLI：
+当前项目包含三套独立 CLI：
 
 - 基座训练入口：`uv run src/base_model_main.py ...`
 - 剪枝入口：`uv run src/pruning_main.py ...`
+- QAT 入口：`uv run src/qat_main.py ...`
 
 两套入口的参数并不完全相同，阅读文档时需要区分阶段。
 
@@ -125,4 +126,46 @@ uv run src/pruning_main.py --help
 
 ```bash
 uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.80 --pruning_steps 8
+```
+
+## QAT CLI
+
+### 入口
+
+```bash
+uv run src/qat_main.py --help
+```
+
+当前 QAT 参数定义以 [src/qat/args.py](/root/ResNet/src/qat/args.py) 为准，完整流程说明见 [src/qat/README.md](/root/ResNet/src/qat/README.md)。
+
+### 核心参数概览
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--pruning_checkpoint` | 必填 | 输入 pruning checkpoint 路径 |
+| `--model_path` | `best_qat_prepare_model.pth` | QAT prepare 模型文件名 |
+| `--data_dir` | `Data` | 数据集路径 |
+| `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |
+| `--full_load` | `False` | 是否全量加载数据集 |
+| `--qat_epochs` | `20` | QAT 微调轮数 |
+| `--batch_size` | `64` | 批次大小 |
+| `--lr` | `1e-5` | 保守 QAT 微调学习率 |
+| `--weight_decay` | `1e-4` | 权重衰减 |
+| `--warmup_ratio` | `0.05` | Warmup 占总步数比例 |
+| `--warmup_steps` | `0` | Warmup 步数 |
+| `--min_lr` | `1e-7` | 最小学习率 |
+| `--evaluate_test` | `True` | 是否在最终阶段评估测试集 |
+
+### 与 pruning CLI 的差异
+
+- QAT 不再接收 `--model`，而是直接接收 `--pruning_checkpoint`
+- QAT 不负责结构化剪枝，只负责 `prepare_qat_fx` 后的保守单路径微调
+- QAT 当前不暴露 qconfig / observer / quant scheme 为 CLI 参数
+- QAT 当前只导出 prepare checkpoint，不执行 `torch.convert`
+
+### 示例
+
+```bash
+uv run src/qat_main.py \
+  --pruning_checkpoint output/pruning/resnet18_2d/ratio0.60_steps8_global_ft10_bs64/best_pruned_model.pth
 ```

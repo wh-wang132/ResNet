@@ -5,14 +5,14 @@
 当前项目采用按阶段拆分的结构，主线为：
 
 ```text
-base_model -> pruning -> （后续）qat / onnx
+base_model -> pruning -> qat -> （后续）onnx / deploy
 ```
 
 三个阶段的职责分别是：
 
 - `base_model`：训练原始模型并保存结构化基座 checkpoint
 - `pruning`：读取基座 checkpoint，执行结构化剪枝与微调，保存 pruning checkpoint
-- `qat`：未来读取 pruning checkpoint，恢复剪枝后模型并继续量化感知训练
+- `qat`：读取 pruning checkpoint，恢复剪枝后模型并执行保守单路径 QAT
 
 ## 当前完成状态
 
@@ -56,14 +56,18 @@ pruning checkpoint 当前已能完整表达：
 - 剪枝统计信息
 - 微调训练上下文
 
-### 3. `qat`：当前为占位阶段
+### 3. `qat`：已完成主链
 
-当前仅保留：
+当前 QAT 阶段已经具备：
 
-- `src/qat/README.md`
-- `src/qat/utils.py`
+- 读取 pruning checkpoint
+- 按 `model_name + channel_cfg` 调用 `*_from_cfg()` 重建剪枝结构
+- 在线执行 `prepare_qat_fx`
+- 保守单路径 QAT 微调
+- 导出 prepare 后的 QAT checkpoint
+- `qat_summary.json` 与最终混淆矩阵输出
 
-也就是说，QAT 的恢复与训练链路尚未实现，但上游 pruning 产物已经在为这一阶段做契约准备。
+当前 QAT 产物明确限定为 **prepare 后 graph 的权重**，暂不负责 `torch.convert` 与 ONNX 导出。
 
 ## 阶段之间的契约
 
@@ -80,7 +84,7 @@ pruning 当前依赖的核心字段包括：
 
 其中模型恢复入口仍然走默认模型工厂函数。
 
-### pruning checkpoint -> 未来 QAT / ONNX
+### pruning checkpoint -> QAT
 
 当前 pruning checkpoint 已经提供：
 
@@ -90,7 +94,20 @@ pruning 当前依赖的核心字段包括：
 - `model_structure.architecture_signature`
 - `model_state_dict`
 
-因此后续 QAT / ONNX 阶段只需补齐“恢复入口”，即可基于这些信息完成剪枝后模型重建。
+QAT 当前已经基于这些字段完成恢复与训练链路。
+
+### QAT checkpoint -> 未来 ONNX / 部署
+
+当前 QAT checkpoint 保存：
+
+- `model_structure.model_name`
+- `model_structure.model_kwargs`
+- `model_structure.channel_cfg`
+- `model_structure.architecture_signature`
+- `quantization_meta`
+- prepared model 的 `model_state_dict`
+
+这为后续 ONNX / 部署阶段恢复同一条 prepare 图提供了契约基础。
 
 ## 设计上的关键点
 
@@ -106,7 +123,7 @@ pruning 当前依赖的核心字段包括：
 
 ### 2. checkpoint 已经从“只存权重”升级成“可恢复对象”
 
-无论是基座 checkpoint 还是 pruning checkpoint，当前都不再只是单纯的 `state_dict`，而是带有：
+无论是基座 checkpoint、pruning checkpoint 还是 QAT checkpoint，当前都不再只是单纯的 `state_dict`，而是带有：
 
 - 模型结构描述
 - 上下文信息
@@ -119,18 +136,18 @@ pruning 当前依赖的核心字段包括：
 
 - `src/base_model_main.py`：只做基座训练链路
 - `src/pruning_main.py`：只做 pruning 链路
-- `qat` 未来将独立拥有自己的入口，而不是挤进现有入口中
+- `src/qat_main.py`：只做 QAT 恢复与量化感知训练链路
 
 ## 当前自然的下一步
 
 当前项目主线已经推进到：
 
 ```text
-基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint
+基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint -> QAT 产出 prepare checkpoint
 ```
 
 因此下一阶段最自然的工作是：
 
-1. 在 `qat` 中实现“读取 pruning checkpoint 并恢复模型”的正式入口
-2. 基于 pruning checkpoint 开展量化感知训练
+1. 在 ONNX / 部署阶段实现消费 QAT checkpoint 的恢复入口
+2. 验证 Torch FX QAT 产物与后续导出链的兼容性
 3. 再进一步衔接 ONNX / 部署导出链

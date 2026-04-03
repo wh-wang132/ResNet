@@ -6,19 +6,19 @@
 
 - `base_model`：基座模型训练、验证、测试与可视化
 - `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
-- `qat`：当前仅保留占位目录与公共工具入口，尚未实现完整训练链路
+- `qat`：基于 Torch 原生 FX graph mode 的保守单路径 QAT，消费 pruning checkpoint 并导出 prepare 后 QAT checkpoint
 
 当前代码主线已经完整覆盖：
 
 ```text
-基座训练 checkpoint -> pruning checkpoint -> （后续预留）QAT / ONNX 恢复
+基座训练 checkpoint -> pruning checkpoint -> QAT prepare checkpoint -> （后续）ONNX / 部署恢复
 ```
 
 ## 当前完成度
 
 - `base_model`：已稳定，可直接用于训练、测试、混淆矩阵与 UMAP 可视化
 - `pruning`：已收敛，可直接从基座模型符号链接出发执行多轮剪枝、微调并导出 pruning checkpoint
-- `qat`：当前为占位阶段，未来负责消费 pruning checkpoint 完成恢复与量化训练
+- `qat`：已落地，负责消费 pruning checkpoint、恢复剪枝结构并执行保守 QAT 微调
 
 ## 核心能力
 
@@ -29,6 +29,8 @@
 - 基座 checkpoint 的结构化保存
 - iterative structured pruning
 - 剪枝后完整拓扑导出：`channel_cfg` + `architecture_signature`
+- Torch 原生 FX graph mode QAT
+- QAT prepare checkpoint 导出
 - 最终测试混淆矩阵生成
 - TensorBoard 日志记录
 
@@ -107,6 +109,21 @@ uv run src/pruning_main.py \
   --evaluate_test False
 ```
 
+### QAT
+
+```bash
+# 最小 QAT 命令
+uv run src/qat_main.py \
+  --pruning_checkpoint output/pruning/resnet14_2d/ratio0.60_steps8_global_ft10_bs64/best_pruned_model.pth
+
+# 指定保守 QAT 微调参数
+uv run src/qat_main.py \
+  --pruning_checkpoint output/pruning/resnet34_2d/ratio0.80_steps8_global_ft10_bs64/best_pruned_model.pth \
+  --qat_epochs 20 \
+  --lr 1e-5 \
+  --batch_size 64
+```
+
 ### 基座模型符号链接约定
 
 剪枝入口不会手动接收基座 checkpoint 路径，而是固定读取：
@@ -139,6 +156,7 @@ ResNet/
 ├── src/
 │   ├── base_model_main.py      # 基座模型训练入口
 │   ├── pruning_main.py         # 剪枝 + 微调入口
+│   ├── qat_main.py             # QAT 入口
 │   ├── base_model/
 │   │   ├── args.py
 │   │   ├── dataset.py
@@ -161,8 +179,14 @@ ResNet/
 │   │   ├── utils.py
 │   │   └── README.md
 │   └── qat/
-│       ├── README.md           # 当前占位说明
-│       └── utils.py            # 未来 QAT 复用入口
+│       ├── args.py
+│       ├── checkpoint.py
+│       ├── evaluator.py
+│       ├── output.py
+│       ├── quantization.py
+│       ├── trainer.py
+│       ├── utils.py
+│       └── README.md
 ├── docs/
 ├── Data/
 ├── output/
@@ -239,6 +263,23 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `best_pruned_info.txt`：每轮一行，记录该轮最佳验证结果
 - `pruning_summary.json`：记录 `baseline / rounds / pruning_meta / final / final_topology` 等摘要信息
 
+### QAT 输出
+
+```text
+output/qat/<model>/from_<pruning_exp>/ep<epochs>_lr<lr>_bs<batch_size>/
+├── best_qat_prepare_model.pth
+├── best_qat_info.txt
+├── qat_summary.json
+├── Confusion_matrix.png     # 仅最终测试阶段生成
+└── runs/
+```
+
+其中：
+
+- `best_qat_prepare_model.pth`：prepare 后的 QAT checkpoint
+- `best_qat_info.txt`：最终最佳验证结果
+- `qat_summary.json`：记录 `baseline / quantization_meta / finetune_summary / final / final_topology`
+
 ## 文档导航
 
 - [数据准备指南](docs/DATA_PREPARATION.md)
@@ -247,6 +288,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - [训练参数调优](docs/TRAINING_GUIDE.md)
 - [自动化脚本说明](docs/AUTOMATED_TRAINING.md)
 - [剪枝指南](docs/PRUNING_GUIDE.md)
+- [QAT 说明](src/qat/README.md)
 - [模块说明](docs/MODULES.md)
 - [项目架构分析](docs/PROJECT_ARCHITECTURE.md)
 
@@ -254,9 +296,14 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 - `base_model` 负责产出稳定的基座 checkpoint
 - `pruning` 负责读取基座 checkpoint，执行剪枝与微调，并导出 pruning checkpoint
-- `qat` 与后续 ONNX/部署模块将负责读取 pruning checkpoint 并继续恢复、训练或导出
+- `qat` 负责读取 pruning checkpoint，恢复剪枝结构并导出 QAT prepare checkpoint
+- 后续 ONNX/部署模块将负责消费 pruning/QAT 产物并继续恢复或导出
 
-也就是说，当前 pruning 模块的职责是“产出 pruning checkpoint”，而不是负责下游恢复入口。
+也就是说：
+
+- pruning 只负责产出 pruning checkpoint
+- QAT 只负责产出 QAT prepare checkpoint
+- ONNX/部署恢复链留待后续阶段单独实现
 
 ## 贡献与许可证
 

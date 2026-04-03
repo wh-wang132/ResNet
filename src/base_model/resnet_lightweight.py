@@ -82,21 +82,23 @@ class LightweightBasicBlock2D(nn.Module):
         downsample_out_channels=None,
     ):
         super().__init__()
+        if mid_channels is None:
+            mid_channels = out_channel
 
         self.conv1 = nn.Conv2d(
             in_channels=in_channel,
-            out_channels=out_channel,
+            out_channels=mid_channels,
             kernel_size=3,
             stride=stride,
             padding=1,
             bias=False,
             groups=groups,
         )
-        self.bn1 = nn.BatchNorm2d(out_channel)
+        self.bn1 = nn.BatchNorm2d(mid_channels)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(
-            in_channels=out_channel,
+            in_channels=mid_channels,
             out_channels=out_channel,
             kernel_size=3,
             stride=1,

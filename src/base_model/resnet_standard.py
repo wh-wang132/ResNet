@@ -92,20 +92,22 @@ class BasicBlock(nn.Module):
 
         if groups != 1 or width_per_group != 64:
             raise ValueError("BasicBlock only supports groups=1 and width_per_group=64")
+        if mid_channels is None:
+            mid_channels = out_channel
 
         self.conv1 = nn.Conv2d(
             in_channels=in_channel,
-            out_channels=out_channel,
+            out_channels=mid_channels,
             kernel_size=3,
             stride=stride,
             padding=1,
             bias=False,
         )
-        self.bn1 = nn.BatchNorm2d(out_channel)
+        self.bn1 = nn.BatchNorm2d(mid_channels)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(
-            in_channels=out_channel,
+            in_channels=mid_channels,
             out_channels=out_channel,
             kernel_size=3,
             stride=1,
