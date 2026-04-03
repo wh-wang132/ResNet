@@ -28,9 +28,9 @@ def parse_args():
     parser.add_argument(
         "--data_dtype",
         type=str,
-        default="fp16",
-        choices=["fp16", "fp32"],
-        help="数据加载后的 tensor 精度，仅影响数据集输出",
+        default="fp32",
+        choices=["fp32"],
+        help="数据加载后的 tensor 精度（QAT 固定为 fp32）",
     )
     parser.add_argument("--full_load", type=str2bool, default=False, help="是否全量加载数据集")
     parser.add_argument("--num_workers", type=int, default=None, help="DataLoader 工作线程数")

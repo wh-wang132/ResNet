@@ -9,7 +9,6 @@ import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.amp import GradScaler, autocast
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -47,8 +46,8 @@ def _build_qat_checkpoint(
 
 def write_best_qat_info(best_info_path, summary):
     with open(best_info_path, "w", encoding="utf-8") as f:
-        f.write(f"Best Validation Accuracy: {summary['best_acc']:.4f}\n")
-        f.write(f"Best Validation Loss: {summary['best_val_loss']:.4f}\n")
+        f.write(f"Best Validation Accuracy: {summary['best_acc']:.4f},")
+        f.write(f"Best Validation Loss: {summary['best_val_loss']:.4f},")
         f.write(f"Best Epoch: {summary['best_epoch']}\n")
 
 
@@ -70,7 +69,6 @@ def finetune_qat_model(
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     configure_cudnn(args)
-    scaler = GradScaler("cuda", enabled=torch.cuda.is_available())
 
     train_steps_per_epoch = max(len(train_loader), 1)
     total_train_steps = max(args.qat_epochs * train_steps_per_epoch, 1)
@@ -113,24 +111,16 @@ def finetune_qat_model(
         train_bar = tqdm(train_loader, file=sys.stdout)
 
         for images, labels in train_bar:
-            images = images.to(device)
+            images = images.to(device=device, dtype=torch.float32)
             labels = labels.to(device)
 
             optimizer.zero_grad()
-            with autocast("cuda", enabled=torch.cuda.is_available()):
-                outputs = model(images)
-                loss = loss_function(outputs, labels)
+            outputs = model(images)
+            loss = loss_function(outputs, labels)
 
-            if torch.cuda.is_available():
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-            else:
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                optimizer.step()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
 
             scheduler.step()
             current_lr = optimizer.param_groups[0]["lr"]

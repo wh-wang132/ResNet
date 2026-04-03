@@ -34,9 +34,6 @@ def main():
 
     release_gpu_memory()
     device = setup_device()
-    if device.type != "cuda" and args.data_dtype == "fp16":
-        print("\n检测到当前使用 CPU，QAT 数据精度自动从 fp16 调整为 fp32")
-        args.data_dtype = "fp32"
 
     float_model, checkpoint_meta, _ = load_pruning_checkpoint(args.pruning_checkpoint, device)
     model_name = checkpoint_meta["model_name"]

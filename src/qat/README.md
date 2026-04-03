@@ -2,6 +2,8 @@
 
 QAT 阶段已经落地，当前负责消费 pruning checkpoint、恢复剪枝结构，并执行保守的 Torch 原生 FX graph mode QAT 微调。
 
+当前 QAT 精度策略已固定为纯 FP32：无论在 CPU 还是 GPU 上，数据集均通过 `base_model.dataset` 的 fp32 接口加载，训练/验证/测试计算也统一为 FP32。
+
 QAT 同样默认继承项目的标准 `pixi + uv` 运行环境：`pixi` 负责系统工具链环境，`uv` 负责 Python 依赖与运行入口，`direnv` 负责自动激活。
 
 ## 当前职责
