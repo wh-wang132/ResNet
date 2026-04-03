@@ -9,6 +9,24 @@
 
 两套入口的参数并不完全相同，阅读文档时需要区分阶段。
 
+## 环境前提
+
+本文档中的所有 `uv run ...` 命令都默认建立在项目标准环境已激活的前提下：
+
+- `pixi`：系统/工具链环境
+- `uv`：Python 依赖与运行入口
+- `direnv`：推荐自动注入 `pixi shell-hook` 与 `PYTHONPATH`
+
+推荐先在项目根目录完成：
+
+```bash
+pixi install
+uv sync
+direnv allow
+```
+
+之后再执行本文中的命令。
+
 ## 基座模型 CLI
 
 ### 入口

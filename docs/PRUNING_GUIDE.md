@@ -14,6 +14,24 @@
 
 当前 pruning 阶段**不负责**读取 pruning checkpoint 并恢复模型；该职责留给后续 QAT / ONNX 模块。
 
+## 环境前提
+
+剪枝入口默认运行在项目标准 `pixi + uv` 环境中：
+
+- `pixi`：提供系统/工具链环境
+- `uv`：提供 Python 依赖与 `uv run ...` 入口
+- `direnv`：推荐自动激活 `pixi shell-hook` 和 `PYTHONPATH`
+
+推荐先在项目根目录完成：
+
+```bash
+pixi install
+uv sync
+direnv allow
+```
+
+若未使用 `direnv`，则请先手动进入 `pixi` 环境，再执行下面的 pruning 命令。
+
 ## 工作流
 
 ```text

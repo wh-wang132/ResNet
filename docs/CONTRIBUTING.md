@@ -21,13 +21,31 @@ git clone git@github.com:wh-wang132/ResNet.git
 cd ResNet
 ```
 
-### 2. 安装依赖
+### 2. 安装系统/工具链环境
+
+```bash
+pixi install
+```
+
+### 3. 安装 Python 依赖
 
 ```bash
 uv sync
 ```
 
-### 3. 配置开发工具
+### 4. 启用项目环境（推荐）
+
+```bash
+direnv allow
+```
+
+项目默认工作流为：
+
+- `pixi` 负责系统工具链环境
+- `uv` 负责 Python 依赖与运行
+- `direnv` 负责自动激活 `pixi shell-hook` 并设置 `PYTHONPATH`
+
+### 5. 配置开发工具
 
 确保您的编辑器配置了以下工具：
 - Python 3.12+

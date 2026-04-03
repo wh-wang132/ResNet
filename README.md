@@ -39,9 +39,9 @@
 - Python 3.12+
 - CUDA 13.0+（如需 GPU 加速）
 - NVIDIA GPU（推荐 8GB+ 显存）
-- `uv`
-- `pixi`（用于 GCC / Make / CMake 工具链环境）
-- `direnv`（可选，用于自动激活环境）
+- `pixi`（项目默认必需：负责 GCC / Make / CMake 等系统工具链环境）
+- `uv`（负责 Python 依赖与 `uv run ...` 入口）
+- `direnv`（推荐：自动激活 `pixi shell-hook` 并设置 `PYTHONPATH`）
 
 ### 安装步骤
 
@@ -50,13 +50,13 @@
    git clone git@github.com:wh-wang132/ResNet.git
    cd ResNet
    ```
-2. 安装 Python 依赖
-   ```bash
-   uv sync
-   ```
-3. 安装 Pixi 工具链环境
+2. 安装 Pixi 工具链环境
    ```bash
    pixi install
+   ```
+3. 安装 Python 依赖
+   ```bash
+   uv sync
    ```
 4. 启用 `direnv`（推荐）
    ```bash
@@ -70,6 +70,8 @@
    - 目录结构说明见 [数据准备指南](docs/DATA_PREPARATION.md)
 
 ## 基本使用
+
+默认前提：当前 shell 已处于项目标准 `pixi + uv` 环境中。推荐直接进入项目根目录并通过 `.envrc` 自动激活；若未使用 `direnv`，则应先手动进入 `pixi` 环境后再执行 `uv run ...`。
 
 ### 基座模型训练
 
@@ -116,6 +118,8 @@ output/base_model/<model>/best_model.pth
 这里的 `best_model.pth` 由你在对应基座模型根目录下维护为指向最佳实验权重的符号链接。
 
 ## 自动化脚本
+
+两份自动化脚本同样默认运行在项目标准 `pixi + uv` 环境中。
 
 项目根目录当前提供两份顺序执行脚本：
 

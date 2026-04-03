@@ -9,6 +9,24 @@
 
 两份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
 
+## 运行前准备
+
+当前项目默认工作流不是“只装 `uv` 就能跑”，而是：
+
+- `pixi`：提供 GCC / Make / CMake 等系统工具链环境
+- `uv`：安装 Python 依赖并执行 `uv run ...`
+- `direnv`：推荐自动激活 `pixi shell-hook` 并设置 `PYTHONPATH`
+
+推荐最小运行顺序：
+
+```bash
+pixi install
+uv sync
+direnv allow
+```
+
+若未使用 `direnv`，则应先手动进入 `pixi` 环境，再执行下面的脚本。
+
 ## 基座模型自动训练
 
 入口脚本：

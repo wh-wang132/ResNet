@@ -8,6 +8,8 @@
 uv run src/pruning_main.py --help
 ```
 
+默认前提：当前 shell 已处于项目标准 `pixi + uv` 环境中。推荐直接在项目根目录通过 `.envrc` 自动激活；若未使用 `direnv`，则应先手动进入 `pixi` 环境后再执行 `uv run ...`。
+
 ## 当前阶段定位
 
 当前 pruning 阶段负责：
