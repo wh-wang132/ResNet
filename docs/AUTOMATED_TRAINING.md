@@ -4,8 +4,8 @@
 
 当前仓库在项目根目录提供两份顺序执行脚本：
 
-- `base_model_autorun.sh`
-- `pruning_autorun.sh`
+- `autorun_base_model.sh`
+- `autorun_pruning.sh`
 
 两份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
 
@@ -32,7 +32,7 @@ direnv allow
 入口脚本：
 
 ```bash
-bash base_model_autorun.sh
+bash autorun_base_model.sh
 ```
 
 脚本内部逐行调用：
@@ -58,7 +58,7 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 入口脚本：
 
 ```bash
-bash pruning_autorun.sh
+bash autorun_pruning.sh
 ```
 
 脚本内部逐行调用：

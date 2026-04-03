@@ -123,10 +123,10 @@ output/base_model/<model>/best_model.pth
 
 项目根目录当前提供两份顺序执行脚本：
 
-- [base_model_autorun.sh](/root/ResNet/base_model_autorun.sh)
+- [autorun_base_model.sh](/root/ResNet/autorun_base_model.sh)
   - 批量训练全部 6 个基座模型
   - 主要搜索模型与 `batch_size`
-- [pruning_autorun.sh](/root/ResNet/pruning_autorun.sh)
+- [autorun_pruning.sh](/root/ResNet/autorun_pruning.sh)
   - 批量运行 pruning 实验
   - 主要搜索模型、`pruning_ratio` 与 `pruning_steps`
 
@@ -166,8 +166,8 @@ ResNet/
 ├── docs/
 ├── Data/
 ├── output/
-├── base_model_autorun.sh
-├── pruning_autorun.sh
+├── autorun_base_model.sh
+├── autorun_pruning.sh
 ├── .envrc
 ├── pixi.toml
 ├── pixi.lock
@@ -180,16 +180,16 @@ ResNet/
 
 ### 轻量级模型
 
-| 模型 | 参数量 | 结构特点 |
-| --- | --- | --- |
-| `resnet6_2d` | 约 310,392 | 3 个残差层，`init_channels=32` |
-| `resnet10_2d` | 约 694,440 | 3 个残差层，`init_channels=48` |
+| 模型          | 参数量     | 结构特点                           |
+| ------------- | ---------- | ---------------------------------- |
+| `resnet6_2d`  | 约 310,392 | 3 个残差层，`init_channels=32`     |
+| `resnet10_2d` | 约 694,440 | 3 个残差层，`init_channels=48`     |
 | `resnet14_2d` | 约 902,376 | 3 个残差层，残差块配置 `[2, 2, 1]` |
 
 ### 标准模型
 
-| 模型 | 参数量 | 残差块 |
-| --- | --- | --- |
+| 模型          | 参数量   | 残差块       |
+| ------------- | -------- | ------------ |
 | `resnet18_2d` | 约 11.2M | `BasicBlock` |
 | `resnet34_2d` | 约 21.3M | `BasicBlock` |
 | `resnet50_2d` | 约 23.6M | `Bottleneck` |
