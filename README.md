@@ -141,7 +141,7 @@ output/base_model/<model>/best_model.pth
 项目根目录当前提供两份顺序执行脚本：
 
 - [autorun_base_model.sh](/root/ResNet/autorun_base_model.sh)
-  - 批量训练全部 6 个基座模型
+  - 批量训练全部 5 个基座模型
   - 主要搜索模型与 `batch_size`
 - [autorun_pruning.sh](/root/ResNet/autorun_pruning.sh)
   - 批量运行 pruning 实验
@@ -216,7 +216,6 @@ ResNet/
 | ------------- | -------- | ------------ |
 | `resnet18_2d` | 约 11.2M | `BasicBlock` |
 | `resnet34_2d` | 约 21.3M | `BasicBlock` |
-| `resnet50_2d` | 约 23.6M | `Bottleneck` |
 
 详细说明见 [模型架构说明](docs/MODEL_ARCHITECTURE.md)。
 

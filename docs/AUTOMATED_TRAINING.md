@@ -43,7 +43,7 @@ uv run src/base_model_main.py ...
 
 当前覆盖范围：
 
-- 模型：`resnet6_2d` / `resnet10_2d` / `resnet14_2d` / `resnet18_2d` / `resnet34_2d` / `resnet50_2d`
+- 模型：`resnet6_2d` / `resnet10_2d` / `resnet14_2d` / `resnet18_2d` / `resnet34_2d`
 - 搜索维度：模型对应的训练轮数 + `batch_size`
 - 固定设置：每条命令显式传入 `--full_load True`
 
@@ -69,7 +69,7 @@ uv run src/pruning_main.py ...
 
 当前覆盖范围：
 
-- 模型：全部 6 个基座模型
+- 模型：全部 5 个基座模型
 - 搜索维度：
   - `--model`
   - `--pruning_ratio`

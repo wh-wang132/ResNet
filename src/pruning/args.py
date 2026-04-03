@@ -36,7 +36,6 @@ def parse_args():
             "resnet14_2d",
             "resnet18_2d",
             "resnet34_2d",
-            "resnet50_2d",
         ],
         help="基座模型名，将自动解析 output/base_model/<model>/best_model.pth 符号链接",
     )

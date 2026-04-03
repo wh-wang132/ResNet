@@ -15,7 +15,6 @@ from base_model.resnet_lightweight import (
 from base_model.resnet_standard import (
     resnet18_2d_from_cfg,
     resnet34_2d_from_cfg,
-    resnet50_2d_from_cfg,
 )
 from qat.utils import load_state_dict_safely, to_repo_relative_path
 
@@ -30,7 +29,6 @@ FROM_CFG_MODEL_MAP = {
     "resnet14_2d": resnet14_2d_from_cfg,
     "resnet18_2d": resnet18_2d_from_cfg,
     "resnet34_2d": resnet34_2d_from_cfg,
-    "resnet50_2d": resnet50_2d_from_cfg,
 }
 
 

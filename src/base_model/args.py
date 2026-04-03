@@ -28,7 +28,6 @@ def parse_args():
             "resnet14_2d",
             "resnet18_2d",
             "resnet34_2d",
-            "resnet50_2d",
         ],
         help="选择模型 (默认 resnet6_2d)",
     )

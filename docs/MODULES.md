@@ -132,7 +132,7 @@ src/
 ### `base_model/resnet_standard.py`
 
 - 标准 ResNet 定义
-- 默认工厂函数：`resnet18_2d / resnet34_2d / resnet50_2d`
+- 默认工厂函数：`resnet18_2d / resnet34_2d`
 - `*_from_cfg()` 恢复入口
 - 逐层 `channel_cfg` 支持
 

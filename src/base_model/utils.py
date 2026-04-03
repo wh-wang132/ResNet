@@ -121,7 +121,7 @@ def str2bool(v):
 def load_model_map():
     """加载模型映射"""
     from .resnet_lightweight import resnet6_2d, resnet10_2d, resnet14_2d
-    from .resnet_standard import resnet18_2d, resnet34_2d, resnet50_2d
+    from .resnet_standard import resnet18_2d, resnet34_2d
 
     return {
         "resnet6_2d": resnet6_2d,
@@ -129,7 +129,6 @@ def load_model_map():
         "resnet14_2d": resnet14_2d,
         "resnet18_2d": resnet18_2d,
         "resnet34_2d": resnet34_2d,
-        "resnet50_2d": resnet50_2d,
     }
 
 

@@ -46,14 +46,3 @@ uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.92 --pruning_st
 uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.92 --pruning_steps 20 --full_load True
 uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.94 --pruning_steps 20 --full_load True #
 uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.95 --pruning_steps 20 --full_load True
-
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.60 --pruning_steps 5 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.60 --pruning_steps 8 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.70 --pruning_steps 8 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.80 --pruning_steps 8 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.90 --pruning_steps 8 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.90 --pruning_steps 12 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.92 --pruning_steps 12 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.92 --pruning_steps 20 --full_load True #
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.94 --pruning_steps 20 --full_load True
-uv run src/pruning_main.py --model resnet50_2d --pruning_ratio 0.95 --pruning_steps 20 --full_load True

@@ -33,14 +33,9 @@ def _extract_standard_channel_cfg(model):
         layer = getattr(model, layer_name)
         layer_cfg = {"blocks": []}
         for block in layer:
-            if hasattr(block, "conv3"):
-                out_channels = int(block.conv3.out_channels // block.expansion)
-                mid_channels = int(block.conv1.out_channels)
-                stride = int(block.conv2.stride[0])
-            else:
-                out_channels = int(block.conv2.out_channels)
-                mid_channels = int(block.conv1.out_channels)
-                stride = int(block.conv1.stride[0])
+            out_channels = int(block.conv2.out_channels)
+            mid_channels = int(block.conv1.out_channels)
+            stride = int(block.conv1.stride[0])
 
             layer_cfg["blocks"].append(
                 {

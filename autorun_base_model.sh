@@ -18,6 +18,3 @@ uv run src/base_model_main.py --epochs 100 --batch_size 32 --model resnet34_2d -
 uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet34_2d --full_load True
 uv run src/base_model_main.py --epochs 100 --batch_size 128 --model resnet34_2d --full_load True #
 
-uv run src/base_model_main.py --epochs 80 --batch_size 32 --model resnet50_2d --full_load True
-uv run src/base_model_main.py --epochs 80 --batch_size 64 --model resnet50_2d --full_load True #
-uv run src/base_model_main.py --epochs 80 --batch_size 128 --model resnet50_2d --full_load True
