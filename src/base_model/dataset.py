@@ -243,6 +243,8 @@ def data_set_split(
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
     """
+    normalized_data_dir = os.path.normpath(data_dir)
+
     def natural_sort_key(text):
         """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
         return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
@@ -306,7 +308,7 @@ def data_set_split(
         os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
         manifest = {
             "version": SPLIT_MANIFEST_VERSION,
-            "data_dir": os.path.abspath(data_dir),
+            "data_dir": normalized_data_dir,
             "train_ratio": train_ratio,
             "val_ratio": val_ratio,
             "test_ratio": test_ratio,
@@ -329,7 +331,7 @@ def data_set_split(
 
         manifest_matches = (
             manifest.get("version") == SPLIT_MANIFEST_VERSION
-            and manifest.get("data_dir") == os.path.abspath(data_dir)
+            and manifest.get("data_dir") == normalized_data_dir
             and manifest.get("train_ratio") == train_ratio
             and manifest.get("val_ratio") == val_ratio
             and manifest.get("test_ratio") == test_ratio
