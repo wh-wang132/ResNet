@@ -12,7 +12,7 @@ from base_model.utils import create_optimized_dataloader
 from onnx_export.args import parse_args
 from onnx_export.evaluator import (
     create_onnx_session,
-    evaluate_onnx_model,
+    evaluate_onnx_model_with_confusion_matrix,
     evaluate_torch_model,
 )
 from onnx_export.exporter import (
@@ -88,11 +88,13 @@ def main():
             input_dtype=torch.float32,
         )
         ort_session, ort_providers = create_onnx_session(onnx_path)
-        onnx_test_metrics = evaluate_onnx_model(
+        onnx_test_metrics = evaluate_onnx_model_with_confusion_matrix(
             session=ort_session,
             dataloader=test_loader,
             num_samples=len(test_dataset),
             input_dtype=onnx_input_dtype,
+            labels=labels__,
+            folder_path=folder_path,
         )
 
     summary = {

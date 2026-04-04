@@ -9,6 +9,8 @@ import onnxruntime as ort
 import torch
 from torch import nn
 
+from base_model.confusionMatrix import ConfusionMatrix
+
 
 def create_onnx_session(onnx_path):
     available_providers = ort.get_available_providers()
@@ -51,7 +53,13 @@ def evaluate_torch_model(model, device, dataloader, num_samples, input_dtype=tor
     }
 
 
-def evaluate_onnx_model(session, dataloader, num_samples, input_dtype=np.float32):
+def _evaluate_onnx_model_core(
+    session,
+    dataloader,
+    num_samples,
+    input_dtype=np.float32,
+    batch_callback=None,
+):
     loss_function = nn.CrossEntropyLoss()
     total_loss = 0.0
     total_correct = 0
@@ -66,6 +74,8 @@ def evaluate_onnx_model(session, dataloader, num_samples, input_dtype=np.float32
 
         loss = loss_function(logits_tensor, labels_tensor)
         predictions = torch.argmax(logits_tensor, dim=1)
+        if batch_callback is not None:
+            batch_callback(predictions, labels_tensor)
         total_loss += loss.item()
         total_correct += torch.eq(predictions, labels_tensor).sum().item()
         total_seen += labels_tensor.size(0)
@@ -75,3 +85,39 @@ def evaluate_onnx_model(session, dataloader, num_samples, input_dtype=np.float32
         "acc": float(total_correct / max(num_samples, total_seen, 1)),
         "samples": int(total_seen),
     }
+
+
+def evaluate_onnx_model(session, dataloader, num_samples, input_dtype=np.float32):
+    return _evaluate_onnx_model_core(
+        session=session,
+        dataloader=dataloader,
+        num_samples=num_samples,
+        input_dtype=input_dtype,
+    )
+
+
+def evaluate_onnx_model_with_confusion_matrix(
+    session,
+    dataloader,
+    num_samples,
+    input_dtype,
+    labels,
+    folder_path,
+):
+    confusion = ConfusionMatrix(num_classes=len(labels), labels=labels)
+
+    def update_confusion(predictions, batch_labels):
+        confusion.update(
+            predictions.to("cpu").numpy(),
+            batch_labels.to("cpu").numpy(),
+        )
+
+    metrics = _evaluate_onnx_model_core(
+        session=session,
+        dataloader=dataloader,
+        num_samples=num_samples,
+        input_dtype=input_dtype,
+        batch_callback=update_confusion,
+    )
+    confusion.plot(folder_path)
+    return metrics
