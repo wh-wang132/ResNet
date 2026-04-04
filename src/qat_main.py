@@ -6,15 +6,9 @@ import json
 import os
 
 import torch
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-plt.rcParams["font.sans-serif"] = ["Times New Roman"]
-plt.rcParams["axes.unicode_minus"] = False
 
 from base_model.dataset import data_set_split
+from base_model.plotting import configure_matplotlib
 from qat.args import parse_args
 from qat.checkpoint import load_pruning_checkpoint
 from qat.evaluator import count_model_stats, evaluate_model, evaluate_model_with_confusion_matrix
@@ -26,6 +20,8 @@ from qat.trainer import (
     write_best_qat_info,
 )
 from qat.utils import create_optimized_dataloader, release_gpu_memory, setup_device, to_repo_relative_path
+
+configure_matplotlib()
 
 
 def main():

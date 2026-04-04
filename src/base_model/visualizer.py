@@ -8,10 +8,6 @@ UMAP 可视化模块
 import os
 import numpy as np
 import torch
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.cm as cm
 from torch.amp import autocast
@@ -19,6 +15,11 @@ from tqdm import tqdm
 import umap
 from sklearn.decomposition import PCA
 import psutil
+
+from .plotting import configure_matplotlib
+
+configure_matplotlib()
+import matplotlib.pyplot as plt
 
 
 def visualize_umap(model, device, test_loader, args, folder_path, labels__):

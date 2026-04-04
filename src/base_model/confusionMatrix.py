@@ -1,11 +1,13 @@
 import numpy as np
-import matplotlib
 import os
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from prettytable import PrettyTable
+
+from .plotting import configure_matplotlib
+
+configure_matplotlib()
+import matplotlib.pyplot as plt
 
 
 class ConfusionMatrix(object):

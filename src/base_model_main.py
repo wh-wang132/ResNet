@@ -9,16 +9,10 @@
 import sys
 import gc
 import torch
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-plt.rcParams["font.sans-serif"] = ["Times New Roman"]
-plt.rcParams["axes.unicode_minus"] = False
 
 from base_model.args import parse_args
 from base_model.dataset import data_set_split
+from base_model.plotting import configure_matplotlib
 from base_model.utils import (
     release_gpu_memory,
     setup_device,
@@ -30,6 +24,9 @@ from base_model.utils import (
 from base_model.trainer import train_model
 from base_model.tester import test_model
 from base_model.visualizer import visualize_umap
+
+configure_matplotlib()
+import matplotlib.pyplot as plt
 
 
 def main():

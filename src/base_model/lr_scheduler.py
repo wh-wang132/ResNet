@@ -10,6 +10,8 @@ import math
 from typing import Optional
 from torch.optim.lr_scheduler import _LRScheduler
 
+from .plotting import configure_matplotlib
+
 
 class WarmupCosineAnnealingLR(_LRScheduler):
     """
@@ -79,8 +81,7 @@ def plot_lr_schedule(
         save_path: 保存路径（可选）
         title: 图表标题
     """
-    import matplotlib
-    matplotlib.use('Agg')
+    configure_matplotlib()
     import matplotlib.pyplot as plt
     
     lrs = []

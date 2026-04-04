@@ -7,15 +7,9 @@ import json
 import os
 
 import torch
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-plt.rcParams["font.sans-serif"] = ["Times New Roman"]
-plt.rcParams["axes.unicode_minus"] = False
 
 from base_model.dataset import data_set_split
+from base_model.plotting import configure_matplotlib
 from pruning.args import parse_args
 from pruning.checkpoint import load_base_checkpoint
 from pruning.evaluator import (
@@ -38,6 +32,8 @@ from pruning.utils import (
     release_gpu_memory,
     setup_device,
 )
+
+configure_matplotlib()
 
 
 def build_example_inputs(device):

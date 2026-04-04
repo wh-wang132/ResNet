@@ -14,12 +14,9 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 from .lr_scheduler import WarmupCosineAnnealingLR, plot_lr_schedule
+from .plotting import configure_matplotlib
 from .utils import (
     build_architecture_signature,
     get_gpu_memory_info,
@@ -29,6 +26,9 @@ from .utils import (
     get_raw_model,
     load_state_dict_safely,
 )
+
+configure_matplotlib()
+import matplotlib.pyplot as plt
 
 
 def train_model(
