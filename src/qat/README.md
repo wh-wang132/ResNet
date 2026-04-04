@@ -64,10 +64,10 @@ QAT checkpoint 则提供独立恢复接口：
 
 1. 读取 QAT checkpoint
 2. 用 `model_structure.model_name + channel_cfg` 重建剪枝后的浮点模型
-3. 按 `quantization_meta` 重建同一条 `prepare_qat_fx` 图
+3. 按 `quantization_meta` 中记录的 observer / qscheme / quant range / shape 重建同一条 `prepare_qat_fx` 图
 4. `strict=True` 加载 QAT prepared 权重
 
-未来 ONNX/导出阶段应消费这条 QAT 恢复接口，而不是重新回退到 pruning checkpoint。
+未来 ONNX/导出阶段应直接消费 `load_qat_checkpoint(...)` 这条 QAT 恢复接口，而不是重新回退到 pruning checkpoint。
 
 ## 量化约束
 
@@ -78,7 +78,7 @@ QAT checkpoint 则提供独立恢复接口：
 - 使用显式自定义 `QConfigMapping`
 - 最终不执行 `torch.convert`
 - 落盘产物是 **prepare 后 graph 的权重**
-- `quantization_meta` 会记录恢复同一条 prepare 图所需的关键 observer / qscheme / shape 信息
+- `quantization_meta` 会记录恢复同一条 prepare 图所需的关键 observer / qscheme / quant range / shape 信息
 
 ## 输出产物
 
@@ -101,4 +101,6 @@ output/qat/<model>/from_<pruning_exp>/
 
 - `pruning` 只负责产出 pruning checkpoint
 - `qat` 只负责产出 QAT prepare checkpoint
-- 后续 ONNX 导出将单独负责恢复 QAT checkpoint 并验证部署兼容性
+- 后续 ONNX 导出将只读取 QAT checkpoint，通过 QAT 恢复接口重建对象并验证部署兼容性
+
+`source_pruning_checkpoint_path` 仅用于实验溯源，不参与 QAT checkpoint 的恢复。

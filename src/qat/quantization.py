@@ -21,6 +21,21 @@ SUPPORTED_QAT_BACKEND = "torch_fx"
 SUPPORTED_PREPARE_TYPE = "prepare_qat_fx"
 QUANTIZATION_SCHEME_VERSION = 1
 
+DTYPE_NAME_MAP = {
+    str(torch.quint8): torch.quint8,
+    str(torch.qint8): torch.qint8,
+}
+
+QSCHEME_NAME_MAP = {
+    str(torch.per_tensor_affine): torch.per_tensor_affine,
+    str(torch.per_channel_symmetric): torch.per_channel_symmetric,
+}
+
+OBSERVER_NAME_MAP = {
+    MovingAverageMinMaxObserver.__name__: MovingAverageMinMaxObserver,
+    MovingAveragePerChannelMinMaxObserver.__name__: MovingAveragePerChannelMinMaxObserver,
+}
+
 
 def normalize_example_input_shape(example_input_shape):
     if example_input_shape is None:
@@ -45,27 +60,38 @@ def build_example_inputs(device, example_input_shape=None):
     return torch.randn(*normalized_shape, dtype=torch.float32, device=device)
 
 
-def create_qat_qconfig_mapping():
+def create_qat_qconfig_mapping_from_meta(quantization_meta):
+    activation_observer = OBSERVER_NAME_MAP[quantization_meta["activation_observer"]]
+    activation_dtype = DTYPE_NAME_MAP[quantization_meta["activation_dtype"]]
+    activation_qscheme = QSCHEME_NAME_MAP[quantization_meta["activation_qscheme"]]
+    weight_observer = OBSERVER_NAME_MAP[quantization_meta["weight_observer"]]
+    weight_dtype = DTYPE_NAME_MAP[quantization_meta["weight_dtype"]]
+    weight_qscheme = QSCHEME_NAME_MAP[quantization_meta["weight_qscheme"]]
+
     activation_fake_quant = FusedMovingAvgObsFakeQuantize.with_args(
-        observer=MovingAverageMinMaxObserver,
-        dtype=torch.quint8,
-        qscheme=torch.per_tensor_affine,
-        quant_min=0,
-        quant_max=255,
+        observer=activation_observer,
+        dtype=activation_dtype,
+        qscheme=activation_qscheme,
+        quant_min=int(quantization_meta["activation_quant_min"]),
+        quant_max=int(quantization_meta["activation_quant_max"]),
     )
     weight_fake_quant = FusedMovingAvgObsFakeQuantize.with_args(
-        observer=MovingAveragePerChannelMinMaxObserver,
-        dtype=torch.qint8,
-        qscheme=torch.per_channel_symmetric,
-        quant_min=-128,
-        quant_max=127,
-        ch_axis=0,
+        observer=weight_observer,
+        dtype=weight_dtype,
+        qscheme=weight_qscheme,
+        quant_min=int(quantization_meta["weight_quant_min"]),
+        quant_max=int(quantization_meta["weight_quant_max"]),
+        ch_axis=int(quantization_meta["weight_ch_axis"]),
     )
     qconfig = QConfig(
         activation=activation_fake_quant,
         weight=weight_fake_quant,
     )
     return QConfigMapping().set_global(qconfig)
+
+
+def create_default_qat_qconfig_mapping():
+    return create_qat_qconfig_mapping_from_meta(build_quantization_meta())
 
 
 def build_quantization_meta(example_input_shape=None):
@@ -102,6 +128,18 @@ def validate_quantization_meta(quantization_meta):
         raise ValueError("当前仅支持 torch_fx QAT backend")
     if quantization_meta.get("prepare_type") != SUPPORTED_PREPARE_TYPE:
         raise ValueError("当前仅支持 prepare_qat_fx 恢复链")
+    if quantization_meta.get("activation_observer") not in OBSERVER_NAME_MAP:
+        raise ValueError("不支持的 activation_observer")
+    if quantization_meta.get("weight_observer") not in OBSERVER_NAME_MAP:
+        raise ValueError("不支持的 weight_observer")
+    if quantization_meta.get("activation_dtype") not in DTYPE_NAME_MAP:
+        raise ValueError("不支持的 activation_dtype")
+    if quantization_meta.get("weight_dtype") not in DTYPE_NAME_MAP:
+        raise ValueError("不支持的 weight_dtype")
+    if quantization_meta.get("activation_qscheme") not in QSCHEME_NAME_MAP:
+        raise ValueError("不支持的 activation_qscheme")
+    if quantization_meta.get("weight_qscheme") not in QSCHEME_NAME_MAP:
+        raise ValueError("不支持的 weight_qscheme")
     if quantization_meta.get("activation_observer") != MovingAverageMinMaxObserver.__name__:
         raise ValueError("activation_observer 与当前实现不一致")
     if quantization_meta.get("weight_observer") != MovingAveragePerChannelMinMaxObserver.__name__:
@@ -133,12 +171,13 @@ def prepare_model_for_qat(model, device, quantization_meta=None, example_input_s
     model.train()
     if quantization_meta is not None:
         normalized_shape = validate_quantization_meta(quantization_meta)
+        qconfig_mapping = create_qat_qconfig_mapping_from_meta(quantization_meta)
     else:
         normalized_shape = normalize_example_input_shape(example_input_shape)
         quantization_meta = build_quantization_meta(normalized_shape)
+        qconfig_mapping = create_qat_qconfig_mapping_from_meta(quantization_meta)
 
     example_inputs = (build_example_inputs(device, normalized_shape),)
-    qconfig_mapping = create_qat_qconfig_mapping()
     prepared_model = prepare_qat_fx(model, qconfig_mapping, example_inputs)
     return prepared_model, copy.deepcopy(quantization_meta), example_inputs
 

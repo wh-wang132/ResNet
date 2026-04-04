@@ -163,6 +163,7 @@ uv run src/qat_main.py --help
 - QAT 当前不暴露 qconfig / observer / quant scheme 为 CLI 参数
 - QAT 当前只导出 prepare checkpoint，不执行 `torch.convert`
 - 未来 ONNX/导出阶段应消费 QAT checkpoint 恢复接口，而不是重新读取 pruning checkpoint
+- `source_pruning_checkpoint_path` 仅用于溯源，不参与 QAT 对象恢复
 
 ### 示例
 
