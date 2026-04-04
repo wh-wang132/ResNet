@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 """剪枝阶段评估工具。"""
 
+import sys
+
 import torch
 from torch import nn
 from torch.amp import autocast
+from tqdm import tqdm
 
 from base_model.confusionMatrix import ConfusionMatrix
 
@@ -31,6 +34,7 @@ def _evaluate_model_core(
     num_samples,
     use_amp=True,
     batch_callback=None,
+    progress_desc=None,
 ):
     model.eval()
     loss_function = nn.CrossEntropyLoss()
@@ -39,7 +43,11 @@ def _evaluate_model_core(
     total_correct = 0
     total_seen = 0
 
-    for images, labels in dataloader:
+    eval_loader = dataloader
+    if progress_desc is not None:
+        eval_loader = tqdm(dataloader, file=sys.stdout, desc=progress_desc)
+
+    for images, labels in eval_loader:
         images = images.to(device)
         labels = labels.to(device)
 
@@ -64,13 +72,14 @@ def _evaluate_model_core(
 
 
 @torch.no_grad()
-def evaluate_model(model, device, dataloader, num_samples, use_amp=True):
+def evaluate_model(model, device, dataloader, num_samples, use_amp=True, progress_desc=None):
     return _evaluate_model_core(
         model=model,
         device=device,
         dataloader=dataloader,
         num_samples=num_samples,
         use_amp=use_amp,
+        progress_desc=progress_desc,
     )
 
 
@@ -83,6 +92,7 @@ def evaluate_model_with_confusion_matrix(
     labels,
     folder_path,
     use_amp=True,
+    progress_desc=None,
 ):
     confusion = ConfusionMatrix(num_classes=len(labels), labels=labels)
 
@@ -99,6 +109,7 @@ def evaluate_model_with_confusion_matrix(
         num_samples=num_samples,
         use_amp=use_amp,
         batch_callback=update_confusion,
+        progress_desc=progress_desc,
     )
     confusion.plot(folder_path)
     return metrics

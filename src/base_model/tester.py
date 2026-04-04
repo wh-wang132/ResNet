@@ -6,6 +6,7 @@
 """
 
 import os
+import sys
 import torch
 from torch.amp import autocast
 from tqdm import tqdm
@@ -62,7 +63,7 @@ def test_model(model, device, test_loader, args, folder_path, labels__):
     model.eval()
 
     with autocast("cuda", enabled=torch.cuda.is_available()):
-        for test_data in tqdm(test_loader):
+        for test_data in tqdm(test_loader, file=sys.stdout, desc="BaseModel test"):
             test_images, test_labels = test_data
             test_images = test_images.to(device)
             logits = model(test_images)

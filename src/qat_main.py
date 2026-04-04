@@ -101,6 +101,7 @@ def main():
             device,
             test_loader,
             len(test_dataset),
+            progress_desc="QAT baseline test",
         )
 
     prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(float_model, device)
@@ -163,6 +164,7 @@ def main():
             len(test_dataset),
             labels__,
             folder_path,
+            progress_desc="QAT final test",
         )
 
     summary = {

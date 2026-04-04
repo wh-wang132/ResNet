@@ -89,6 +89,7 @@ def main():
             dataloader=test_loader,
             num_samples=len(test_dataset),
             input_dtype=torch.float32,
+            progress_desc="ONNX source test",
         )
         ort_session, ort_providers = create_onnx_session(onnx_path)
         onnx_test_metrics = evaluate_onnx_model_with_confusion_matrix(
@@ -98,6 +99,7 @@ def main():
             input_dtype=onnx_input_dtype,
             labels=labels__,
             folder_path=folder_path,
+            progress_desc="ONNX exported test",
         )
 
     summary = {

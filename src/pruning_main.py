@@ -120,6 +120,7 @@ def main():
             device,
             test_loader,
             len(test_dataset),
+            progress_desc="Pruning baseline test",
         )
 
     print(f"\n开始执行 iterative structured pruning，共 {args.pruning_steps} 轮...")
@@ -225,6 +226,7 @@ def main():
             len(test_dataset),
             labels__,
             folder_path,
+            progress_desc="Pruning final test",
         )
 
     summary = {

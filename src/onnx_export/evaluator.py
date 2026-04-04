@@ -4,10 +4,13 @@
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 import onnxruntime as ort
 import torch
 from torch import nn
+from tqdm import tqdm
 
 from base_model.confusionMatrix import ConfusionMatrix
 
@@ -29,14 +32,25 @@ def create_onnx_session(onnx_path):
 
 
 @torch.no_grad()
-def evaluate_torch_model(model, device, dataloader, num_samples, input_dtype=torch.float32):
+def evaluate_torch_model(
+    model,
+    device,
+    dataloader,
+    num_samples,
+    input_dtype=torch.float32,
+    progress_desc=None,
+):
     model.eval()
     loss_function = nn.CrossEntropyLoss()
     total_loss = 0.0
     total_correct = 0
     total_seen = 0
 
-    for images, labels in dataloader:
+    eval_loader = dataloader
+    if progress_desc is not None:
+        eval_loader = tqdm(dataloader, file=sys.stdout, desc=progress_desc)
+
+    for images, labels in eval_loader:
         images = images.to(device=device, dtype=input_dtype)
         labels = labels.to(device)
         logits = model(images)
@@ -59,6 +73,7 @@ def _evaluate_onnx_model_core(
     num_samples,
     input_dtype=np.float32,
     batch_callback=None,
+    progress_desc=None,
 ):
     loss_function = nn.CrossEntropyLoss()
     total_loss = 0.0
@@ -66,7 +81,11 @@ def _evaluate_onnx_model_core(
     total_seen = 0
     input_name = session.get_inputs()[0].name
 
-    for images, labels in dataloader:
+    eval_loader = dataloader
+    if progress_desc is not None:
+        eval_loader = tqdm(dataloader, file=sys.stdout, desc=progress_desc)
+
+    for images, labels in eval_loader:
         ort_inputs = {input_name: images.cpu().numpy().astype(input_dtype, copy=False)}
         logits = session.run(None, ort_inputs)[0]
         logits_tensor = torch.from_numpy(logits).to(torch.float32)
@@ -87,12 +106,19 @@ def _evaluate_onnx_model_core(
     }
 
 
-def evaluate_onnx_model(session, dataloader, num_samples, input_dtype=np.float32):
+def evaluate_onnx_model(
+    session,
+    dataloader,
+    num_samples,
+    input_dtype=np.float32,
+    progress_desc=None,
+):
     return _evaluate_onnx_model_core(
         session=session,
         dataloader=dataloader,
         num_samples=num_samples,
         input_dtype=input_dtype,
+        progress_desc=progress_desc,
     )
 
 
@@ -103,6 +129,7 @@ def evaluate_onnx_model_with_confusion_matrix(
     input_dtype,
     labels,
     folder_path,
+    progress_desc=None,
 ):
     confusion = ConfusionMatrix(num_classes=len(labels), labels=labels)
 
@@ -118,6 +145,7 @@ def evaluate_onnx_model_with_confusion_matrix(
         num_samples=num_samples,
         input_dtype=input_dtype,
         batch_callback=update_confusion,
+        progress_desc=progress_desc,
     )
     confusion.plot(folder_path)
     return metrics

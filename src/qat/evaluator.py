@@ -9,13 +9,14 @@ from pruning.evaluator import (
 )
 
 
-def evaluate_model(model, device, dataloader, num_samples):
+def evaluate_model(model, device, dataloader, num_samples, progress_desc=None):
     return _evaluate_model(
         model=model,
         device=device,
         dataloader=dataloader,
         num_samples=num_samples,
         use_amp=False,
+        progress_desc=progress_desc,
     )
 
 
@@ -26,6 +27,7 @@ def evaluate_model_with_confusion_matrix(
     num_samples,
     labels,
     folder_path,
+    progress_desc=None,
 ):
     return _evaluate_model_with_confusion_matrix(
         model=model,
@@ -35,6 +37,7 @@ def evaluate_model_with_confusion_matrix(
         labels=labels,
         folder_path=folder_path,
         use_amp=False,
+        progress_desc=progress_desc,
     )
 
 
