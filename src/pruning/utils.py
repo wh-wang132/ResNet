@@ -10,6 +10,8 @@
 import os
 
 from base_model.utils import (
+    INPUT_SHAPE_NCHW,
+    INPUT_SIZE_CHW,
     build_architecture_signature,
     create_optimized_dataloader,
     get_raw_model,
@@ -21,8 +23,6 @@ from base_model.utils import (
     str2bool,
 )
 
-INPUT_SHAPE_NCHW = (1, 1, 543, 512)
-INPUT_SIZE_CHW = (1, 543, 512)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 

@@ -15,6 +15,7 @@ from typing import Optional, TypeAlias, cast
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from .utils import INPUT_SIZE_CHW
 
 Sample: TypeAlias = tuple[torch.Tensor, int]
 
@@ -82,7 +83,7 @@ class NPYDataset(Dataset):
         except Exception as e:
             return (
                 idx,
-                (torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0),
+                (torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0),
                 0.0,
                 str(e),
             )
@@ -157,7 +158,7 @@ class NPYDataset(Dataset):
             cached_sample = cache[idx]
             if cached_sample is None:
                 # 理论上不应发生；兜底保证类型安全和运行稳定性
-                return torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0
+                return torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0
             data, label = cached_sample
             if self.transform:
                 data = self.transform(data)
@@ -193,7 +194,7 @@ class NPYDataset(Dataset):
             load_time = (time.time() - start_time) * 1000
             self._record_load_time(load_time)
             # 返回空样本（为了训练继续）
-            return torch.zeros(1, 543, 512, dtype=self.tensor_dtype), 0
+            return torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0
 
     def _record_load_time(self, load_time_ms):
         """记录加载时间用于性能监控"""

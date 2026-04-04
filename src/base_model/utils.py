@@ -12,6 +12,9 @@ import torch
 import argparse
 from torch.amp import autocast
 
+INPUT_SHAPE_NCHW = (1, 1, 543, 512)
+INPUT_SIZE_CHW = (1, 543, 512)
+
 
 def release_gpu_memory():
     """释放 GPU 内存"""
@@ -138,7 +141,7 @@ def print_model_info(model, device):
         from torchsummary import summary
 
         print("\n模型结构:")
-        summary(model, input_size=(1, 543, 512), device=str(device).split(":")[0])
+        summary(model, input_size=INPUT_SIZE_CHW, device=str(device).split(":")[0])
     except Exception as e:
         print(f"无法使用 torchsummary: {e}")
         print(f"模型参数量: {sum(p.numel() for p in model.parameters()):,}")
@@ -257,7 +260,7 @@ def compile_model(model, args, device, loss_function, optimizer):
         compiled_model.train()
 
         # 创建一个示例输入进行验证
-        sample_input = torch.randn(1, 1, 543, 512, dtype=torch.float16, device=device)
+        sample_input = torch.randn(*INPUT_SHAPE_NCHW, dtype=torch.float16, device=device)
         sample_target = torch.randint(0, 24, (1,), device=device)
 
         # 执行前向传播
