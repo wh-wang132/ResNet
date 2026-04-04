@@ -99,8 +99,8 @@ def finetune_qat_model(
 
     save_path = os.path.join(folder_path, args.model_path)
     best_info_path = os.path.join(folder_path, "best_qat_info.txt")
-    best_acc = float(initial_val_metrics["acc"])
-    best_val_loss = float(initial_val_metrics["loss"])
+    best_acc = -1.0
+    best_val_loss = float("inf")
     best_epoch = 0
     best_state_dict = copy.deepcopy(get_raw_model(model).state_dict())
     freeze_state = {"bn_frozen": False, "observer_frozen": False}
