@@ -107,8 +107,9 @@ def main():
             len(test_dataset),
         )
 
-    prepared_model, quantization_meta, _ = prepare_model_for_qat(float_model, device)
+    prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(float_model, device)
     prepared_model.channel_cfg = topology_meta["channel_cfg"]
+    quantization_meta["example_input_shape"] = list(example_inputs[0].shape)
 
     if args.qat_epochs > 0:
         initial_qat_val_metrics = evaluate_model(

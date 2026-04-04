@@ -119,7 +119,7 @@ uv run src/qat_main.py \
 # 指定保守 QAT 微调参数
 uv run src/qat_main.py \
   --pruning_checkpoint output/pruning/resnet34_2d/ratio0.80_steps8_global_ft10_bs64/best_pruned_model.pth \
-  --qat_epochs 20 \
+  --qat_epochs 10 \
   --lr 1e-5 \
   --batch_size 64
 ```
@@ -276,7 +276,7 @@ output/qat/<model>/from_<pruning_exp>/
 其中：
 
 - `best_qat_prepare_model.pth`：prepare 后的 QAT checkpoint
-- `best_qat_info.txt`：最终最佳验证结果
+- `best_qat_info.txt`：每次 best 刷新时追加一行
 - `qat_summary.json`：记录 `baseline / quantization_meta / finetune_summary / final / final_topology`
 
 ## 文档导航
@@ -296,7 +296,7 @@ output/qat/<model>/from_<pruning_exp>/
 - `base_model` 负责产出稳定的基座 checkpoint
 - `pruning` 负责读取基座 checkpoint，执行剪枝与微调，并导出 pruning checkpoint
 - `qat` 负责读取 pruning checkpoint，恢复剪枝结构并导出 QAT prepare checkpoint
-- 后续 ONNX/部署模块将负责消费 pruning/QAT 产物并继续恢复或导出
+- 后续 ONNX/部署模块将负责消费 QAT checkpoint 恢复接口并继续恢复或导出
 
 也就是说：
 

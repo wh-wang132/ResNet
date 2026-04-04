@@ -107,7 +107,7 @@ QAT 当前已经基于这些字段完成恢复与训练链路。
 - `quantization_meta`
 - prepared model 的 `model_state_dict`
 
-这为后续 ONNX / 部署阶段恢复同一条 prepare 图提供了契约基础。
+这为后续 ONNX / 部署阶段通过 QAT checkpoint 直接恢复同一条 prepare 图提供了契约基础。
 
 ## 设计上的关键点
 
