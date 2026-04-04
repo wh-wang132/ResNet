@@ -2,16 +2,17 @@
 
 ## 概述
 
-本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练代码实现，围绕 2D `.npy` 数据集构建了三阶段工程主线：
+本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练代码实现，围绕 2D `.npy` 数据集构建了四阶段工程主线：
 
 - `base_model`：基座模型训练、验证、测试与可视化
 - `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
 - `qat`：基于 Torch 原生 FX graph mode 的保守单路径 QAT，消费 pruning checkpoint 并导出 prepare 后 QAT checkpoint
+- `onnx`：导出 pruning FP16 ONNX 或 QAT convert ONNX，并用 ONNX Runtime 评估精度
 
 当前代码主线已经完整覆盖：
 
 ```text
-基座训练 checkpoint -> pruning checkpoint -> QAT prepare checkpoint -> （后续）ONNX / 部署恢复
+基座训练 checkpoint -> pruning checkpoint -> QAT prepare checkpoint -> ONNX 导出 / 评估 -> 后续部署
 ```
 
 ## 当前完成度
@@ -19,6 +20,7 @@
 - `base_model`：已稳定，可直接用于训练、测试、混淆矩阵与 UMAP 可视化
 - `pruning`：已收敛，可直接从基座模型符号链接出发执行多轮剪枝、微调并导出 pruning checkpoint
 - `qat`：已落地，负责消费 pruning checkpoint、恢复剪枝结构并执行保守 QAT 微调
+- `onnx`：已落地，负责导出 `pruning_fp16` 与 `qat_convert` 两条标准 ONNX 分支并执行 ORT 精度评估
 
 ## 核心能力
 
@@ -32,6 +34,8 @@
 - 剪枝后完整拓扑导出：`channel_cfg` + `architecture_signature`
 - Torch 原生 FX graph mode QAT
 - QAT prepare checkpoint 导出
+- ONNX opset 18 双分支导出
+- ONNX Runtime 精度评估
 - 最终测试混淆矩阵生成
 - TensorBoard 日志记录
 
@@ -125,6 +129,20 @@ uv run src/qat_main.py \
   --batch_size 64
 ```
 
+### ONNX 导出
+
+```bash
+# pruning checkpoint -> FP16 ONNX
+uv run src/onnx_main.py \
+  --branch pruning_fp16 \
+  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth
+
+# QAT checkpoint -> convert 后量化 ONNX
+uv run src/onnx_main.py \
+  --branch qat_convert \
+  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth
+```
+
 ### 基座模型符号链接约定
 
 剪枝入口不会手动接收基座 checkpoint 路径，而是固定读取：
@@ -173,6 +191,7 @@ ResNet/
 │   ├── base_model_main.py      # 基座模型训练入口
 │   ├── pruning_main.py         # 剪枝 + 微调入口
 │   ├── qat_main.py             # QAT 入口
+│   ├── onnx_main.py            # ONNX 导出与评估入口
 │   ├── base_model/
 │   │   ├── args.py
 │   │   ├── dataset.py
@@ -203,6 +222,11 @@ ResNet/
 │       ├── trainer.py
 │       ├── utils.py
 │       └── README.md
+│   └── onnx_export/
+│       ├── args.py
+│       ├── evaluator.py
+│       ├── exporter.py
+│       └── output.py
 ├── docs/
 ├── Data/
 ├── output/
@@ -312,13 +336,13 @@ output/qat/<model>/from_<pruning_exp>/
 - `base_model` 负责产出稳定的基座 checkpoint
 - `pruning` 负责读取基座 checkpoint，执行剪枝与微调，并导出 pruning checkpoint
 - `qat` 负责读取 pruning checkpoint，恢复剪枝结构并导出 QAT prepare checkpoint
-- 后续 ONNX/部署模块将负责消费 QAT checkpoint 恢复接口并继续恢复或导出
+- ONNX 阶段当前已经消费 QAT checkpoint 恢复接口完成 `qat_convert` 导出
 
 也就是说：
 
 - pruning 只负责产出 pruning checkpoint
 - QAT 只负责产出 QAT prepare checkpoint
-- ONNX/部署恢复链留待后续阶段单独实现
+- 后续部署阶段将在当前 ONNX 导出产物基础上继续衔接推理与编译链
 
 ## 贡献与许可证
 

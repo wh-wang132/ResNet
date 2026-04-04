@@ -2,11 +2,12 @@
 
 ## 概述
 
-当前项目包含三套独立 CLI：
+当前项目包含四套独立 CLI：
 
 - 基座训练入口：`uv run src/base_model_main.py ...`
 - 剪枝入口：`uv run src/pruning_main.py ...`
 - QAT 入口：`uv run src/qat_main.py ...`
+- ONNX 导出入口：`uv run src/onnx_main.py ...`
 
 两套入口的参数并不完全相同，阅读文档时需要区分阶段。
 
@@ -169,4 +170,47 @@ uv run src/qat_main.py --help
 
 ```bash
 uv run src/qat_main.py --pruning_checkpoint output/pruning/resnet18_2d/ratio0.60_steps8_global_ft10_bs64/best_pruned_model.pth
+```
+
+## ONNX CLI
+
+### 入口
+
+```bash
+uv run src/onnx_main.py --help
+```
+
+### 核心参数概览
+
+| 参数              | 默认值    | 说明                                                        |
+| ----------------- | --------- | ----------------------------------------------------------- |
+| `--branch`        | 必填      | `pruning_fp16` 或 `qat_convert`                             |
+| `--checkpoint`    | 必填      | 输入 checkpoint；pruning 分支传 pruning checkpoint，QAT 分支传 QAT checkpoint |
+| `--data_dir`      | `Data`    | 数据集路径                                                  |
+| `--full_load`     | `False`   | 是否全量加载数据集                                          |
+| `--num_workers`   | `None`    | DataLoader 工作线程数                                       |
+| `--evaluate_test` | `True`    | 是否在导出后执行 ORT 测试集精度评估                         |
+| `--opset_version` | `18`      | ONNX opset 版本，当前固定为 18                              |
+
+### 分支说明
+
+- `pruning_fp16`
+  - 输入 pruning checkpoint
+  - 恢复剪枝后浮点模型
+  - 由 Torch 直接导出 FP16 ONNX
+- `qat_convert`
+  - 输入 QAT checkpoint
+  - 通过 `load_qat_checkpoint(...)` 恢复 prepared model
+  - `convert_fx` 后导出量化 ONNX
+
+### 示例
+
+```bash
+uv run src/onnx_main.py \
+  --branch pruning_fp16 \
+  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth
+
+uv run src/onnx_main.py \
+  --branch qat_convert \
+  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth
 ```

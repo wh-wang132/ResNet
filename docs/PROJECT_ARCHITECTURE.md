@@ -5,14 +5,15 @@
 当前项目采用按阶段拆分的结构，主线为：
 
 ```text
-base_model -> pruning -> qat -> （后续）onnx / deploy
+base_model -> pruning -> qat -> onnx -> deploy
 ```
 
-三个阶段的职责分别是：
+四个阶段的职责分别是：
 
 - `base_model`：训练原始模型并保存结构化基座 checkpoint
 - `pruning`：读取基座 checkpoint，执行结构化剪枝与微调，保存 pruning checkpoint
 - `qat`：读取 pruning checkpoint，恢复剪枝后模型并执行保守单路径 QAT
+- `onnx`：读取 pruning 或 QAT checkpoint，导出标准 ONNX 并执行 ORT 精度评估
 
 ## 当前完成状态
 
@@ -70,7 +71,18 @@ pruning checkpoint 当前已能完整表达：
 - 导出 prepare 后的 QAT checkpoint
 - `qat_summary.json` 与最终混淆矩阵输出
 
-当前 QAT 产物明确限定为 **prepare 后 graph 的权重**，暂不负责 `torch.convert` 与 ONNX 导出。
+当前 QAT 产物明确限定为 **prepare 后 graph 的权重**，供后续 ONNX 阶段消费。
+
+### 4. `onnx`：已完成主链
+
+当前 ONNX 阶段已经具备：
+
+- `pruning_fp16`：读取 pruning checkpoint，恢复剪枝后浮点模型并由 Torch 直接导出 FP16 ONNX
+- `qat_convert`：读取 QAT checkpoint，恢复 prepared model，执行 `convert_fx` 后导出量化 ONNX
+- 固定使用 ONNX opset 18
+- 导出后执行 `onnx.checker.check_model`
+- 基于 ONNX Runtime 执行测试集精度评估
+- 仅使用标准 ONNX 算子，不引入自定义算子
 
 ## 阶段之间的契约
 
@@ -99,7 +111,7 @@ pruning 当前依赖的核心字段包括：
 
 QAT 当前已经基于这些字段完成恢复与训练链路。
 
-### QAT checkpoint -> 未来 ONNX / 部署
+### QAT checkpoint -> ONNX / 部署
 
 当前 QAT checkpoint 保存：
 
@@ -110,7 +122,7 @@ QAT 当前已经基于这些字段完成恢复与训练链路。
 - `quantization_meta`
 - prepared model 的 `model_state_dict`
 
-这为后续 ONNX / 部署阶段通过 QAT checkpoint 直接恢复同一条 prepare 图提供了契约基础。未来导出链应只消费 QAT checkpoint，不再回退到 pruning checkpoint。
+这为 ONNX / 部署阶段通过 QAT checkpoint 直接恢复同一条 prepare 图提供了契约基础。当前导出链已经只消费 QAT checkpoint，不再回退到 pruning checkpoint。
 
 ## 设计上的关键点
 
@@ -140,17 +152,18 @@ QAT 当前已经基于这些字段完成恢复与训练链路。
 - `src/base_model_main.py`：只做基座训练链路
 - `src/pruning_main.py`：只做 pruning 链路
 - `src/qat_main.py`：只做 QAT 恢复与量化感知训练链路
+- `src/onnx_main.py`：只做 ONNX 导出与 ORT 评估链路
 
 ## 当前自然的下一步
 
 当前项目主线已经推进到：
 
 ```text
-基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint -> QAT 产出 prepare checkpoint
+基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint -> QAT 产出 prepare checkpoint -> ONNX 双分支导出与评估
 ```
 
 因此下一阶段最自然的工作是：
 
-1. 在 ONNX / 部署阶段实现消费 QAT checkpoint 的恢复入口
-2. 验证 Torch FX QAT 产物与后续导出链的兼容性
-3. 再进一步衔接 ONNX / 部署导出链
+1. 在部署阶段消费当前 ONNX 产物接入后续编译链
+2. 针对 `qat_convert` 分支继续验证与后续工具链的兼容性
+3. 再进一步衔接部署与推理链

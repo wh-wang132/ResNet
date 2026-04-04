@@ -23,7 +23,7 @@ QAT 阶段当前只负责：
 - `torch.convert` 后的 int8 模型落盘
 - 保证 FX QAT 图已经与 CANN 8.5.0 ATC 兼容
 
-这些内容留待后续 ONNX/导出阶段单独验证与实现。
+其中 ONNX 导出已经由独立的 `src/onnx_main.py` 实现；QAT 阶段本身仍只负责产出 QAT checkpoint，不直接承担导出逻辑。
 
 ## 目录结构
 
@@ -67,7 +67,7 @@ QAT checkpoint 则提供独立恢复接口：
 3. 按 `quantization_meta` 中记录的 observer / qscheme / quant range / shape 重建同一条 `prepare_qat_fx` 图
 4. `strict=True` 加载 QAT prepared 权重
 
-未来 ONNX/导出阶段应直接消费 `load_qat_checkpoint(...)` 这条 QAT 恢复接口，而不是重新回退到 pruning checkpoint。
+当前 ONNX 导出阶段已经直接消费 `load_qat_checkpoint(...)` 这条 QAT 恢复接口，而不是重新回退到 pruning checkpoint。
 
 ## 量化约束
 
