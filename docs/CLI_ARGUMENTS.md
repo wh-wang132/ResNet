@@ -47,7 +47,7 @@ uv run src/base_model_main.py --help
 | `--class_num`  | `24`             | 分类数                                  |
 | `--model`      | `resnet6_2d`     | 模型名                                  |
 | `--data_dir`   | `Data`           | 数据集路径                              |
-| `--data_dtype` | `fp32`           | 数据集输出 tensor 精度（QAT 固定 fp32） |
+| `--data_dtype` | `fp16`           | 数据集输出 tensor 精度                   |
 
 ### 数据加载参数
 

@@ -23,7 +23,8 @@
 ## 核心能力
 
 - 多种 2D ResNet 架构：轻量级与标准版
-- FP16 AMP 混合精度训练
+- `base_model / pruning` 支持 FP16 数据与训练链
+- `qat` 固定纯 FP32
 - Warmup + Cosine Annealing 学习率调度
 - 稳定的数据集划分与多线程加载
 - 基座 checkpoint 的结构化保存
@@ -136,9 +137,9 @@ output/base_model/<model>/best_model.pth
 
 ## 自动化脚本
 
-两份自动化脚本同样默认运行在项目标准 `pixi + uv` 环境中。
+三份自动化脚本同样默认运行在项目标准 `pixi + uv` 环境中。
 
-项目根目录当前提供两份顺序执行脚本：
+项目根目录当前提供三份顺序执行脚本：
 
 - [autorun_base_model.sh](/root/ResNet/autorun_base_model.sh)
   - 批量训练全部 5 个基座模型
@@ -146,8 +147,23 @@ output/base_model/<model>/best_model.pth
 - [autorun_pruning.sh](/root/ResNet/autorun_pruning.sh)
   - 批量运行 pruning 实验
   - 主要搜索模型、`pruning_ratio` 与 `pruning_steps`
+- [autorun_qat.sh](/root/ResNet/autorun_qat.sh)
+  - 批量消费 pruning 产物并顺序执行 QAT
+  - 主要搜索 pruning 实验组合对应的 QAT 恢复与微调
 
-两份脚本都采用“逐行命令、顺序执行、无复杂控制流”的风格，适合在服务器终端直接监控。
+三份脚本都采用“逐行命令、顺序执行、无复杂控制流”的风格，适合在服务器终端直接监控。
+
+## 数据划分清单
+
+当前 `base_model.dataset.data_set_split()` 会优先读取：
+
+```text
+output/splits/
+```
+
+中已落盘的数据集划分清单；若不存在或与当前配置不匹配，则按原有规则重新划分并重新落盘。
+
+这份 split manifest 当前作为训练端与后续推理端共享的数据划分真值，其中 `data_dir` 以相对路径 `Data` 保存。
 
 ## 项目结构
 

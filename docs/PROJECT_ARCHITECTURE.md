@@ -23,6 +23,7 @@ base_model -> pruning -> qat -> （后续）onnx / deploy
 - 完整的训练、验证、测试流程
 - AMP + WarmupCosineAnnealingLR
 - 稳定的数据集切分
+- 数据集划分清单落盘与优先复用
 - 混淆矩阵与 UMAP 可视化
 - 结构化基座 checkpoint 导出
 
@@ -35,6 +36,8 @@ base_model -> pruning -> qat -> （后续）onnx / deploy
 - `architecture_signature`
 
 这使它已经具备作为下游 pruning 输入的能力。
+
+当前 `base_model.dataset.data_set_split()` 还会将划分结果落盘到 `output/splits/`，并在后续运行时优先读取已落盘清单。该 manifest 当前保存相对路径 `data_dir=Data`，作为训练端与后续推理端共享的数据划分真值。
 
 ### 2. `pruning`：已完成主链
 

@@ -2,12 +2,13 @@
 
 ## 概述
 
-当前仓库在项目根目录提供两份顺序执行脚本：
+当前仓库在项目根目录提供三份顺序执行脚本：
 
 - `autorun_base_model.sh`
 - `autorun_pruning.sh`
+- `autorun_qat.sh`
 
-两份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
+三份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
 
 ## 运行前准备
 
@@ -86,6 +87,36 @@ uv run src/pruning_main.py ...
 
 ```text
 output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
+```
+
+## QAT 自动运行
+
+入口脚本：
+
+```bash
+bash autorun_qat.sh
+```
+
+脚本内部逐行调用：
+
+```bash
+uv run src/qat_main.py ...
+```
+
+当前覆盖范围：
+
+- 输入：由 pruning 自动脚本产出的 pruning checkpoint 组合
+- 固定设置：每条命令显式传入 `--full_load True`
+- 其他 QAT 参数使用 [src/qat/args.py](/root/ResNet/src/qat/args.py) 的默认值，例如：
+  - `qat_epochs=10`
+  - `batch_size=64`
+  - `lr=1e-5`
+  - `evaluate_test=True`
+
+输出默认写入：
+
+```text
+output/qat/<model>/from_<pruning_exp>/
 ```
 
 ## 使用建议
