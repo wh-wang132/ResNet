@@ -8,6 +8,7 @@
 
 import os
 import time
+import json
 import numpy as np
 import torch
 import re
@@ -18,11 +19,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from .utils import INPUT_SIZE_CHW
 
 Sample: TypeAlias = tuple[torch.Tensor, int]
+SplitEntries: TypeAlias = list[dict[str, object]]
 
 DTYPE_MAP = {
     "fp16": (np.float16, torch.float16),
     "fp32": (np.float32, torch.float32),
 }
+
+SPLIT_MANIFEST_VERSION = 1
+SPLIT_OUTPUT_DIR = os.path.join("output", "splits")
 
 
 class NPYDataset(Dataset):
@@ -238,52 +243,153 @@ def data_set_split(
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
     """
-    file_paths = []
-    labels = []
-    labels__ = []
-    label_map = {}
-    label_index = 0
-
     def natural_sort_key(text):
         """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
         return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
 
-    # 读取所有文件路径和标签
-    for label_folder in sorted(os.listdir(data_dir), key=natural_sort_key):
-        label_folder_path = os.path.join(data_dir, label_folder)
-        if os.path.isdir(label_folder_path):
-            labels__.append(label_folder)
-            for file_name in sorted(os.listdir(label_folder_path), key=natural_sort_key):
-                if file_name.endswith(".npy"):
-                    file_path = os.path.join(label_folder_path, file_name)
-                    file_paths.append(file_path)
-                    labels.append(label_folder)
-            label_map[label_folder] = label_index
-            label_index += 1
+    def build_manifest_path():
+        file_name = (
+            "dataset_split__"
+            f"train{train_ratio:.2f}_"
+            f"val{val_ratio:.2f}_"
+            f"test{test_ratio:.2f}_"
+            f"seed{random_state}.json"
+        )
+        return os.path.join(SPLIT_OUTPUT_DIR, file_name)
 
-    # 标签转换为索引
-    labels = [label_map[label] for label in labels]
+    def scan_dataset():
+        file_paths: list[str] = []
+        labels: list[str] = []
+        labels__: list[str] = []
+        label_map: dict[str, int] = {}
+        label_index = 0
+
+        for label_folder in sorted(os.listdir(data_dir), key=natural_sort_key):
+            label_folder_path = os.path.join(data_dir, label_folder)
+            if os.path.isdir(label_folder_path):
+                labels__.append(label_folder)
+                for file_name in sorted(
+                    os.listdir(label_folder_path), key=natural_sort_key
+                ):
+                    if file_name.endswith(".npy"):
+                        file_path = os.path.join(label_folder_path, file_name)
+                        file_paths.append(file_path)
+                        labels.append(label_folder)
+                label_map[label_folder] = label_index
+                label_index += 1
+
+        indexed_labels = [label_map[label] for label in labels]
+        return file_paths, indexed_labels, labels__, label_map
+
+    def to_manifest_entries(paths, indexed_labels, labels__):
+        entries: SplitEntries = []
+        for path, label_idx in zip(paths, indexed_labels):
+            entries.append(
+                {
+                    "path": os.path.relpath(path, data_dir),
+                    "label_name": labels__[label_idx],
+                    "label_idx": int(label_idx),
+                }
+            )
+        return entries
+
+    def restore_from_entries(entries: SplitEntries):
+        restored_paths: list[str] = []
+        restored_labels: list[int] = []
+        for entry in entries:
+            rel_path = cast(str, entry["path"])
+            restored_paths.append(os.path.join(data_dir, rel_path))
+            restored_labels.append(int(entry["label_idx"]))
+        return restored_paths, restored_labels
+
+    def write_split_manifest(manifest_path, labels__, label_map, split_entries):
+        os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+        manifest = {
+            "version": SPLIT_MANIFEST_VERSION,
+            "data_dir": os.path.abspath(data_dir),
+            "train_ratio": train_ratio,
+            "val_ratio": val_ratio,
+            "test_ratio": test_ratio,
+            "random_state": random_state,
+            "class_names": labels__,
+            "class_to_idx": label_map,
+            "train_files": split_entries["train_files"],
+            "val_files": split_entries["val_files"],
+            "test_files": split_entries["test_files"],
+        }
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    def try_load_split_manifest(manifest_path, labels__):
+        if not os.path.exists(manifest_path):
+            return None
+
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        manifest_matches = (
+            manifest.get("version") == SPLIT_MANIFEST_VERSION
+            and manifest.get("data_dir") == os.path.abspath(data_dir)
+            and manifest.get("train_ratio") == train_ratio
+            and manifest.get("val_ratio") == val_ratio
+            and manifest.get("test_ratio") == test_ratio
+            and manifest.get("random_state") == random_state
+            and manifest.get("class_names") == labels__
+        )
+
+        if not manifest_matches:
+            print(f"检测到划分清单不匹配，重新划分并覆盖: {manifest_path}")
+            return None
+
+        train_paths, train_labels = restore_from_entries(
+            cast(SplitEntries, manifest["train_files"])
+        )
+        val_paths, val_labels = restore_from_entries(
+            cast(SplitEntries, manifest["val_files"])
+        )
+        test_paths, test_labels = restore_from_entries(
+            cast(SplitEntries, manifest["test_files"])
+        )
+        print(f"检测到已落盘划分清单，直接复用: {manifest_path}")
+        return train_paths, train_labels, val_paths, val_labels, test_paths, test_labels
+
+    file_paths, labels, labels__, label_map = scan_dataset()
+    manifest_path = build_manifest_path()
 
     print(f"类别标签映射：{labels__}")
     print(f"总样本数：{len(file_paths)}")
 
-    # 两步划分法
-    train_paths, temp_paths, train_labels, temp_labels = train_test_split(
-        file_paths,
-        labels,
-        test_size=(1 - train_ratio),
-        random_state=random_state,
-        stratify=labels,  # 保持类别比例
-    )
+    manifest_split = try_load_split_manifest(manifest_path, labels__)
+    if manifest_split is None:
+        # 两步划分法
+        train_paths, temp_paths, train_labels, temp_labels = train_test_split(
+            file_paths,
+            labels,
+            test_size=(1 - train_ratio),
+            random_state=random_state,
+            stratify=labels,  # 保持类别比例
+        )
 
-    val_test_ratio = test_ratio / (test_ratio + val_ratio)
-    val_paths, test_paths, val_labels, test_labels = train_test_split(
-        temp_paths,
-        temp_labels,
-        test_size=val_test_ratio,
-        random_state=random_state,
-        stratify=temp_labels,
-    )
+        val_test_ratio = test_ratio / (test_ratio + val_ratio)
+        val_paths, test_paths, val_labels, test_labels = train_test_split(
+            temp_paths,
+            temp_labels,
+            test_size=val_test_ratio,
+            random_state=random_state,
+            stratify=temp_labels,
+        )
+
+        split_entries = {
+            "train_files": to_manifest_entries(train_paths, train_labels, labels__),
+            "val_files": to_manifest_entries(val_paths, val_labels, labels__),
+            "test_files": to_manifest_entries(test_paths, test_labels, labels__),
+        }
+        write_split_manifest(manifest_path, labels__, label_map, split_entries)
+        print(f"划分结果已落盘: {manifest_path}")
+    else:
+        train_paths, train_labels, val_paths, val_labels, test_paths, test_labels = (
+            manifest_split
+        )
 
     print(f"训练集：{len(train_paths)} 样本")
     print(f"验证集：{len(val_paths)} 样本")
