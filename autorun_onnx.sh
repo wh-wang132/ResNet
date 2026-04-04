@@ -1,4 +1,6 @@
 #!/bin/sh
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+
 set -eu
 
 tmp_files=""
@@ -35,7 +37,7 @@ run_branch() {
         uv run src/onnx_main.py \
             --branch "$branch" \
             --checkpoint "$checkpoint_path" \
-            --full_load True
+            # --full_load True
     done < "$tmp_list"
 
     print_section "完成遍历 ${branch}: ${root_dir}"
