@@ -1,7 +1,16 @@
 #!/bin/sh
 
 REPO_ROOT=${REPO_ROOT:-$(pwd)}
+PIXI_ENV_PREFIX="$REPO_ROOT/.pixi/envs/default"
+PIXI_BIN="$PIXI_ENV_PREFIX/bin"
+PIXI_LIB="$PIXI_ENV_PREFIX/lib"
 CANN_ROOT="$REPO_ROOT/.pixi/envs/default/Ascend/cann-8.5.0"
+
+export REPO_ROOT
+export PIXI_ENV_PREFIX
+export PIXI_BIN
+export PIXI_LIB
+export CANN_ROOT
 
 if [ ! -d "$CANN_ROOT" ]; then
     echo "CANN toolkit not found: $CANN_ROOT" >&2
@@ -97,7 +106,7 @@ fi
 
 INSTALL_ROOT=$(dirname "$CANN_ROOT")
 REMOVE_REGEX="^${INSTALL_ROOT}/cann[/_-]"
-LD_REMOVE_REGEX="^${INSTALL_ROOT}/cann[/_-]|^/usr/local/Ascend/driver/lib64(|/common|/driver)$"
+LD_REMOVE_REGEX="^${INSTALL_ROOT}/cann[/_-]|^${PIXI_LIB}$|^/usr/local/Ascend/driver/lib64(|/common|/driver)$"
 remove_env PATH "$REMOVE_REGEX"
 remove_env LD_LIBRARY_PATH "$LD_REMOVE_REGEX"
 remove_env CMAKE_PREFIX_PATH "$REMOVE_REGEX"
@@ -111,6 +120,9 @@ prepend_env PATH "$CANN_ROOT/bin:$CANN_ROOT/tools/ccec_compiler/bin:$CANN_ROOT/t
 prepend_env LD_LIBRARY_PATH "$CANN_ROOT/lib64:$CANN_ROOT/lib64/plugin/opskernel:$CANN_ROOT/lib64/plugin/nnengine:$CANN_ROOT/opp/built-in/op_impl/ai_core/tbe/op_tiling/lib/linux/$ARCHITECTURE:$CANN_ROOT/tools/aml/lib64:$CANN_ROOT/tools/aml/lib64/plugin:/usr/local/Ascend/driver/lib64:/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver"
 prepend_env CMAKE_PREFIX_PATH "$CANN_ROOT/lib64/cmake"
 prepend_env CMAKE_PREFIX_PATH "$CANN_ROOT/toolkit/tools/tikicpulib/lib/cmake"
+if [ -d "$PIXI_LIB" ]; then
+    prepend_env LD_LIBRARY_PATH "$PIXI_LIB"
+fi
 
 if ! has_ascend_driver; then
     append_env LD_LIBRARY_PATH "$CANN_ROOT/devlib"
