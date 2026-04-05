@@ -8,6 +8,10 @@ if [ ! -d "$CANN_ROOT" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
+TEST_DATA_ROOT_PATH=${TEST_DATA_ROOT_PATH:-/tmp/tvm_test_data}
+mkdir -p "$TEST_DATA_ROOT_PATH"
+export TEST_DATA_ROOT_PATH
+
 append_env() {
     name=$1
     value=$2
