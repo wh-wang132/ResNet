@@ -20,6 +20,7 @@ from onnx_export.exporter import (
     build_branch_artifacts,
     build_metric_delta,
     inspect_branch_checkpoint,
+    resolve_branch_opset_version,
 )
 from onnx_export.output import create_output_directory, save_summary
 from qat.utils import release_gpu_memory, setup_device, to_repo_relative_path
@@ -42,6 +43,7 @@ def main():
         source_device = torch.device("cpu")
         dataset_dtype = "fp32"
         onnx_input_dtype = np.float32
+    actual_opset_version = resolve_branch_opset_version(args.branch, args.opset_version)
 
     checkpoint_meta = inspect_branch_checkpoint(
         branch=args.branch,
@@ -54,7 +56,7 @@ def main():
         checkpoint_path=args.checkpoint,
         device=source_device,
         folder_path=folder_path,
-        opset_version=args.opset_version,
+        opset_version=actual_opset_version,
     )
 
     train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(
@@ -107,7 +109,7 @@ def main():
         "model_name": checkpoint_meta["model_name"],
         "labels": labels__,
         "source_checkpoint_path": to_repo_relative_path(args.checkpoint),
-        "opset_version": args.opset_version,
+        "opset_version": actual_opset_version,
         "example_input_shape": export_shape,
         "onnx_path": to_repo_relative_path(onnx_path),
         "source_test_metrics": source_test_metrics,

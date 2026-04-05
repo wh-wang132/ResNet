@@ -34,7 +34,7 @@
 - 剪枝后完整拓扑导出：`channel_cfg` + `architecture_signature`
 - Torch 原生 FX graph mode QAT
 - QAT prepare checkpoint 导出
-- ONNX opset 18 双分支导出
+- ONNX opset 16 双分支导出
 - ONNX Runtime 精度评估
 - 最终测试混淆矩阵生成
 - TensorBoard 日志记录

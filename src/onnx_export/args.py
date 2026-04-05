@@ -46,8 +46,8 @@ def parse_args():
     parser.add_argument(
         "--opset_version",
         type=int,
-        default=18,
-        choices=[18],
-        help="ONNX opset 版本，当前固定为 18",
+        default=16,
+        choices=[16],
+        help="ONNX opset 版本，当前固定为 16",
     )
     return parser.parse_args()

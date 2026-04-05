@@ -79,7 +79,7 @@ pruning checkpoint 当前已能完整表达：
 
 - `pruning_fp16`：读取 pruning checkpoint，恢复剪枝后浮点模型并由 Torch 直接导出 FP16 ONNX
 - `qat_convert`：读取 QAT checkpoint，恢复 prepared model，执行 `convert_fx` 后导出量化 ONNX
-- 固定使用 ONNX opset 18
+- 固定使用 ONNX opset 16
 - 导出后执行 `onnx.checker.check_model`
 - 基于 ONNX Runtime 执行测试集精度评估
 - 仅使用标准 ONNX 算子，不引入自定义算子

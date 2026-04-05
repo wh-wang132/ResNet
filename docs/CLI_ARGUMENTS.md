@@ -190,7 +190,7 @@ uv run src/onnx_main.py --help
 | `--full_load`     | `False`   | 是否全量加载数据集                                          |
 | `--num_workers`   | `None`    | DataLoader 工作线程数                                       |
 | `--evaluate_test` | `True`    | 是否在导出后执行 ORT 测试集精度评估                         |
-| `--opset_version` | `18`      | ONNX opset 版本，当前固定为 18                              |
+| `--opset_version` | `16`      | ONNX opset 版本，当前固定为 16                              |
 
 ### 分支说明
 
