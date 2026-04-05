@@ -13,9 +13,7 @@ environments:
       - conda: https://repo.huaweicloud.com/ascend/repos/conda/linux-64/ascend-cann-toolkit-8.5.0-0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/binutils_impl_linux-64-2.45.1-default_hfdba357_102.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/c-ares-1.34.6-hb03c661_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/ca-certificates-2026.2.25-hbd8a1cb_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/cmake-4.3.1-hc85cc9f_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/cuda-cudart-12.8.90-h5888daf_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/cuda-cudart_linux-64-12.8.90-h3f2d84a_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/cuda-libraries-12.8.1-ha770c72_0.conda
@@ -30,8 +28,6 @@ environments:
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/gxx_impl_linux-64-15.2.0-hda75c37_18.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/icu-78.3-h33c6efd_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/keyutils-1.6.3-hb9d3cd8_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/krb5-1.22.2-ha1258a1_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/ld_impl_linux-64-2.45.1-default_hbd61a6d_102.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcap-2.77-hd0affe5_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcublas-12.8.4.1-h9ab20c4_1.conda
@@ -40,11 +36,8 @@ environments:
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcufft-11.3.3.83-h5888daf_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcufile-1.13.1.3-h628e99a_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcurand-10.3.9.90-h9ab20c4_1.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcurl-8.19.0-hcf29cc6_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcusolver-11.7.3.90-h9ab20c4_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcusparse-12.5.8.93-h5888daf_1.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libedit-3.1.20250104-pl5321h7949ede_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libev-4.33-hd590300_2.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libexpat-2.7.5-hecca717_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libffi-3.5.2-h3435931_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libgcc-15.2.0-he0feb66_18.conda
@@ -52,7 +45,6 @@ environments:
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libgcc-ng-15.2.0-h69a702a_18.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libgomp-15.2.0-he0feb66_18.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/liblzma-5.8.2-hb03c661_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnghttp2-1.68.1-h877daf1_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnl-3.11.0-hb9d3cd8_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnpp-12.3.3.100-h9ab20c4_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnsl-2.0.1-hb9d3cd8_1.conda
@@ -61,16 +53,13 @@ environments:
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnvjpeg-12.3.5.92-h5888daf_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libsanitizer-15.2.0-h90f66d4_18.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libsqlite-3.52.0-hf4e2dac_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libssh2-1.11.1-hcf80075_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libstdcxx-15.2.0-h934c35e_18.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/libstdcxx-devel_linux-64-15.2.0-hd446a21_118.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libsystemd0-257.13-hd0affe5_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libudev1-257.13-hd0affe5_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libuuid-2.42-h5347b49_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libuv-1.51.0-hb03c661_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libzlib-1.3.2-h25fd6f3_2.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/make-4.4.1-hb9d3cd8_2.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/ocl-icd-2.3.3-hb9d3cd8_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/opencl-headers-2025.06.13-hecca717_0.conda
@@ -80,7 +69,6 @@ environments:
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/python-3.12.13-hd63d673_0_cpython.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/rdma-core-61.0-h192683f_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/readline-8.3-h853b02a_0.conda
-      - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/setuptools-82.0.1-pyh332efcf_0.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
       - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/tk-8.6.13-noxft_h366c992_103.conda
@@ -132,16 +120,6 @@ packages:
   license_family: BSD
   size: 260182
   timestamp: 1771350215188
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/c-ares-1.34.6-hb03c661_0.conda
-  sha256: cc9accf72fa028d31c2a038460787751127317dcfa991f8d1f1babf216bb454e
-  md5: 920bb03579f15389b9e512095ad995b7
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=14
-  license: MIT
-  license_family: MIT
-  size: 207882
-  timestamp: 1765214722852
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/ca-certificates-2026.2.25-hbd8a1cb_0.conda
   sha256: 67cc7101b36421c5913a1687ef1b99f85b5d6868da3abbf6ec1a4181e79782fc
   md5: 4492fd26db29495f0ba23f146cd5638d
@@ -150,26 +128,6 @@ packages:
   license: ISC
   size: 147413
   timestamp: 1772006283803
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/cmake-4.3.1-hc85cc9f_0.conda
-  sha256: 8ff9f2c159c55ea2b920c4ea41f39cd3b9ecf86b218a377f2941cb1c8b534741
-  md5: 0f753e779c0fee33c84ed1a110c0cb4a
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - bzip2 >=1.0.8,<2.0a0
-  - libcurl >=8.19.0,<9.0a0
-  - libexpat >=2.7.4,<3.0a0
-  - libgcc >=14
-  - liblzma >=5.8.2,<6.0a0
-  - libstdcxx >=14
-  - libuv >=1.51.0,<2.0a0
-  - libzlib >=1.3.2,<2.0a0
-  - ncurses >=6.5,<7.0a0
-  - rhash >=1.4.6,<2.0a0
-  - zstd >=1.5.7,<1.6.0a0
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 23093161
-  timestamp: 1774645184037
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/cuda-cudart-12.8.90-h5888daf_1.conda
   sha256: 294b789d6bce9944fc5987c86dc1cdcdbc4eb965f559b81749dbf03b43e6c135
   md5: 46e0a8ffe985a3aa2652446fc40c7fe9
@@ -334,30 +292,6 @@ packages:
   license_family: GPL
   size: 1278712
   timestamp: 1765578681495
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/keyutils-1.6.3-hb9d3cd8_0.conda
-  sha256: 0960d06048a7185d3542d850986d807c6e37ca2e644342dd0c72feefcf26c2a4
-  md5: b38117a3c920364aff79f870c984b4a3
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  license: LGPL-2.1-or-later
-  size: 134088
-  timestamp: 1754905959823
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/krb5-1.22.2-ha1258a1_0.conda
-  sha256: 3e307628ca3527448dd1cb14ad7bb9d04d1d28c7d4c5f97ba196ae984571dd25
-  md5: fb53fb07ce46a575c5d004bbc96032c2
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - keyutils >=1.6.3,<2.0a0
-  - libedit >=3.1.20250104,<3.2.0a0
-  - libedit >=3.1.20250104,<4.0a0
-  - libgcc >=14
-  - libstdcxx >=14
-  - openssl >=3.5.5,<4.0a0
-  license: MIT
-  license_family: MIT
-  size: 1386730
-  timestamp: 1769769569681
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/ld_impl_linux-64-2.45.1-default_hbd61a6d_102.conda
   sha256: 3d584956604909ff5df353767f3a2a2f60e07d070b328d109f30ac40cd62df6c
   md5: 18335a698559cdbcd86150a48bf54ba6
@@ -456,22 +390,6 @@ packages:
   license: LicenseRef-NVIDIA-End-User-License-Agreement
   size: 45729190
   timestamp: 1742487698497
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcurl-8.19.0-hcf29cc6_0.conda
-  sha256: a0390fd0536ebcd2244e243f5f00ab8e76ab62ed9aa214cd54470fe7496620f4
-  md5: d50608c443a30c341c24277d28290f76
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - krb5 >=1.22.2,<1.23.0a0
-  - libgcc >=14
-  - libnghttp2 >=1.67.0,<2.0a0
-  - libssh2 >=1.11.1,<2.0a0
-  - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.5.5,<4.0a0
-  - zstd >=1.5.7,<1.6.0a0
-  license: curl
-  license_family: MIT
-  size: 466704
-  timestamp: 1773218522665
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libcusolver-11.7.3.90-h9ab20c4_1.conda
   sha256: 868ba1b0b0ae15f7621ee960a459a74b9a17b69ba629c510a11bb37480e7b6df
   md5: 2d58a7eb9150525ea89195cf1bcfbc4c
@@ -498,27 +416,6 @@ packages:
   license: LicenseRef-NVIDIA-End-User-License-Agreement
   size: 170119902
   timestamp: 1743620054443
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libedit-3.1.20250104-pl5321h7949ede_0.conda
-  sha256: d789471216e7aba3c184cd054ed61ce3f6dac6f87a50ec69291b9297f8c18724
-  md5: c277e0a4d549b03ac1e9d6cbbe3d017b
-  depends:
-  - ncurses
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - ncurses >=6.5,<7.0a0
-  license: BSD-2-Clause
-  license_family: BSD
-  size: 134676
-  timestamp: 1738479519902
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libev-4.33-hd590300_2.conda
-  sha256: 1cd6048169fa0395af74ed5d8f1716e22c19a81a8a36f934c110ca3ad4dd27b4
-  md5: 172bf1cd1ff8629f2b1179945ed45055
-  depends:
-  - libgcc-ng >=12
-  license: BSD-2-Clause
-  license_family: BSD
-  size: 112766
-  timestamp: 1702146165126
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libexpat-2.7.5-hecca717_0.conda
   sha256: e8c2b57f6aacabdf2f1b0924bd4831ce5071ba080baa4a9e8c0d720588b6794c
   md5: 49f570f3bc4c874a06ea69b7225753af
@@ -592,22 +489,6 @@ packages:
   license: 0BSD
   size: 113207
   timestamp: 1768752626120
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnghttp2-1.68.1-h877daf1_0.conda
-  sha256: 663444d77a42f2265f54fb8b48c5450bfff4388d9c0f8253dd7855f0d993153f
-  md5: 2a45e7f8af083626f009645a6481f12d
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - c-ares >=1.34.6,<2.0a0
-  - libev >=4.33,<4.34.0a0
-  - libev >=4.33,<5.0a0
-  - libgcc >=14
-  - libstdcxx >=14
-  - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.5.5,<4.0a0
-  license: MIT
-  license_family: MIT
-  size: 663344
-  timestamp: 1773854035739
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libnl-3.11.0-hb9d3cd8_0.conda
   sha256: ba7c5d294e3d80f08ac5a39564217702d1a752e352e486210faff794ac5001b4
   md5: db63358239cbe1ff86242406d440e44a
@@ -694,18 +575,6 @@ packages:
   license: blessing
   size: 951405
   timestamp: 1772818874251
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libssh2-1.11.1-hcf80075_0.conda
-  sha256: fa39bfd69228a13e553bd24601332b7cfeb30ca11a3ca50bb028108fe90a7661
-  md5: eecce068c7e4eddeb169591baac20ac4
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libzlib >=1.3.1,<2.0a0
-  - openssl >=3.5.0,<4.0a0
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 304790
-  timestamp: 1745608545575
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libstdcxx-15.2.0-h934c35e_18.conda
   sha256: 78668020064fdaa27e9ab65cd2997e2c837b564ab26ce3bf0e58a2ce1a525c6e
   md5: 1b08cd684f34175e4514474793d44bcb
@@ -757,16 +626,6 @@ packages:
   license_family: BSD
   size: 40297
   timestamp: 1775052476770
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libuv-1.51.0-hb03c661_1.conda
-  sha256: c180f4124a889ac343fc59d15558e93667d894a966ec6fdb61da1604481be26b
-  md5: 0f03292cc56bf91a077a134ea8747118
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=14
-  license: MIT
-  license_family: MIT
-  size: 895108
-  timestamp: 1753948278280
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/libxcrypt-4.4.36-hd590300_1.conda
   sha256: 6ae68e0b86423ef188196fff6207ed0c8195dd84273cb5623b85aa08033a410c
   md5: 5aa797f8787fe7a17d1b0821485b5adc
@@ -786,16 +645,6 @@ packages:
   license_family: Other
   size: 63629
   timestamp: 1774072609062
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/make-4.4.1-hb9d3cd8_2.conda
-  sha256: d652c7bd4d3b6f82b0f6d063b0d8df6f54cc47531092d7ff008e780f3261bdda
-  md5: 33405d2a66b1411db9f7242c8b97c9e7
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  license: GPL-3.0-or-later
-  license_family: GPL
-  size: 513088
-  timestamp: 1727801714848
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/ncurses-6.5-h2d0b736_3.conda
   sha256: 3fde293232fa3fca98635e1167de6b7c7fda83caf24b9d6c91ec9eefb4f4d586
   md5: 47e340acb35de30501a76c7c799c41d7
@@ -910,16 +759,6 @@ packages:
   license_family: GPL
   size: 345073
   timestamp: 1765813471974
-- conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
-  sha256: d5c73079c1dd2c2a313c3bfd81c73dbd066b7eb08d213778c8bff520091ae894
-  md5: c1c9b02933fdb2cfb791d936c20e887e
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  license: MIT
-  license_family: MIT
-  size: 193775
-  timestamp: 1748644872902
 - conda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/noarch/setuptools-82.0.1-pyh332efcf_0.conda
   sha256: 82088a6e4daa33329a30bc26dc19a98c7c1d3f05c0f73ce9845d4eab4924e9e1
   md5: 8e194e7b992f99a5015edbd4ebd38efd
