@@ -39,6 +39,40 @@ OBSERVER_NAME_MAP = {
     MovingAveragePerChannelMinMaxObserver.__name__: MovingAveragePerChannelMinMaxObserver,
 }
 
+QUANTIZATION_COMPONENT_SPECS = {
+    "activation": {
+        "observer": MovingAverageMinMaxObserver.__name__,
+        "dtype": str(torch.quint8),
+        "qscheme": str(torch.per_tensor_affine),
+        "quant_min": 0,
+        "quant_max": 255,
+    },
+    "conv_weight": {
+        "observer": MovingAveragePerChannelMinMaxObserver.__name__,
+        "dtype": str(torch.qint8),
+        "qscheme": str(torch.per_channel_symmetric),
+        "quant_min": -128,
+        "quant_max": 127,
+        "ch_axis": 0,
+    },
+    "linear_weight": {
+        "observer": MovingAverageMinMaxObserver.__name__,
+        "dtype": str(torch.qint8),
+        "qscheme": str(torch.per_tensor_symmetric),
+        "quant_min": -128,
+        "quant_max": 127,
+    },
+}
+
+QCONFIG_OBJECT_TYPE_TARGETS = (
+    (nn.Conv2d, "conv"),
+    (nn.BatchNorm2d, "conv"),
+    (nn.ReLU, "conv"),
+    (F.relu, "conv"),
+    (nn.Linear, "linear"),
+    (F.linear, "linear"),
+)
+
 
 def normalize_example_input_shape(example_input_shape):
     if example_input_shape is None:
@@ -63,6 +97,19 @@ def build_example_inputs(device, example_input_shape=None):
     return torch.randn(*normalized_shape, dtype=torch.float32, device=device)
 
 
+def _build_quantization_component_meta(prefix, component_spec):
+    meta = {
+        f"{prefix}_observer": component_spec["observer"],
+        f"{prefix}_dtype": component_spec["dtype"],
+        f"{prefix}_qscheme": component_spec["qscheme"],
+        f"{prefix}_quant_min": component_spec["quant_min"],
+        f"{prefix}_quant_max": component_spec["quant_max"],
+    }
+    if "ch_axis" in component_spec:
+        meta[f"{prefix}_ch_axis"] = component_spec["ch_axis"]
+    return meta
+
+
 def _build_fake_quant(observer_name, dtype_name, qscheme_name, quant_min, quant_max, ch_axis=None):
     observer = OBSERVER_NAME_MAP[observer_name]
     dtype = DTYPE_NAME_MAP[dtype_name]
@@ -79,51 +126,34 @@ def _build_fake_quant(observer_name, dtype_name, qscheme_name, quant_min, quant_
     return FusedMovingAvgObsFakeQuantize.with_args(**fake_quant_args)
 
 
-def _build_activation_fake_quant(quantization_meta):
-    return _build_fake_quant(
-        observer_name=quantization_meta["activation_observer"],
-        dtype_name=quantization_meta["activation_dtype"],
-        qscheme_name=quantization_meta["activation_qscheme"],
-        quant_min=quantization_meta["activation_quant_min"],
-        quant_max=quantization_meta["activation_quant_max"],
-    )
-
-
-def _build_weight_fake_quant(quantization_meta, prefix):
-    ch_axis = quantization_meta.get(f"{prefix}_ch_axis")
+def _build_component_fake_quant(quantization_meta, prefix, include_ch_axis=False):
     return _build_fake_quant(
         observer_name=quantization_meta[f"{prefix}_observer"],
         dtype_name=quantization_meta[f"{prefix}_dtype"],
         qscheme_name=quantization_meta[f"{prefix}_qscheme"],
         quant_min=quantization_meta[f"{prefix}_quant_min"],
         quant_max=quantization_meta[f"{prefix}_quant_max"],
-        ch_axis=ch_axis,
+        ch_axis=quantization_meta.get(f"{prefix}_ch_axis") if include_ch_axis else None,
+    )
+
+
+def _build_qconfig(quantization_meta, weight_prefix):
+    return QConfig(
+        activation=_build_component_fake_quant(quantization_meta, "activation"),
+        weight=_build_component_fake_quant(quantization_meta, weight_prefix, include_ch_axis=True),
     )
 
 
 def create_qat_qconfig_mapping_from_meta(quantization_meta):
-    activation_fake_quant = _build_activation_fake_quant(quantization_meta)
-    conv_weight_fake_quant = _build_weight_fake_quant(quantization_meta, "conv_weight")
-    linear_weight_fake_quant = _build_weight_fake_quant(quantization_meta, "linear_weight")
+    qconfigs = {
+        "conv": _build_qconfig(quantization_meta, "conv_weight"),
+        "linear": _build_qconfig(quantization_meta, "linear_weight"),
+    }
 
-    conv_qconfig = QConfig(
-        activation=activation_fake_quant,
-        weight=conv_weight_fake_quant,
-    )
-    linear_qconfig = QConfig(
-        activation=activation_fake_quant,
-        weight=linear_weight_fake_quant,
-    )
-    return (
-        QConfigMapping()
-        .set_global(conv_qconfig)
-        .set_object_type(nn.Conv2d, conv_qconfig)
-        .set_object_type(nn.BatchNorm2d, conv_qconfig)
-        .set_object_type(nn.ReLU, conv_qconfig)
-        .set_object_type(F.relu, conv_qconfig)
-        .set_object_type(nn.Linear, linear_qconfig)
-        .set_object_type(F.linear, linear_qconfig)
-    )
+    qconfig_mapping = QConfigMapping().set_global(qconfigs["conv"])
+    for object_type, qconfig_name in QCONFIG_OBJECT_TYPE_TARGETS:
+        qconfig_mapping = qconfig_mapping.set_object_type(object_type, qconfigs[qconfig_name])
+    return qconfig_mapping
 
 
 def create_default_qat_qconfig_mapping():
@@ -132,34 +162,37 @@ def create_default_qat_qconfig_mapping():
 
 def build_quantization_meta(example_input_shape=None):
     normalized_shape = normalize_example_input_shape(example_input_shape)
-    return {
+    quantization_meta = {
         "quantization_scheme_version": QUANTIZATION_SCHEME_VERSION,
         "qat_backend": SUPPORTED_QAT_BACKEND,
         "prepare_type": SUPPORTED_PREPARE_TYPE,
         "example_input_shape": normalized_shape,
-        "activation_observer": MovingAverageMinMaxObserver.__name__,
-        "activation_dtype": str(torch.quint8),
-        "activation_qscheme": str(torch.per_tensor_affine),
-        "activation_quant_min": 0,
-        "activation_quant_max": 255,
-        "conv_weight_observer": MovingAveragePerChannelMinMaxObserver.__name__,
-        "conv_weight_dtype": str(torch.qint8),
-        "conv_weight_qscheme": str(torch.per_channel_symmetric),
-        "conv_weight_quant_min": -128,
-        "conv_weight_quant_max": 127,
-        "conv_weight_ch_axis": 0,
-        "linear_weight_observer": MovingAverageMinMaxObserver.__name__,
-        "linear_weight_dtype": str(torch.qint8),
-        "linear_weight_qscheme": str(torch.per_tensor_symmetric),
-        "linear_weight_quant_min": -128,
-        "linear_weight_quant_max": 127,
-        "weights": "conv_per_channel_linear_per_tensor",
-        "activations": "per_tensor",
-        "convert_applied": False,
     }
+    quantization_meta.update(
+        _build_quantization_component_meta("activation", QUANTIZATION_COMPONENT_SPECS["activation"])
+    )
+    quantization_meta.update(
+        _build_quantization_component_meta("conv_weight", QUANTIZATION_COMPONENT_SPECS["conv_weight"])
+    )
+    quantization_meta.update(
+        _build_quantization_component_meta("linear_weight", QUANTIZATION_COMPONENT_SPECS["linear_weight"])
+    )
+    quantization_meta.update(
+        {
+            "weights": "conv_per_channel_linear_per_tensor",
+            "activations": "per_tensor",
+            "convert_applied": False,
+        }
+    )
+    return quantization_meta
 
 
-def _validate_weight_quantization_meta(quantization_meta, prefix, expected):
+def _validate_quantization_component_meta(
+    quantization_meta,
+    prefix,
+    expected,
+    validate_ch_axis=False,
+):
     observer_key = f"{prefix}_observer"
     dtype_key = f"{prefix}_dtype"
     qscheme_key = f"{prefix}_qscheme"
@@ -184,13 +217,15 @@ def _validate_weight_quantization_meta(quantization_meta, prefix, expected):
     if int(quantization_meta.get(quant_max_key, -1)) != expected["quant_max"]:
         raise ValueError(f"{quant_max_key} 与当前实现不一致")
 
+    if not validate_ch_axis:
+        return
+
     expected_ch_axis = expected.get("ch_axis")
     if expected_ch_axis is None:
         if ch_axis_key in quantization_meta:
             raise ValueError(f"{ch_axis_key} 在当前实现中不应存在")
-    else:
-        if int(quantization_meta.get(ch_axis_key, -1)) != expected_ch_axis:
-            raise ValueError(f"{ch_axis_key} 与当前实现不一致")
+    elif int(quantization_meta.get(ch_axis_key, -1)) != expected_ch_axis:
+        raise ValueError(f"{ch_axis_key} 与当前实现不一致")
 
 
 def validate_quantization_meta(quantization_meta):
@@ -205,45 +240,23 @@ def validate_quantization_meta(quantization_meta):
         raise ValueError("当前仅支持 torch_fx QAT backend")
     if quantization_meta.get("prepare_type") != SUPPORTED_PREPARE_TYPE:
         raise ValueError("当前仅支持 prepare_qat_fx 恢复链")
-    if quantization_meta.get("activation_observer") not in OBSERVER_NAME_MAP:
-        raise ValueError("不支持的 activation_observer")
-    if quantization_meta.get("activation_dtype") not in DTYPE_NAME_MAP:
-        raise ValueError("不支持的 activation_dtype")
-    if quantization_meta.get("activation_qscheme") not in QSCHEME_NAME_MAP:
-        raise ValueError("不支持的 activation_qscheme")
-    if quantization_meta.get("activation_observer") != MovingAverageMinMaxObserver.__name__:
-        raise ValueError("activation_observer 与当前实现不一致")
-    if quantization_meta.get("activation_dtype") != str(torch.quint8):
-        raise ValueError("activation_dtype 与当前实现不一致")
-    if quantization_meta.get("activation_qscheme") != str(torch.per_tensor_affine):
-        raise ValueError("activation_qscheme 与当前实现不一致")
-    if int(quantization_meta.get("activation_quant_min", -1)) != 0:
-        raise ValueError("activation_quant_min 与当前实现不一致")
-    if int(quantization_meta.get("activation_quant_max", -1)) != 255:
-        raise ValueError("activation_quant_max 与当前实现不一致")
 
-    _validate_weight_quantization_meta(
+    _validate_quantization_component_meta(
+        quantization_meta,
+        "activation",
+        QUANTIZATION_COMPONENT_SPECS["activation"],
+    )
+    _validate_quantization_component_meta(
         quantization_meta,
         "conv_weight",
-        {
-            "observer": MovingAveragePerChannelMinMaxObserver.__name__,
-            "dtype": str(torch.qint8),
-            "qscheme": str(torch.per_channel_symmetric),
-            "quant_min": -128,
-            "quant_max": 127,
-            "ch_axis": 0,
-        },
+        QUANTIZATION_COMPONENT_SPECS["conv_weight"],
+        validate_ch_axis=True,
     )
-    _validate_weight_quantization_meta(
+    _validate_quantization_component_meta(
         quantization_meta,
         "linear_weight",
-        {
-            "observer": MovingAverageMinMaxObserver.__name__,
-            "dtype": str(torch.qint8),
-            "qscheme": str(torch.per_tensor_symmetric),
-            "quant_min": -128,
-            "quant_max": 127,
-        },
+        QUANTIZATION_COMPONENT_SPECS["linear_weight"],
+        validate_ch_axis=True,
     )
 
     if bool(quantization_meta.get("convert_applied", False)):
