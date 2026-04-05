@@ -1,7 +1,8 @@
 #!/bin/sh
-export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-
 set -eu
+
+REPO_ROOT=${REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+. "$REPO_ROOT/scripts/load_onnx_env.sh"
 
 tmp_files=""
 
@@ -36,12 +37,13 @@ run_branch() {
         printf '\n[%s] %s\n' "$branch" "$checkpoint_path"
         uv run src/onnx_main.py \
             --branch "$branch" \
-            --checkpoint "$checkpoint_path" \
-            # --full_load True
+            --checkpoint "$checkpoint_path"
     done < "$tmp_list"
 
     print_section "完成遍历 ${branch}: ${root_dir}"
 }
+
+cd "$REPO_ROOT"
 
 run_branch "pruning_fp16" "output/pruning" "best_pruned_model.pth"
 run_branch "qat_convert" "output/qat" "best_qat_prepare_model.pth"

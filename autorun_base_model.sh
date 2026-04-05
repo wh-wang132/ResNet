@@ -1,3 +1,11 @@
+#!/bin/sh
+set -eu
+
+REPO_ROOT=${REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+. "$REPO_ROOT/scripts/load_base_model_env.sh"
+
+cd "$REPO_ROOT"
+
 uv run src/base_model_main.py --epochs 250 --batch_size 32 --model resnet6_2d --full_load True #
 uv run src/base_model_main.py --epochs 250 --batch_size 64 --model resnet6_2d --full_load True
 uv run src/base_model_main.py --epochs 250 --batch_size 128 --model resnet6_2d --full_load True
@@ -17,4 +25,3 @@ uv run src/base_model_main.py --epochs 130 --batch_size 128 --model resnet18_2d 
 uv run src/base_model_main.py --epochs 100 --batch_size 32 --model resnet34_2d --full_load True
 uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet34_2d --full_load True
 uv run src/base_model_main.py --epochs 100 --batch_size 128 --model resnet34_2d --full_load True #
-
