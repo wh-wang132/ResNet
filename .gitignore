@@ -4,6 +4,8 @@ output/
 __pycache__/
 /*.tar.*
 /*.tar
+amct_log/
+amct_onnx/amct_onnx_op/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
