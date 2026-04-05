@@ -37,7 +37,8 @@ run_branch() {
         printf '\n[%s] %s\n' "$branch" "$checkpoint_path"
         uv run src/onnx_main.py \
             --branch "$branch" \
-            --checkpoint "$checkpoint_path"
+            --checkpoint "$checkpoint_path" \
+            --full_load True
     done < "$tmp_list"
 
     print_section "完成遍历 ${branch}: ${root_dir}"
