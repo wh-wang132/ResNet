@@ -21,7 +21,7 @@ def create_onnx_session(onnx_path):
         try:
             session = ort.InferenceSession(
                 onnx_path,
-                providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+                providers=["CUDAExecutionProvider"],
             )
             return session, session.get_providers()
         except Exception:
