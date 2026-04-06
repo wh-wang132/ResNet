@@ -4,7 +4,6 @@ output/
 __pycache__/
 amct_log/
 amct_onnx/amct_onnx_op/
-kernel_meta/
 
 /*.tar.*
 /*.tar

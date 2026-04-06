@@ -4,7 +4,6 @@
 
 import json
 
-import numpy as np
 import torch
 
 from base_model.dataset import data_set_split
@@ -18,10 +17,9 @@ from onnx_export.evaluator import (
 from onnx_export.exporter import (
     build_branch_artifacts,
     build_metric_delta,
-    inspect_branch_checkpoint,
     resolve_branch_opset_version,
 )
-from onnx_export.output import create_output_directory, save_summary
+from onnx_export.output import save_summary
 from onnx_export.utils import (
     create_optimized_dataloader,
     release_gpu_memory,
@@ -39,38 +37,22 @@ def main():
     release_gpu_memory()
     device = setup_device()
 
-    if args.branch == "pruning_fp16":
-        source_device = device
-        dataset_dtype = "fp32"
-        onnx_input_dtype = np.float16
-    else:
-        source_device = torch.device("cpu")
-        dataset_dtype = "fp32"
-        onnx_input_dtype = np.float32
     actual_opset_version = resolve_branch_opset_version(args.branch, args.opset_version)
-
-    checkpoint_meta = inspect_branch_checkpoint(
+    artifacts = build_branch_artifacts(
         branch=args.branch,
         checkpoint_path=args.checkpoint,
-        device=source_device,
-    )
-    folder_path = create_output_directory(args.branch, checkpoint_meta)
-    model, checkpoint_meta, checkpoint, export_shape, onnx_path, export_meta = build_branch_artifacts(
-        branch=args.branch,
-        checkpoint_path=args.checkpoint,
-        device=source_device,
-        folder_path=folder_path,
+        device=device,
         opset_version=actual_opset_version,
     )
 
-    train_dataset, validate_dataset, test_dataset, labels__ = data_set_split(
+    _, _, test_dataset, labels__ = data_set_split(
         args.data_dir,
         train_ratio=0.6,
         val_ratio=0.2,
         test_ratio=0.2,
         full_load=args.full_load,
         num_workers=args.num_workers,
-        data_dtype=dataset_dtype,
+        data_dtype=artifacts.runtime.dataset_dtype,
     )
 
     source_test_metrics = None
@@ -89,42 +71,42 @@ def main():
             loader_name="ONNX 测试集 DataLoader",
         )
         source_test_metrics = evaluate_torch_model(
-            model=model,
-            device=source_device,
+            model=artifacts.model,
+            device=artifacts.runtime.source_device,
             dataloader=test_loader,
             num_samples=len(test_dataset),
             input_dtype=torch.float32,
             progress_desc="ONNX source test",
         )
-        ort_session, ort_providers = create_onnx_session(onnx_path)
+        ort_session, ort_providers = create_onnx_session(artifacts.onnx_path)
         onnx_test_metrics = evaluate_onnx_model_with_confusion_matrix(
             session=ort_session,
             dataloader=test_loader,
             num_samples=len(test_dataset),
-            input_dtype=onnx_input_dtype,
+            input_dtype=artifacts.runtime.onnx_input_dtype,
             labels=labels__,
-            folder_path=folder_path,
+            folder_path=artifacts.folder_path,
             progress_desc="ONNX exported test",
         )
 
     summary = {
-        "branch": args.branch,
-        "model_name": checkpoint_meta["model_name"],
+        "branch": artifacts.branch,
+        "model_name": artifacts.checkpoint_meta["model_name"],
         "labels": labels__,
         "source_checkpoint_path": to_repo_relative_path(args.checkpoint),
         "opset_version": actual_opset_version,
-        "example_input_shape": export_shape,
-        "onnx_path": to_repo_relative_path(onnx_path),
+        "example_input_shape": artifacts.export_shape,
+        "onnx_path": to_repo_relative_path(artifacts.onnx_path),
         "source_test_metrics": source_test_metrics,
         "onnx_test_metrics": onnx_test_metrics,
         "metric_delta": build_metric_delta(source_test_metrics, onnx_test_metrics),
         "export_meta": {
-            **export_meta,
+            **artifacts.export_meta,
             "ort_providers": ort_providers,
         },
     }
 
-    summary_path = save_summary(folder_path, summary)
+    summary_path = save_summary(artifacts.folder_path, summary)
     print("\nONNX 导出流程完成")
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     print(f"\n摘要已保存至: {summary_path}")
