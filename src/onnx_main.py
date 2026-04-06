@@ -58,7 +58,7 @@ def main():
 
     source_test_metrics = None
     onnx_test_metrics = None
-    ort_providers = None
+    ort_provider_meta = None
     if args.evaluate_test:
         test_loader, _ = create_optimized_dataloader(
             test_dataset,
@@ -79,7 +79,7 @@ def main():
             input_dtype=torch.float32,
             progress_desc="ONNX source test",
         )
-        ort_session, ort_providers = create_onnx_session(artifacts.onnx_path)
+        ort_session, ort_provider_meta = create_onnx_session(artifacts.onnx_path)
         onnx_test_metrics = evaluate_onnx_model_with_confusion_matrix(
             session=ort_session,
             dataloader=test_loader,
@@ -105,7 +105,7 @@ def main():
         "metric_delta": build_metric_delta(source_test_metrics, onnx_test_metrics),
         "export_meta": {
             **artifacts.export_meta,
-            "ort_providers": ort_providers,
+            **({} if ort_provider_meta is None else ort_provider_meta),
         },
     }
 

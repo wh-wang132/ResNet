@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 import numpy as np
@@ -15,20 +16,67 @@ from tqdm import tqdm
 from base_model.confusionMatrix import ConfusionMatrix
 
 
+TENSORRT_PROVIDER = "TensorrtExecutionProvider"
+
+
+class OnnxSessionProviderError(RuntimeError):
+    """ONNX Runtime provider 选择错误。"""
+
+
+def _build_tensorrt_provider_options():
+    provider_options = {}
+
+    cache_enable = os.environ.get("ORT_TENSORRT_ENGINE_CACHE_ENABLE")
+    if cache_enable is not None:
+        normalized_enable = cache_enable.strip().lower()
+        provider_options["trt_engine_cache_enable"] = (
+            "True" if normalized_enable in ("1", "true", "yes", "on") else "False"
+        )
+
+    cache_path = os.environ.get("ORT_TENSORRT_ENGINE_CACHE_PATH") or os.environ.get(
+        "ORT_TENSORRT_CACHE_PATH"
+    )
+    if cache_path:
+        provider_options["trt_engine_cache_path"] = cache_path
+
+    return provider_options
+
+
 def create_onnx_session(onnx_path):
     available_providers = ort.get_available_providers()
-    if "CUDAExecutionProvider" in available_providers:
-        try:
-            session = ort.InferenceSession(
-                onnx_path,
-                providers=["CUDAExecutionProvider"],
-            )
-            return session, session.get_providers()
-        except Exception:
-            pass
+    if TENSORRT_PROVIDER not in available_providers:
+        raise OnnxSessionProviderError(
+            f"当前 ONNX 评估要求 {TENSORRT_PROVIDER} 可用，实际 providers={available_providers}"
+        )
 
-    session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
-    return session, session.get_providers()
+    provider_options = _build_tensorrt_provider_options()
+    providers = (
+        [(TENSORRT_PROVIDER, provider_options)]
+        if provider_options
+        else [TENSORRT_PROVIDER]
+    )
+
+    try:
+        session = ort.InferenceSession(onnx_path, providers=providers)
+    except Exception as exc:
+        raise OnnxSessionProviderError(
+            f"无法使用 {TENSORRT_PROVIDER} 创建 ONNX Runtime session: {exc}"
+        ) from exc
+
+    selected_providers = session.get_providers()
+    selected_provider = selected_providers[0] if selected_providers else None
+    if selected_provider != TENSORRT_PROVIDER:
+        raise OnnxSessionProviderError(
+            f"请求 {TENSORRT_PROVIDER}，实际选中 {selected_provider}；providers={selected_providers}"
+        )
+
+    provider_meta = {
+        "requested_provider": TENSORRT_PROVIDER,
+        "selected_provider": selected_provider,
+        "ort_providers": selected_providers,
+        "gpu_acceleration_enabled": True,
+    }
+    return session, provider_meta
 
 
 @torch.no_grad()
