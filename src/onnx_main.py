@@ -6,6 +6,7 @@ import json
 
 import torch
 
+from amct.utils import SUMMARY_VERSION, extract_onnx_contract
 from base_model.dataset import data_set_split
 from base_model.plotting import configure_matplotlib
 from onnx_export.args import parse_args
@@ -90,6 +91,7 @@ def main():
         )
 
     summary = {
+        "summary_version": SUMMARY_VERSION,
         "branch": artifacts.branch,
         "model_name": artifacts.checkpoint_meta["model_name"],
         "labels": labels__,
@@ -97,6 +99,7 @@ def main():
         "opset_version": actual_opset_version,
         "example_input_shape": artifacts.export_shape,
         "onnx_path": to_repo_relative_path(artifacts.onnx_path),
+        "interface": extract_onnx_contract(artifacts.onnx_path)["interface"],
         "source_test_metrics": source_test_metrics,
         "onnx_test_metrics": onnx_test_metrics,
         "metric_delta": build_metric_delta(source_test_metrics, onnx_test_metrics),
