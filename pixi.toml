@@ -16,8 +16,6 @@ extra-index-urls = ["https://mirrors.ustc.edu.cn/pypi/web/simple"]
 
 [dependencies]
 gxx = ">=15.2.0,<15.3"
-cuda-runtime = "12.8.*"
-cudnn = "9.*"
 python = "3.12.*"
 pip = ">=26.0.1,<27"
 decorator = ">=5.2.1,<6"

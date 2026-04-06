@@ -11,6 +11,7 @@ dependencies = [
     "prettytable>=3.17.0",
     "psutil>=7.2.2",
     "tensorboard>=2.20.0",
+    "tensorrt==10.16.0.72",
     "torch==2.11.0",
     "torch-pruning==1.6.1",
     "torchsummary>=1.5.1",
@@ -19,7 +20,7 @@ dependencies = [
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cu130"},
+  { index = "pytorch-cu128"},
 ]
 
 [[tool.uv.index]]
@@ -27,6 +28,6 @@ url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 default = true
 
 [[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
