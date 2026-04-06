@@ -63,24 +63,8 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
             f"pruning checkpoint 缺少关键 model_structure 字段: {', '.join(missing_keys)}"
         )
 
-    model_name = model_structure["model_name"]
-    if model_name not in FROM_CFG_MODEL_MAP:
-        raise CheckpointRestoreError(f"不支持的模型名: {model_name}")
-
-    model_kwargs = dict(model_structure.get("model_kwargs", {}))
-    model_kwargs.setdefault("num_classes", checkpoint.get("train_context", {}).get("class_num", 24))
-    model_kwargs.setdefault("dropout_p", model_kwargs.get("dropout_p", 0.0))
-    include_top = model_structure.get("include_top", True)
-    in_channels = model_structure.get("in_channels", 1)
-    channel_cfg = copy.deepcopy(model_structure["channel_cfg"])
-
-    model = FROM_CFG_MODEL_MAP[model_name](
-        channel_cfg=channel_cfg,
-        num_classes=model_kwargs.get("num_classes", 24),
-        dropout_p=model_kwargs.get("dropout_p", 0.0),
-        include_top=include_top,
-        in_channels=in_channels,
-    )
+    restore_spec = _build_restore_spec(model_structure, checkpoint)
+    model = _build_float_model_from_restore_spec(restore_spec)
     success = load_state_dict_safely(model, checkpoint["model_state_dict"], strict=True)
     if not success:
         raise CheckpointRestoreError("无法以 strict=True 加载 pruning checkpoint 权重")
@@ -90,8 +74,8 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
     checkpoint_meta = {
         "source_pruning_checkpoint_path": to_repo_relative_path(checkpoint_path),
         "checkpoint_path": checkpoint_path,
-        "model_name": model_name,
-        "model_kwargs": model_kwargs,
+        "model_name": restore_spec["model_name"],
+        "model_kwargs": restore_spec["model_kwargs"],
         "model_structure": copy.deepcopy(model_structure),
         "input_tensor_meta": model_structure.get("input_tensor_meta"),
         "best_acc": checkpoint.get("best_acc"),
@@ -104,7 +88,7 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
     return model, checkpoint_meta, checkpoint
 
 
-def _restore_float_model_from_structure(model_structure, checkpoint, device):
+def _build_restore_spec(model_structure, checkpoint):
     missing_keys = sorted(REQUIRED_MODEL_STRUCTURE_KEYS - set(model_structure.keys()))
     if missing_keys:
         raise CheckpointRestoreError(
@@ -118,19 +102,24 @@ def _restore_float_model_from_structure(model_structure, checkpoint, device):
     model_kwargs = dict(model_structure.get("model_kwargs", {}))
     model_kwargs.setdefault("num_classes", checkpoint.get("train_context", {}).get("class_num", 24))
     model_kwargs.setdefault("dropout_p", model_kwargs.get("dropout_p", 0.0))
-    include_top = model_structure.get("include_top", True)
-    in_channels = model_structure.get("in_channels", 1)
-    channel_cfg = copy.deepcopy(model_structure["channel_cfg"])
+    return {
+        "model_name": model_name,
+        "model_kwargs": model_kwargs,
+        "include_top": model_structure.get("include_top", True),
+        "in_channels": model_structure.get("in_channels", 1),
+        "channel_cfg": copy.deepcopy(model_structure["channel_cfg"]),
+    }
 
-    model = FROM_CFG_MODEL_MAP[model_name](
-        channel_cfg=channel_cfg,
-        num_classes=model_kwargs.get("num_classes", 24),
-        dropout_p=model_kwargs.get("dropout_p", 0.0),
-        include_top=include_top,
-        in_channels=in_channels,
+
+def _build_float_model_from_restore_spec(restore_spec):
+    model = FROM_CFG_MODEL_MAP[restore_spec["model_name"]](
+        channel_cfg=restore_spec["channel_cfg"],
+        num_classes=restore_spec["model_kwargs"].get("num_classes", 24),
+        dropout_p=restore_spec["model_kwargs"].get("dropout_p", 0.0),
+        include_top=restore_spec["include_top"],
+        in_channels=restore_spec["in_channels"],
     )
-    model.to(device)
-    return model, model_name, model_kwargs
+    return model
 
 
 def load_qat_checkpoint(qat_checkpoint_path, device):
@@ -146,17 +135,21 @@ def load_qat_checkpoint(qat_checkpoint_path, device):
         )
 
     model_structure = checkpoint["model_structure"]
-    float_model, model_name, model_kwargs = _restore_float_model_from_structure(
-        model_structure=model_structure,
-        checkpoint=checkpoint,
-        device=device,
-    )
+    restore_spec = _build_restore_spec(model_structure, checkpoint)
+    float_model = _build_float_model_from_restore_spec(restore_spec)
+    float_model.to(device)
 
-    prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(
-        float_model,
-        device=device,
-        quantization_meta=checkpoint["quantization_meta"],
-    )
+    try:
+        prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(
+            float_model,
+            device=device,
+            quantization_meta=checkpoint["quantization_meta"],
+        )
+    except Exception as exc:
+        raise CheckpointRestoreError(
+            f"QAT checkpoint 的 quantization_meta 与当前实现不兼容: {exc}"
+        ) from exc
+
     success = load_state_dict_safely(prepared_model, checkpoint["model_state_dict"], strict=True)
     if not success:
         raise CheckpointRestoreError("无法以 strict=True 加载 QAT checkpoint 的 prepared 权重")
@@ -164,8 +157,8 @@ def load_qat_checkpoint(qat_checkpoint_path, device):
     checkpoint_meta = {
         "checkpoint_path": checkpoint_path,
         "source_qat_checkpoint_path": to_repo_relative_path(checkpoint_path),
-        "model_name": model_name,
-        "model_kwargs": model_kwargs,
+        "model_name": restore_spec["model_name"],
+        "model_kwargs": restore_spec["model_kwargs"],
         "model_structure": copy.deepcopy(model_structure),
         "input_tensor_meta": model_structure.get("input_tensor_meta"),
         "quantization_meta": copy.deepcopy(quantization_meta),

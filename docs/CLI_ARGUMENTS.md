@@ -153,7 +153,6 @@ uv run src/qat_main.py --help
 | `--pruning_checkpoint` | 必填                         | 输入 pruning checkpoint 路径 |
 | `--model_path`         | `best_qat_prepare_model.pth` | QAT prepare 模型文件名       |
 | `--data_dir`           | `Data`                       | 数据集路径                   |
-| `--data_dtype`         | `fp32`                       | 数据集输出 tensor 精度       |
 | `--full_load`          | `False`                      | 是否全量加载数据集           |
 | `--qat_epochs`         | `10`                         | QAT 微调轮数                 |
 | `--batch_size`         | `64`                         | 批次大小                     |
@@ -168,9 +167,11 @@ uv run src/qat_main.py --help
 
 - QAT 不再接收 `--model`，而是直接接收 `--pruning_checkpoint`
 - QAT 不负责结构化剪枝，只负责 `prepare_qat_fx` 后的保守单路径微调
+- QAT 当前固定纯 `fp32` 数据链，不再暴露 `data_dtype`
 - QAT 当前不暴露 qconfig / observer / quant scheme 为 CLI 参数
 - QAT 当前只导出 prepare checkpoint，不执行 `torch.convert`
 - 未来 ONNX/导出阶段应消费 QAT checkpoint 恢复接口，而不是重新读取 pruning checkpoint
+- 新版 QAT checkpoint 使用最小 `quantization_meta` 契约；旧版 QAT checkpoint 需要重新跑新的 QAT
 - `source_pruning_checkpoint_path` 仅用于溯源，不参与 QAT 对象恢复
 
 ### 示例

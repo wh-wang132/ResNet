@@ -47,7 +47,7 @@ def main():
         test_ratio=0.2,
         full_load=args.full_load,
         num_workers=args.num_workers,
-        data_dtype=args.data_dtype,
+        data_dtype="fp32",
     )
 
     pin_memory = args.pin_memory and torch.cuda.is_available()
@@ -109,12 +109,6 @@ def main():
     quantization_meta["example_input_shape"] = list(example_inputs[0].shape)
 
     if args.qat_epochs > 0:
-        initial_qat_val_metrics = evaluate_model(
-            prepared_model,
-            device,
-            validate_loader,
-            len(validate_dataset),
-        )
         prepared_model, finetune_summary = finetune_qat_model(
             model=prepared_model,
             device=device,
@@ -125,7 +119,6 @@ def main():
             folder_path=folder_path,
             checkpoint_meta=checkpoint_meta,
             quantization_meta=quantization_meta,
-            initial_val_metrics=initial_qat_val_metrics,
         )
     else:
         initial_qat_val_metrics = evaluate_model(

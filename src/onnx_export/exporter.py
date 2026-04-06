@@ -14,6 +14,7 @@ import torch
 from torch.ao.quantization.quantize_fx import convert_fx
 
 from qat.checkpoint import load_pruning_checkpoint, load_qat_checkpoint
+from qat.quantization import validate_quantization_meta
 
 
 ONNX_OPSET_VERSION = 16
@@ -27,12 +28,6 @@ QAT_EXPECTED_INPUT_PATTERNS = {
     "Add": ("DQ", "DQ"),
     "Gemm": ("DQ", "DQ", "raw"),
 }
-QAT_REQUIRED_WEIGHT_QSCHEMES = {
-    "conv_weight_qscheme": str(torch.per_channel_symmetric),
-    "linear_weight_qscheme": str(torch.per_tensor_symmetric),
-}
-
-
 # checkpoint / export helpers
 
 def inspect_branch_checkpoint(branch, checkpoint_path, device):
@@ -756,13 +751,7 @@ def _validate_qat_quantized_onnx(onnx_path, quantization_meta):
         raise ValueError("QAT CANN ONNX 输入不是 FLOAT32")
     if summary["output_elem_type"] != TensorProto.FLOAT:
         raise ValueError("QAT CANN ONNX 输出不是 FLOAT32")
-    if quantization_meta.get("activation_qscheme") != str(torch.per_tensor_affine):
-        raise ValueError("QAT checkpoint 未使用激活 per-tensor affine")
-    for key, expected_qscheme in QAT_REQUIRED_WEIGHT_QSCHEMES.items():
-        if quantization_meta.get(key) != expected_qscheme:
-            if key == "conv_weight_qscheme":
-                raise ValueError("QAT checkpoint 未使用 Conv 权重 per-channel symmetric")
-            raise ValueError("QAT checkpoint 未使用 Linear 权重 per-tensor symmetric")
+    validate_quantization_meta(quantization_meta)
 
     model = onnx.load(onnx_path)
     producer_map, consumer_map = _build_onnx_graph_maps(model)

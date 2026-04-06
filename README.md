@@ -412,6 +412,17 @@ output/qat/<model>/from_<pruning_exp>/
 - `best_qat_info.txt`：每次 best 刷新时追加一行
 - `qat_summary.json`：记录 `baseline / quantization_meta / finetune_summary / final / final_topology`
 
+当前 `quantization_meta` 已收敛为最小固定契约：
+
+- `quantization_scheme_version=3`
+- `scheme_name="torch_fx_qat_cann_v1"`
+- `example_input_shape`
+
+说明：
+
+- 新生成的 QAT checkpoint 会继续兼容 `onnx_main.py --branch qat_convert` 与 `amct_main.py`
+- 仓库内旧版 QAT checkpoint 不再保证恢复，需重新跑一遍新的 QAT
+
 ## 文档导航
 
 - [数据准备指南](docs/DATA_PREPARATION.md)

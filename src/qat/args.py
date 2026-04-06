@@ -26,13 +26,11 @@ def parse_args():
     )
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")
     parser.add_argument(
-        "--data_dtype",
-        type=str,
-        default="fp32",
-        choices=["fp32"],
-        help="数据加载后的 tensor 精度（QAT 固定为 fp32）",
+        "--full_load",
+        type=str2bool,
+        default=False,
+        help="是否全量加载数据集",
     )
-    parser.add_argument("--full_load", type=str2bool, default=False, help="是否全量加载数据集")
     parser.add_argument("--num_workers", type=int, default=None, help="DataLoader 工作线程数")
     parser.add_argument("--prefetch_factor", type=int, default=2, help="DataLoader 预取因子")
     parser.add_argument(

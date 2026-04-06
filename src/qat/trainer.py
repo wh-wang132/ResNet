@@ -62,7 +62,6 @@ def finetune_qat_model(
     folder_path,
     checkpoint_meta,
     quantization_meta,
-    initial_val_metrics,
 ):
     os.makedirs(folder_path, exist_ok=True)
     writer = SummaryWriter(os.path.join(folder_path, "runs"))
@@ -93,7 +92,6 @@ def finetune_qat_model(
         "warmup_ratio": args.warmup_ratio,
         "warmup_steps": args.warmup_steps,
         "min_lr": args.min_lr,
-        "data_dtype": args.data_dtype,
         "full_load": args.full_load,
     }
 
@@ -223,7 +221,6 @@ def save_prepared_qat_checkpoint_without_finetune(
             "source_pruning_checkpoint_path": checkpoint_meta["source_pruning_checkpoint_path"],
             "model_name": checkpoint_meta["model_name"],
             "batch_size": args.batch_size,
-            "data_dtype": args.data_dtype,
             "full_load": args.full_load,
         },
         checkpoint_meta=checkpoint_meta,
