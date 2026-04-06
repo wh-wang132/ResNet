@@ -1,6 +1,13 @@
 #!/bin/sh
 
-REPO_ROOT=${REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
+if [ -z "${REPO_ROOT:-}" ]; then
+    printf '%s\n' "REPO_ROOT 未设置：请先让 direnv 自动激活 .envrc" >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+. "$REPO_ROOT/scripts/_require_public_env.sh"
+require_public_env
+
 PIXI_GXX_PREFIX=""
 
 . "$REPO_ROOT/scripts/load_cann_env.sh"
@@ -12,7 +19,8 @@ if [ -d "$PIXI_BIN" ]; then
     esac
 fi
 
-export PYTHONPATH="$CANN_ROOT/python/site-packages:$CANN_ROOT/opp/built-in/op_impl/ai_core/tbe"
+remove_env PYTHONPATH "^${CANN_ROOT}/python/site-packages$|^${CANN_ROOT}/opp/built-in/op_impl/ai_core/tbe$"
+prepend_env PYTHONPATH "$CANN_ROOT/python/site-packages:$CANN_ROOT/opp/built-in/op_impl/ai_core/tbe"
 
 for candidate in "$PIXI_ENV_PREFIX"/lib/gcc/x86_64-conda-linux-gnu/*; do
     if [ -d "$candidate" ]; then

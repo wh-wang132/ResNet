@@ -1,3 +1,12 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SCRIPT_DIR/scripts/_require_public_env.sh"
+require_public_env
+
+cd "$REPO_ROOT"
+
 uv run src/qat_main.py --full_load True --pruning_checkpoint output/pruning/resnet6_2d/ratio0.30_steps2_global_ft10_bs64/best_pruned_model.pth
 uv run src/qat_main.py --full_load True --pruning_checkpoint output/pruning/resnet6_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth
 uv run src/qat_main.py --full_load True --pruning_checkpoint output/pruning/resnet6_2d/ratio0.50_steps5_global_ft10_bs64/best_pruned_model.pth

@@ -51,7 +51,7 @@
 - NVIDIA GPU（推荐 8GB+ 显存）
 - `pixi`（项目默认必需：负责 GCC / Make / CMake 等系统工具链环境）
 - `uv`（负责 Python 依赖与 `uv run ...` 入口）
-- `direnv`（推荐：自动激活 `pixi shell-hook` 并设置 `PYTHONPATH`）
+- `direnv`（推荐：自动激活项目公共环境层）
 
 ### 安装步骤
 
@@ -72,16 +72,34 @@
    ```bash
    direnv allow
    ```
-   当前项目根目录的 [`.envrc`](/root/ResNet/.envrc) 会：
-   - 注入 `pixi shell-hook`
-   - 将 `PYTHONPATH` 固定为项目根目录下的 `src`
+   当前项目根目录的 [`.envrc`](.envrc) 会：
+   - 导出 `REPO_ROOT`
+   - 导出 `PYTHONPATH=$REPO_ROOT/src`
+   - 不再负责注入 `pixi shell-hook`
 5. 准备数据集
    - 将 `.npy` 数据集放入 `Data/`
    - 目录结构说明见 [数据准备指南](docs/DATA_PREPARATION.md)
 
 ## 基本使用
 
-默认前提：当前 shell 已处于项目标准 `pixi + uv` 环境中。推荐直接进入项目根目录并通过 `.envrc` 自动激活；若未使用 `direnv`，则应先手动进入 `pixi` 环境后再执行 `uv run ...`。
+默认前提：当前 shell 已进入项目根目录，并由 `direnv` 自动加载 [`.envrc`](.envrc) 公共环境层。各阶段如需额外环境变量，再按需 source 对应 `scripts/load_*_env.sh`。
+
+### 阶段环境映射
+
+| 阶段 | 公共层 | 额外脚本 |
+| --- | --- | --- |
+| `base_model` | `.envrc` | `source scripts/load_base_model_env.sh` |
+| `pruning` | `.envrc` | 无 |
+| `qat` | `.envrc` | 无 |
+| `onnx` | `.envrc` | `source scripts/load_onnx_env.sh` |
+| `amct` | `.envrc` | `source scripts/load_amct_env.sh` |
+| `atc` | `.envrc` | `source scripts/load_atc_env.sh` |
+
+说明：
+
+- `.envrc` 是唯一公共入口，只负责仓库级公共变量。
+- `scripts/load_*_env.sh` 只补各阶段增量环境，不重复激活公共变量。
+- 当前不再保证“脱离 `.envrc` 直接 source `scripts/load_*_env.sh`”这一用法。
 
 ### 基座模型训练
 
@@ -151,7 +169,7 @@ uv run src/onnx_main.py \
 AMCT 阶段只接受本仓库 `qat_convert` 导出的 `model_quant.onnx`。建议先加载 AMCT 环境脚本，再执行主入口：
 
 ```bash
-REPO_ROOT="$PWD" . scripts/load_amct_env.sh
+. scripts/load_amct_env.sh
 
 uv run src/amct_main.py \
   --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx
@@ -169,23 +187,23 @@ output/base_model/<model>/best_model.pth
 
 ## 自动化脚本
 
-自动化脚本默认运行在项目标准 `pixi + uv` 环境中；其中 AMCT 需先加载 `scripts/load_amct_env.sh`。
+自动化脚本默认要求当前 shell 已由 `direnv` 激活 [`.envrc`](.envrc) 公共环境层；未加载时会直接报错。需要阶段增量环境的脚本会在内部 source 对应 `load_*_env.sh`。
 
 项目根目录当前提供五份顺序执行脚本：
 
-- [autorun_base_model.sh](/root/ResNet/autorun_base_model.sh)
+- [autorun_base_model.sh](autorun_base_model.sh)
   - 批量训练全部 5 个基座模型
   - 主要搜索模型与 `batch_size`
-- [autorun_pruning.sh](/root/ResNet/autorun_pruning.sh)
+- [autorun_pruning.sh](autorun_pruning.sh)
   - 批量运行 pruning 实验
   - 主要搜索模型、`pruning_ratio` 与 `pruning_steps`
-- [autorun_qat.sh](/root/ResNet/autorun_qat.sh)
+- [autorun_qat.sh](autorun_qat.sh)
   - 批量消费 pruning 产物并顺序执行 QAT
   - 主要搜索 pruning 实验组合对应的 QAT 恢复与微调
-- [autorun_onnx.sh](/root/ResNet/autorun_onnx.sh)
+- [autorun_onnx.sh](autorun_onnx.sh)
   - 批量消费 pruning / QAT checkpoint 并顺序执行 ONNX 导出
   - 主要搜索 `pruning_fp16` 与 `qat_convert` 两条导出分支
-- [autorun_amct.sh](/root/ResNet/autorun_amct.sh)
+- [autorun_amct.sh](autorun_amct.sh)
   - 批量消费 `output/onnx/qat_convert` 下的 `model_quant.onnx`
   - 顺序执行 AMCT 转换并生成 deploy / fakequant ONNX
 

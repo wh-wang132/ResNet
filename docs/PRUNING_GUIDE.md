@@ -20,7 +20,7 @@
 
 - `pixi`：提供系统/工具链环境
 - `uv`：提供 Python 依赖与 `uv run ...` 入口
-- `direnv`：推荐自动激活 `pixi shell-hook` 和 `PYTHONPATH`
+- `direnv`：推荐自动激活 [`.envrc`](../.envrc) 公共环境层
 
 推荐先在项目根目录完成：
 
@@ -30,7 +30,12 @@ uv sync
 direnv allow
 ```
 
-若未使用 `direnv`，则请先手动进入 `pixi` 环境，再执行下面的 pruning 命令。
+其中 [`.envrc`](../.envrc) 当前只负责导出：
+
+- `REPO_ROOT`
+- `PYTHONPATH=$REPO_ROOT/src`
+
+pruning 阶段本身只依赖这层公共环境，不需要额外 `load_*_env.sh`。当前不再保证未加载 `.envrc` 时直接运行命令。
 
 ## 工作流
 

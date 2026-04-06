@@ -1,12 +1,18 @@
 #!/bin/sh
 
-REPO_ROOT=${REPO_ROOT:-$(pwd)}
+if [ -z "${REPO_ROOT:-}" ]; then
+    printf '%s\n' "REPO_ROOT 未设置：请先让 direnv 自动激活 .envrc" >&2
+    return 1 2>/dev/null || exit 1
+fi
+
+. "$REPO_ROOT/scripts/_require_public_env.sh"
+require_public_env
+
 PIXI_ENV_PREFIX="$REPO_ROOT/.pixi/envs/default"
 PIXI_BIN="$PIXI_ENV_PREFIX/bin"
 PIXI_LIB="$PIXI_ENV_PREFIX/lib"
 CANN_ROOT="$REPO_ROOT/.pixi/envs/default/Ascend/cann-8.5.0"
 
-export REPO_ROOT
 export PIXI_ENV_PREFIX
 export PIXI_BIN
 export PIXI_LIB

@@ -2,22 +2,23 @@
 
 ## 概述
 
-当前项目包含四套独立 CLI：
+当前项目包含五套独立 CLI：
 
 - 基座训练入口：`uv run src/base_model_main.py ...`
 - 剪枝入口：`uv run src/pruning_main.py ...`
 - QAT 入口：`uv run src/qat_main.py ...`
 - ONNX 导出入口：`uv run src/onnx_main.py ...`
+- AMCT 转换入口：`uv run src/amct_main.py ...`
 
 两套入口的参数并不完全相同，阅读文档时需要区分阶段。
 
 ## 环境前提
 
-本文档中的所有 `uv run ...` 命令都默认建立在项目标准环境已激活的前提下：
+本文档中的所有 `uv run ...` 命令都默认建立在项目公共环境层已激活的前提下：
 
 - `pixi`：系统/工具链环境
 - `uv`：Python 依赖与运行入口
-- `direnv`：推荐自动注入 `pixi shell-hook` 与 `PYTHONPATH`
+- `direnv`：推荐自动加载 [`.envrc`](../.envrc)
 
 推荐先在项目根目录完成：
 
@@ -27,7 +28,12 @@ uv sync
 direnv allow
 ```
 
-之后再执行本文中的命令。
+其中 [`.envrc`](../.envrc) 当前只负责：
+
+- `REPO_ROOT`
+- `PYTHONPATH=$REPO_ROOT/src`
+
+若某一阶段需要额外环境变量，再按需 source 对应 `scripts/load_*_env.sh`。当前不再保证脱离 `.envrc` 直接 source 这些脚本。
 
 ## 基座模型 CLI
 
@@ -92,7 +98,7 @@ uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet18_2d
 uv run src/pruning_main.py --help
 ```
 
-当前 pruning 参数定义以 [src/pruning/args.py](/root/ResNet/src/pruning/args.py) 为准，完整流程说明见 [剪枝指南](PRUNING_GUIDE.md)。
+当前 pruning 参数定义以 [src/pruning/args.py](../src/pruning/args.py) 为准，完整流程说明见 [剪枝指南](PRUNING_GUIDE.md)。
 
 ### 核心参数概览
 
@@ -137,7 +143,7 @@ uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.80 --pruning_st
 uv run src/qat_main.py --help
 ```
 
-当前 QAT 参数定义以 [src/qat/args.py](/root/ResNet/src/qat/args.py) 为准，完整流程说明见 [src/qat/README.md](/root/ResNet/src/qat/README.md)。
+当前 QAT 参数定义以 [src/qat/args.py](../src/qat/args.py) 为准，完整流程说明见 [src/qat/README.md](../src/qat/README.md)。
 
 ### 核心参数概览
 
@@ -247,7 +253,7 @@ uv run src/amct_main.py --help
 ### 示例
 
 ```bash
-REPO_ROOT="$PWD" . scripts/load_amct_env.sh
+. scripts/load_amct_env.sh
 
 uv run src/amct_main.py \
   --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx

@@ -43,7 +43,14 @@ direnv allow
 
 - `pixi` 负责系统工具链环境
 - `uv` 负责 Python 依赖与运行
-- `direnv` 负责自动激活 `pixi shell-hook` 并设置 `PYTHONPATH`
+- `direnv` 负责自动激活 [`.envrc`](../.envrc) 公共环境层
+
+其中 [`.envrc`](../.envrc) 当前只负责导出：
+
+- `REPO_ROOT`
+- `PYTHONPATH=$REPO_ROOT/src`
+
+阶段相关的额外环境变量统一由 `scripts/load_*_env.sh` 按需补充；这些脚本不再作为完整环境激活入口单独使用。
 
 ### 5. 配置开发工具
 

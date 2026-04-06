@@ -1,3 +1,12 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SCRIPT_DIR/scripts/_require_public_env.sh"
+require_public_env
+
+cd "$REPO_ROOT"
+
 uv run src/pruning_main.py --model resnet6_2d --pruning_ratio 0.30 --pruning_steps 2 --full_load True
 uv run src/pruning_main.py --model resnet6_2d --pruning_ratio 0.40 --pruning_steps 5 --full_load True
 uv run src/pruning_main.py --model resnet6_2d --pruning_ratio 0.50 --pruning_steps 5 --full_load True

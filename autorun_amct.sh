@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 
-REPO_ROOT=${REPO_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SCRIPT_DIR/scripts/_require_public_env.sh"
+require_public_env
+
 . "$REPO_ROOT/scripts/load_amct_env.sh"
 
 tmp_files=""
