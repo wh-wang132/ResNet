@@ -134,6 +134,7 @@ output/qat/<model>/from_<pruning_exp>/
 4. `autorun_base_model.sh` / `autorun_onnx.sh` / `autorun_amct.sh` 会在公共层基础上补各自阶段增量环境；`autorun_pruning.sh` / `autorun_qat.sh` 仅依赖公共层。
 5. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
+6. `autorun_onnx.sh` 当前会沿用 ONNX CLI 默认 `eval_batch_size=64` 做精度评估；若机器资源不足，可在脚本中的 `uv run src/onnx_main.py ...` 后显式追加更小的 `--eval_batch_size`。
 
 ## 注意事项
 

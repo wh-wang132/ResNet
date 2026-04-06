@@ -18,6 +18,10 @@ from qat.checkpoint import load_pruning_checkpoint, load_qat_checkpoint
 
 ONNX_OPSET_VERSION = 16
 SUPPORTED_EXPORT_BRANCHES = ("pruning_fp16", "qat_convert")
+ONNX_DYNAMIC_AXES = {
+    "input": {0: "batch"},
+    "logits": {0: "batch"},
+}
 QAT_EXPECTED_INPUT_PATTERNS = {
     "Conv": ("DQ", "Transpose(DQ[axis=1])", "raw"),
     "Add": ("DQ", "DQ"),
@@ -79,7 +83,7 @@ def _export_model_to_onnx(model, example_input, onnx_path, opset_version):
         opset_version=opset_version,
         input_names=["input"],
         output_names=["logits"],
-        dynamic_axes=None,
+        dynamic_axes=ONNX_DYNAMIC_AXES,
         dynamo=False,
     )
 
@@ -294,6 +298,74 @@ def _rebuild_graph_nodes(model, nodes_to_remove=None, extra_before=None, extra_a
     model.graph.node.extend(kept_nodes)
 
 
+ORPHAN_CHAIN_REMOVABLE_NODE_TYPES = {
+    "Constant",
+    "Cast",
+    "Identity",
+    "DequantizeLinear",
+}
+
+
+def _remove_initializers_by_name(model, initializer_names):
+    if not initializer_names:
+        return
+
+    kept_initializers = [
+        initializer
+        for initializer in model.graph.initializer
+        if initializer.name not in initializer_names
+    ]
+    if len(kept_initializers) == len(model.graph.initializer):
+        return
+
+    del model.graph.initializer[:]
+    model.graph.initializer.extend(kept_initializers)
+
+
+def _cleanup_orphaned_value_chains(
+    model,
+    detached_value_names,
+    removable_node_types=ORPHAN_CHAIN_REMOVABLE_NODE_TYPES,
+):
+    if not detached_value_names:
+        return
+
+    graph_input_names = {item.name for item in model.graph.input}
+    graph_output_names = {item.name for item in model.graph.output}
+    pending_values = [value_name for value_name in detached_value_names if value_name]
+
+    while pending_values:
+        value_name = pending_values.pop()
+        if not value_name or value_name in graph_output_names:
+            continue
+
+        producer_map, consumer_map = _build_onnx_graph_maps(model)
+        if consumer_map.get(value_name):
+            continue
+
+        producer = producer_map.get(value_name)
+        if producer is None:
+            if value_name in graph_input_names:
+                continue
+            initializer_names = {initializer.name for initializer in model.graph.initializer}
+            if value_name in initializer_names:
+                _remove_initializers_by_name(model, {value_name})
+            continue
+
+        if producer.op_type not in removable_node_types:
+            continue
+
+        if any(
+            output_name in graph_output_names or consumer_map.get(output_name)
+            for output_name in producer.output
+        ):
+            continue
+
+        upstream_inputs = [input_name for input_name in producer.input if input_name]
+        _rebuild_graph_nodes(model, nodes_to_remove={id(producer)})
+        pending_values.extend(upstream_inputs)
+
+
 # rewrite passes
 
 def _resolve_activation_quant_params(input_names, producer_map):
@@ -354,6 +426,7 @@ def _split_multi_output_activation_quantize_nodes(model):
     initializer_map = _build_initializer_map(model)
     nodes_to_remove = set()
     extra_before = {}
+    detached_value_names = []
 
     for node in model.graph.node:
         if node.op_type != "QuantizeLinear" or len(node.output) != 1:
@@ -367,6 +440,7 @@ def _split_multi_output_activation_quantize_nodes(model):
 
         _validate_activation_quantize_split(node, downstream, producer_map)
         nodes_to_remove.add(id(node))
+        detached_value_names.extend([node.input[1], node.input[2]])
         for split_index, consumer in enumerate(downstream):
             cloned_output, scale_node, zero_node, cloned_quantize = _build_split_activation_quantize_nodes(
                 model,
@@ -379,6 +453,7 @@ def _split_multi_output_activation_quantize_nodes(model):
             _replace_node_input_name(consumer, output_name, cloned_output)
 
     _rebuild_graph_nodes(model, nodes_to_remove=nodes_to_remove, extra_before=extra_before)
+    _cleanup_orphaned_value_chains(model, detached_value_names)
 
 
 def _collapse_quantize_cast_pairs(model):
@@ -459,6 +534,7 @@ def _rewrite_conv_per_channel_weight_path(
     extra_before,
     extra_after,
 ):
+    old_quantized_input_name = dq_node.input[0]
     q_node_name = f"{dq_node.name}_amct_quant"
     q_output_name = f"{dq_node.name}_amct_quant_out"
     dq_output_name = dq_node.output[0]
@@ -485,9 +561,11 @@ def _rewrite_conv_per_channel_weight_path(
     )
     _stage_nodes(extra_before, dq_node, quantize)
     _stage_nodes(extra_after, dq_node, transpose_back)
+    return old_quantized_input_name
 
 
 def _rewrite_standard_weight_path(model, initializer_map, dq_node, float_array, extra_before):
+    old_quantized_input_name = dq_node.input[0]
     float_name = f"{dq_node.name}_amct_float"
     q_output_name = f"{dq_node.name}_amct_quant_out"
     _append_initializer(model, initializer_map, float_name, float_array)
@@ -500,18 +578,20 @@ def _rewrite_standard_weight_path(model, initializer_map, dq_node, float_array, 
     dq_node.input[0] = q_output_name
     _remove_node_attr(dq_node, "axis")
     _stage_nodes(extra_before, dq_node, quantize)
+    return old_quantized_input_name
 
 
 def _rewrite_bias_path(model, producer_map, initializer_map, dq_node):
     source_node = producer_map.get(dq_node.input[0])
     if source_node is not None and source_node.op_type == "QuantizeLinear":
-        return False
+        return None
 
+    detached_value_names = list(dq_node.input)
     _, _, float_array = _extract_dequantized_float_array(dq_node, producer_map, initializer_map)
     bias_name = f"{dq_node.name}_amct_bias_float"
     _append_initializer(model, initializer_map, bias_name, float_array)
     _replace_all_inputs(model, dq_node.output[0], bias_name)
-    return True
+    return detached_value_names
 
 
 def _rewrite_quantized_weight_and_bias_paths(model):
@@ -520,6 +600,7 @@ def _rewrite_quantized_weight_and_bias_paths(model):
     nodes_to_remove = set()
     extra_before = {}
     extra_after = {}
+    detached_value_names = []
     weight_targets, bias_targets = _collect_quantized_param_targets(model, producer_map)
 
     for consumer, dq_node in weight_targets:
@@ -533,20 +614,32 @@ def _rewrite_quantized_weight_and_bias_paths(model):
             initializer_map,
         )
         if consumer.op_type == "Conv" and scale_array.size > 1:
-            _rewrite_conv_per_channel_weight_path(
+            detached_value_names.append(
+                _rewrite_conv_per_channel_weight_path(
+                    model,
+                    initializer_map,
+                    dq_node,
+                    float_array,
+                    extra_before,
+                    extra_after,
+                )
+            )
+            continue
+        detached_value_names.append(
+            _rewrite_standard_weight_path(
                 model,
                 initializer_map,
                 dq_node,
                 float_array,
                 extra_before,
-                extra_after,
             )
-            continue
-        _rewrite_standard_weight_path(model, initializer_map, dq_node, float_array, extra_before)
+        )
 
     for _, dq_node in bias_targets:
-        if _rewrite_bias_path(model, producer_map, initializer_map, dq_node):
+        detached_bias_values = _rewrite_bias_path(model, producer_map, initializer_map, dq_node)
+        if detached_bias_values is not None:
             nodes_to_remove.add(id(dq_node))
+            detached_value_names.extend(detached_bias_values)
 
     _rebuild_graph_nodes(
         model,
@@ -554,6 +647,7 @@ def _rewrite_quantized_weight_and_bias_paths(model):
         extra_before=extra_before,
         extra_after=extra_after,
     )
+    _cleanup_orphaned_value_chains(model, detached_value_names)
 
 
 def _rewrite_cann_qat_onnx(onnx_path):
@@ -694,6 +788,7 @@ def export_pruning_fp16_branch(checkpoint_path, device, folder_path, opset_versi
             "torch_device": str(device),
             "input_dtype": "float16",
             "export_shape": export_shape,
+            "dynamic_batch": True,
         }
     )
     return model.eval(), checkpoint_meta, checkpoint, export_shape, onnx_path, export_meta
@@ -719,6 +814,7 @@ def export_qat_convert_branch(checkpoint_path, folder_path, opset_version):
             "torch_device": "cpu",
             "input_dtype": "float32",
             "export_shape": export_shape,
+            "dynamic_batch": True,
         }
     )
     return quantized_model.eval(), checkpoint_meta, checkpoint, export_shape, onnx_path, export_meta

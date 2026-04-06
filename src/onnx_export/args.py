@@ -7,6 +7,13 @@ import argparse
 from qat.utils import str2bool
 
 
+def positive_int(value):
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("eval_batch_size 必须大于等于 1")
+    return parsed
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Export pruning/QAT checkpoints to ONNX and evaluate with ONNX Runtime"
@@ -42,6 +49,12 @@ def parse_args():
         type=str2bool,
         default=True,
         help="是否在导出后执行测试集精度评估",
+    )
+    parser.add_argument(
+        "--eval_batch_size",
+        type=positive_int,
+        default=64,
+        help="导出后 Torch / ORT 精度评估使用的批次大小，不影响导出图本身 (默认 64)",
     )
     parser.add_argument(
         "--opset_version",

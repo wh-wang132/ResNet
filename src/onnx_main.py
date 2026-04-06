@@ -69,22 +69,21 @@ def main():
         data_dtype=dataset_dtype,
     )
 
-    test_loader, _ = create_optimized_dataloader(
-        test_dataset,
-        batch_size=1,
-        shuffle=False,
-        num_workers=args.num_workers,
-        prefetch_factor=2,
-        persistent_workers=True,
-        pin_memory=False,
-        drop_last=False,
-        loader_name="ONNX 测试集 DataLoader",
-    )
-
     source_test_metrics = None
     onnx_test_metrics = None
     ort_providers = None
     if args.evaluate_test:
+        test_loader, _ = create_optimized_dataloader(
+            test_dataset,
+            batch_size=args.eval_batch_size,
+            shuffle=False,
+            num_workers=args.num_workers,
+            prefetch_factor=2,
+            persistent_workers=True,
+            pin_memory=False,
+            drop_last=False,
+            loader_name="ONNX 测试集 DataLoader",
+        )
         source_test_metrics = evaluate_torch_model(
             model=model,
             device=source_device,

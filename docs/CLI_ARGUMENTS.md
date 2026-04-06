@@ -196,6 +196,7 @@ uv run src/onnx_main.py --help
 | `--full_load`     | `False`   | 是否全量加载数据集                                          |
 | `--num_workers`   | `None`    | DataLoader 工作线程数                                       |
 | `--evaluate_test` | `True`    | 是否在导出后执行 ORT 测试集精度评估                         |
+| `--eval_batch_size` | `64`    | Torch / ORT 精度评估批次大小，仅影响评估，不影响导出图结构  |
 | `--opset_version` | `16`      | ONNX opset 版本，当前固定为 16                              |
 
 ### 分支说明
@@ -209,16 +210,24 @@ uv run src/onnx_main.py --help
   - 通过 `load_qat_checkpoint(...)` 恢复 prepared model
   - `convert_fx` 后导出量化 ONNX
 
+当前 ONNX 导出默认使用动态 batch：
+
+- `onnx_summary.json.example_input_shape` 中的 `batch=1` 仅表示导出样例输入
+- 精度评估可通过 `--eval_batch_size` 使用更大的 batch
+- 若后续部署需要静态 batch，可在 ATC 阶段使用 `--input_shape="input:1,1,543,512"` 固化
+
 ### 示例
 
 ```bash
 uv run src/onnx_main.py \
   --branch pruning_fp16 \
-  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth
+  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth \
+  --eval_batch_size 64
 
 uv run src/onnx_main.py \
   --branch qat_convert \
-  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth
+  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth \
+  --eval_batch_size 64
 ```
 
 ## AMCT CLI

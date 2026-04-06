@@ -156,13 +156,21 @@ uv run src/qat_main.py \
 # pruning checkpoint -> FP16 ONNX
 uv run src/onnx_main.py \
   --branch pruning_fp16 \
-  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth
+  --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth \
+  --eval_batch_size 64
 
 # QAT checkpoint -> convert 后量化 ONNX
 uv run src/onnx_main.py \
   --branch qat_convert \
-  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth
+  --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth \
+  --eval_batch_size 64
 ```
+
+说明：
+
+- ONNX 导出当前统一使用动态 batch；`onnx_summary.json.example_input_shape` 中的 `batch=1` 仅表示导出样例输入。
+- 当前 `--eval_batch_size` 只影响 Torch / ORT 精度评估批次，不影响导出图结构。
+- 若后续部署链需要静态 batch，可在 ATC 阶段通过 `--input_shape="input:1,1,543,512"` 固化输入形状。
 
 ### AMCT 转换
 
