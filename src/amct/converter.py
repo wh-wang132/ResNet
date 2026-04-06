@@ -3,13 +3,18 @@
 """AMCT 转换与产物校验。"""
 
 import importlib
-import json
 import os
 
 import onnx
 
 from amct.output import create_output_directory
-from qat.utils import REPO_ROOT
+from amct.utils import (
+    ensure_file_exists,
+    get_repo_root,
+    load_json,
+    resolve_repo_path,
+    to_repo_relative_path,
+)
 
 
 EXPECTED_INPUT_MODEL_NAME = "model_quant.onnx"
@@ -32,33 +37,6 @@ class AMCTConversionError(RuntimeError):
     """AMCT 阶段输入校验或转换错误。"""
 
 
-def _load_json(path):
-    with open(path, "r", encoding="utf-8") as file_obj:
-        return json.load(file_obj)
-
-
-def _resolve_repo_path(path, repo_root=REPO_ROOT):
-    normalized_path = os.path.normpath(path)
-    if os.path.isabs(normalized_path):
-        return normalized_path
-    return os.path.abspath(os.path.join(repo_root, normalized_path))
-
-
-def _to_repo_relative_path(path, repo_root=REPO_ROOT):
-    if path is None:
-        return None
-
-    normalized_path = os.path.normpath(path)
-    if not os.path.isabs(normalized_path):
-        return normalized_path
-    return os.path.relpath(normalized_path, repo_root)
-
-
-def _ensure_file_exists(path, label):
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"找不到{label}: {path}")
-
-
 def _ensure_summary_keys(summary):
     missing_keys = sorted(REQUIRED_ONNX_SUMMARY_KEYS - set(summary.keys()))
     if missing_keys:
@@ -74,20 +52,21 @@ def _validate_input_onnx_model(onnx_model_path):
         raise AMCTConversionError("AMCT 当前只接受仓库 qat_convert 产出的 model_quant.onnx")
 
 
-def load_qat_onnx_summary(onnx_model_path, repo_root=REPO_ROOT):
+def load_qat_onnx_summary(onnx_model_path, repo_root=None):
+    repo_root = get_repo_root() if repo_root is None else repo_root
     onnx_model_path = os.path.abspath(onnx_model_path)
-    _ensure_file_exists(onnx_model_path, "AMCT 输入 ONNX")
+    ensure_file_exists(onnx_model_path, "AMCT 输入 ONNX")
     _validate_input_onnx_model(onnx_model_path)
 
     summary_path = os.path.join(os.path.dirname(onnx_model_path), EXPECTED_ONNX_SUMMARY_NAME)
-    _ensure_file_exists(summary_path, "ONNX 摘要")
-    onnx_summary = _load_json(summary_path)
+    ensure_file_exists(summary_path, "ONNX 摘要")
+    onnx_summary = load_json(summary_path)
     _ensure_summary_keys(onnx_summary)
 
     if onnx_summary["branch"] != EXPECTED_ONNX_BRANCH:
         raise AMCTConversionError("AMCT 当前只接受 branch=qat_convert 的 ONNX 摘要")
 
-    resolved_summary_onnx_path = _resolve_repo_path(onnx_summary["onnx_path"], repo_root=repo_root)
+    resolved_summary_onnx_path = resolve_repo_path(onnx_summary["onnx_path"], repo_root=repo_root)
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise AMCTConversionError("onnx_summary.json 中的 onnx_path 与当前输入文件不匹配")
 
@@ -126,8 +105,9 @@ def _build_summary(
     onnx_summary_path,
     output_dir,
     external_files,
-    repo_root=REPO_ROOT,
+    repo_root=None,
 ):
+    repo_root = get_repo_root() if repo_root is None else repo_root
     deploy_model_path = os.path.join(output_dir, EXPECTED_DEPLOY_MODEL_NAME)
     fake_quant_model_path = os.path.join(output_dir, EXPECTED_FAKE_QUANT_MODEL_NAME)
     record_file_path = os.path.join(output_dir, EXPECTED_RECORD_FILE_NAME)
@@ -135,30 +115,31 @@ def _build_summary(
     summary = {
         "stage": "amct",
         "model_name": onnx_summary["model_name"],
-        "source_onnx_path": _to_repo_relative_path(onnx_model_path, repo_root=repo_root),
-        "source_onnx_summary_path": _to_repo_relative_path(onnx_summary_path, repo_root=repo_root),
-        "source_checkpoint_path": _to_repo_relative_path(
+        "source_onnx_path": to_repo_relative_path(onnx_model_path, repo_root=repo_root),
+        "source_onnx_summary_path": to_repo_relative_path(onnx_summary_path, repo_root=repo_root),
+        "source_checkpoint_path": to_repo_relative_path(
             onnx_summary["source_checkpoint_path"],
             repo_root=repo_root,
         ),
         "source_branch": EXPECTED_ONNX_BRANCH,
         "example_input_shape": onnx_summary["example_input_shape"],
         "opset_version": onnx_summary["opset_version"],
-        "deploy_model_path": _to_repo_relative_path(deploy_model_path, repo_root=repo_root),
-        "fake_quant_model_path": _to_repo_relative_path(fake_quant_model_path, repo_root=repo_root),
-        "record_file_path": _to_repo_relative_path(record_file_path, repo_root=repo_root),
-        "amct_log_path": _to_repo_relative_path(amct_log_path, repo_root=repo_root)
+        "deploy_model_path": to_repo_relative_path(deploy_model_path, repo_root=repo_root),
+        "fake_quant_model_path": to_repo_relative_path(fake_quant_model_path, repo_root=repo_root),
+        "record_file_path": to_repo_relative_path(record_file_path, repo_root=repo_root),
+        "amct_log_path": to_repo_relative_path(amct_log_path, repo_root=repo_root)
         if os.path.exists(amct_log_path)
         else None,
     }
     if external_files:
         summary["external_data_files"] = [
-            _to_repo_relative_path(path, repo_root=repo_root) for path in external_files
+            to_repo_relative_path(path, repo_root=repo_root) for path in external_files
         ]
     return summary
 
 
-def build_amct_artifacts(onnx_model_path, repo_root=REPO_ROOT):
+def build_amct_artifacts(onnx_model_path, repo_root=None):
+    repo_root = get_repo_root() if repo_root is None else repo_root
     onnx_summary, onnx_summary_path = load_qat_onnx_summary(onnx_model_path, repo_root=repo_root)
     output_dir = create_output_directory(onnx_summary)
     output_dir_abs = os.path.abspath(output_dir)
@@ -174,9 +155,9 @@ def build_amct_artifacts(onnx_model_path, repo_root=REPO_ROOT):
 
     deploy_model_path = os.path.join(output_dir_abs, EXPECTED_DEPLOY_MODEL_NAME)
     fake_quant_model_path = os.path.join(output_dir_abs, EXPECTED_FAKE_QUANT_MODEL_NAME)
-    _ensure_file_exists(deploy_model_path, "AMCT deploy ONNX")
-    _ensure_file_exists(fake_quant_model_path, "AMCT fakequant ONNX")
-    _ensure_file_exists(record_file, "AMCT record 文件")
+    ensure_file_exists(deploy_model_path, "AMCT deploy ONNX")
+    ensure_file_exists(fake_quant_model_path, "AMCT fakequant ONNX")
+    ensure_file_exists(record_file, "AMCT record 文件")
     _validate_onnx_model(deploy_model_path)
     _validate_onnx_model(fake_quant_model_path)
 

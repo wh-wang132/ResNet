@@ -48,5 +48,5 @@ run_branch() {
 
 cd "$REPO_ROOT"
 
-# run_branch "pruning_fp16" "output/onnx/pruning_fp16" "model_fp16.onnx"
+run_branch "pruning_fp16" "output/onnx/pruning_fp16" "model_fp16.onnx"
 run_branch "amct_deploy" "output/amct" "deploy_model.onnx"

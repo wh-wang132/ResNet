@@ -4,11 +4,18 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 
 from atc.output import create_output_directory
+from atc.utils import (
+    build_atc_subprocess_env,
+    ensure_file_exists,
+    get_repo_root,
+    load_json,
+    resolve_repo_path,
+    to_repo_relative_path,
+)
 
 
 EXPECTED_PRUNING_INPUT_MODEL_NAME = "model_fp16.onnx"
@@ -44,42 +51,6 @@ class ATCCompilationError(RuntimeError):
     """ATC 阶段输入校验或编译错误。"""
 
 
-def _get_repo_root():
-    repo_root = os.environ.get("REPO_ROOT")
-    if not repo_root:
-        raise ATCCompilationError("REPO_ROOT 未设置：请先让 direnv 自动激活 .envrc")
-    return os.path.abspath(repo_root)
-
-
-def _load_json(path):
-    with open(path, "r", encoding="utf-8") as file_obj:
-        return json.load(file_obj)
-
-
-def _ensure_file_exists(path, label):
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"找不到{label}: {path}")
-
-
-def _resolve_repo_path(path, repo_root=None):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
-    normalized_path = os.path.normpath(path)
-    if os.path.isabs(normalized_path):
-        return normalized_path
-    return os.path.abspath(os.path.join(repo_root, normalized_path))
-
-
-def _to_repo_relative_path(path, repo_root=None):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
-    if path is None:
-        return None
-
-    normalized_path = os.path.normpath(path)
-    if not os.path.isabs(normalized_path):
-        return normalized_path
-    return os.path.relpath(normalized_path, repo_root)
-
-
 def _ensure_summary_keys(summary, required_keys, summary_name):
     missing_keys = sorted(required_keys - set(summary.keys()))
     if missing_keys:
@@ -89,9 +60,9 @@ def _ensure_summary_keys(summary, required_keys, summary_name):
 
 
 def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
+    repo_root = get_repo_root() if repo_root is None else repo_root
     onnx_model_path = os.path.abspath(onnx_model_path)
-    _ensure_file_exists(onnx_model_path, "ATC 输入 ONNX")
+    ensure_file_exists(onnx_model_path, "ATC 输入 ONNX")
     if os.path.basename(onnx_model_path) != EXPECTED_PRUNING_INPUT_MODEL_NAME:
         raise ATCCompilationError(
             "pruning_fp16 分支当前只接受仓库导出的 model_fp16.onnx"
@@ -101,14 +72,14 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
         os.path.dirname(onnx_model_path),
         EXPECTED_PRUNING_SUMMARY_NAME,
     )
-    _ensure_file_exists(summary_path, "ONNX 摘要")
-    summary = _load_json(summary_path)
+    ensure_file_exists(summary_path, "ONNX 摘要")
+    summary = load_json(summary_path)
     _ensure_summary_keys(summary, REQUIRED_PRUNING_SUMMARY_KEYS, EXPECTED_PRUNING_SUMMARY_NAME)
 
     if summary["branch"] != EXPECTED_PRUNING_BRANCH:
         raise ATCCompilationError("onnx_summary.json.branch 必须为 pruning_fp16")
 
-    resolved_summary_onnx_path = _resolve_repo_path(summary["onnx_path"], repo_root=repo_root)
+    resolved_summary_onnx_path = resolve_repo_path(summary["onnx_path"], repo_root=repo_root)
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise ATCCompilationError("onnx_summary.json 中的 onnx_path 与当前输入文件不匹配")
 
@@ -116,9 +87,9 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
 
 
 def _load_amct_summary(onnx_model_path, repo_root=None):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
+    repo_root = get_repo_root() if repo_root is None else repo_root
     onnx_model_path = os.path.abspath(onnx_model_path)
-    _ensure_file_exists(onnx_model_path, "ATC 输入 ONNX")
+    ensure_file_exists(onnx_model_path, "ATC 输入 ONNX")
     if os.path.basename(onnx_model_path) != EXPECTED_AMCT_INPUT_MODEL_NAME:
         raise ATCCompilationError(
             "amct_deploy 分支当前只接受仓库导出的 deploy_model.onnx"
@@ -128,14 +99,14 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
         os.path.dirname(onnx_model_path),
         EXPECTED_AMCT_SUMMARY_NAME,
     )
-    _ensure_file_exists(summary_path, "AMCT 摘要")
-    summary = _load_json(summary_path)
+    ensure_file_exists(summary_path, "AMCT 摘要")
+    summary = load_json(summary_path)
     _ensure_summary_keys(summary, REQUIRED_AMCT_SUMMARY_KEYS, EXPECTED_AMCT_SUMMARY_NAME)
 
     if summary["stage"] != EXPECTED_AMCT_STAGE:
         raise ATCCompilationError("amct_summary.json.stage 必须为 amct")
 
-    resolved_summary_onnx_path = _resolve_repo_path(
+    resolved_summary_onnx_path = resolve_repo_path(
         summary["deploy_model_path"],
         repo_root=repo_root,
     )
@@ -146,7 +117,7 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
 
 
 def load_branch_summary(branch, onnx_model_path, repo_root=None):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
+    repo_root = get_repo_root() if repo_root is None else repo_root
     if branch == "pruning_fp16":
         return _load_pruning_fp16_summary(onnx_model_path, repo_root=repo_root)
     if branch == "amct_deploy":
@@ -168,29 +139,6 @@ def _collect_optional_artifacts(output_dir):
     if os.path.exists(fusion_result_path):
         artifacts["fusion_result_path"] = fusion_result_path
     return artifacts
-
-
-def _build_atc_subprocess_env():
-    env = os.environ.copy()
-    virtual_env = env.pop("VIRTUAL_ENV", None)
-    env.pop("UV", None)
-    env.pop("PYTHONHOME", None)
-
-    uv_keys = [key for key in env if key.startswith("UV_")]
-    for key in uv_keys:
-        env.pop(key, None)
-
-    if virtual_env is not None:
-        virtual_bin = os.path.join(virtual_env, "bin")
-        path_entries = env.get("PATH", "").split(os.pathsep)
-        path_entries = [
-            entry
-            for entry in path_entries
-            if os.path.normpath(entry) != os.path.normpath(virtual_bin)
-        ]
-        env["PATH"] = os.pathsep.join(path_entries)
-
-    return env
 
 
 def _run_atc_compile(
@@ -217,7 +165,7 @@ def _run_atc_compile(
     completed = subprocess.run(
         command,
         cwd=output_dir,
-        env=_build_atc_subprocess_env(),
+        env=build_atc_subprocess_env(),
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -232,7 +180,7 @@ def _run_atc_compile(
         )
 
     om_path = f"{output_prefix}{ATC_OUTPUT_SUFFIX}"
-    _ensure_file_exists(om_path, "ATC 输出 OM")
+    ensure_file_exists(om_path, "ATC 输出 OM")
     return om_path
 
 
@@ -248,32 +196,32 @@ def _build_summary(
     optional_artifacts,
     repo_root=None,
 ):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
+    repo_root = get_repo_root() if repo_root is None else repo_root
     source_checkpoint_path = input_summary.get("source_checkpoint_path")
     source_onnx_path = input_summary.get("source_onnx_path")
     summary = {
         "stage": "atc",
         "branch": branch,
         "model_name": input_summary["model_name"],
-        "source_model_path": _to_repo_relative_path(onnx_model_path, repo_root=repo_root),
-        "source_summary_path": _to_repo_relative_path(source_summary_path, repo_root=repo_root),
-        "source_checkpoint_path": _to_repo_relative_path(source_checkpoint_path, repo_root=repo_root),
+        "source_model_path": to_repo_relative_path(onnx_model_path, repo_root=repo_root),
+        "source_summary_path": to_repo_relative_path(source_summary_path, repo_root=repo_root),
+        "source_checkpoint_path": to_repo_relative_path(source_checkpoint_path, repo_root=repo_root),
         "input_shape": input_shape,
         "input_format": input_format,
         "soc_version": soc_version,
         "example_input_shape": input_summary.get("example_input_shape"),
         "opset_version": input_summary.get("opset_version"),
-        "om_path": _to_repo_relative_path(om_path, repo_root=repo_root),
+        "om_path": to_repo_relative_path(om_path, repo_root=repo_root),
     }
     if source_onnx_path is not None:
-        summary["source_onnx_path"] = _to_repo_relative_path(source_onnx_path, repo_root=repo_root)
+        summary["source_onnx_path"] = to_repo_relative_path(source_onnx_path, repo_root=repo_root)
     if "source_branch" in input_summary:
         summary["source_branch"] = input_summary["source_branch"]
     if "stage" in input_summary and branch == "amct_deploy":
         summary["source_stage"] = input_summary["stage"]
 
     for key, path in optional_artifacts.items():
-        summary[key] = _to_repo_relative_path(path, repo_root=repo_root)
+        summary[key] = to_repo_relative_path(path, repo_root=repo_root)
     return summary
 
 
@@ -285,7 +233,7 @@ def build_atc_artifacts(
     input_format,
     repo_root=None,
 ):
-    repo_root = _get_repo_root() if repo_root is None else repo_root
+    repo_root = get_repo_root() if repo_root is None else repo_root
     input_summary, source_summary_path = load_branch_summary(
         branch,
         onnx_model_path,
