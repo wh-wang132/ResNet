@@ -5,15 +5,16 @@
 当前项目采用按阶段拆分的结构，主线为：
 
 ```text
-base_model -> pruning -> qat -> onnx -> deploy
+base_model -> pruning -> qat -> onnx -> amct -> deploy
 ```
 
-四个阶段的职责分别是：
+五个阶段的职责分别是：
 
 - `base_model`：训练原始模型并保存结构化基座 checkpoint
 - `pruning`：读取基座 checkpoint，执行结构化剪枝与微调，保存 pruning checkpoint
 - `qat`：读取 pruning checkpoint，恢复剪枝后模型并执行保守单路径 QAT
 - `onnx`：读取 pruning 或 QAT checkpoint，导出标准 ONNX 并执行 ORT 精度评估
+- `amct`：读取 `qat_convert` ONNX 产物，转换为 ATC 可接受的 deploy/fakequant ONNX
 
 ## 当前完成状态
 
@@ -84,6 +85,18 @@ pruning checkpoint 当前已能完整表达：
 - 基于 ONNX Runtime 执行测试集精度评估
 - 仅使用标准 ONNX 算子，不引入自定义算子
 
+### 5. `amct`：已完成主链
+
+当前 AMCT 阶段已经具备：
+
+- 只接受仓库 `qat_convert` 导出的 `model_quant.onnx`
+- 自动读取同目录 `onnx_summary.json`
+- 调用 `amct_onnx.convert_qat_model(...)`
+- 生成 `deploy_model.onnx`
+- 生成 `fake_quant_model.onnx`
+- 保留 `scale_offset_record.txt`
+- 输出 `amct_summary.json`
+
 ## 阶段之间的契约
 
 ### 基座 checkpoint -> pruning
@@ -111,7 +124,7 @@ pruning 当前依赖的核心字段包括：
 
 QAT 当前已经基于这些字段完成恢复与训练链路。
 
-### QAT checkpoint -> ONNX / 部署
+### QAT checkpoint -> ONNX
 
 当前 QAT checkpoint 保存：
 
@@ -122,7 +135,20 @@ QAT 当前已经基于这些字段完成恢复与训练链路。
 - `quantization_meta`
 - prepared model 的 `model_state_dict`
 
-这为 ONNX / 部署阶段通过 QAT checkpoint 直接恢复同一条 prepare 图提供了契约基础。当前导出链已经只消费 QAT checkpoint，不再回退到 pruning checkpoint。
+这为 ONNX 阶段通过 QAT checkpoint 直接恢复同一条 prepare 图提供了契约基础。当前导出链已经只消费 QAT checkpoint，不再回退到 pruning checkpoint。
+
+### ONNX -> AMCT / 部署
+
+当前 AMCT 阶段依赖的核心输入契约包括：
+
+- `onnx_summary.json.branch == "qat_convert"`
+- `onnx_summary.json.onnx_path` 可回指当前 `model_quant.onnx`
+- `onnx_summary.json.model_name`
+- `onnx_summary.json.source_checkpoint_path`
+- `onnx_summary.json.example_input_shape`
+- `onnx_summary.json.opset_version`
+
+AMCT 当前不直接读取 QAT checkpoint，而是只消费仓库导出的 QAT ONNX + sidecar 摘要。
 
 ## 设计上的关键点
 
@@ -159,11 +185,11 @@ QAT 当前已经基于这些字段完成恢复与训练链路。
 当前项目主线已经推进到：
 
 ```text
-基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint -> QAT 产出 prepare checkpoint -> ONNX 双分支导出与评估
+基座训练完成 -> pruning 收敛并稳定产出 pruning checkpoint -> QAT 产出 prepare checkpoint -> ONNX 双分支导出与评估 -> AMCT 生成 deploy/fakequant ONNX
 ```
 
 因此下一阶段最自然的工作是：
 
-1. 在部署阶段消费当前 ONNX 产物接入后续编译链
-2. 针对 `qat_convert` 分支继续验证与后续工具链的兼容性
-3. 再进一步衔接部署与推理链
+1. 在 `atc` 阶段消费 `deploy_model.onnx` 接入后续编译链
+2. 继续验证 `deploy_model.onnx` 与目标 CANN/ATC 版本的兼容性
+3. 再进一步衔接 `.om` 产物与实际推理链

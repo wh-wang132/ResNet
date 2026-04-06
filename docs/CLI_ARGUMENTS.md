@@ -214,3 +214,41 @@ uv run src/onnx_main.py \
   --branch qat_convert \
   --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth
 ```
+
+## AMCT CLI
+
+### 入口
+
+```bash
+uv run src/amct_main.py --help
+```
+
+### 核心参数概览
+
+| 参数           | 默认值 | 说明 |
+| -------------- | ------ | ---- |
+| `--onnx_model` | 必填   | 输入的 `qat_convert` ONNX 路径，固定为仓库导出的 `model_quant.onnx` |
+
+### 输入契约说明
+
+- 只接受仓库 `onnx_main.py --branch qat_convert` 产出的 `model_quant.onnx`
+- 同目录必须存在 `onnx_summary.json`
+- `onnx_summary.json` 中：
+  - `branch` 必须为 `qat_convert`
+  - `onnx_path` 必须能回指当前输入文件
+
+### 输出产物
+
+- `deploy_model.onnx`
+- `fake_quant_model.onnx`
+- `scale_offset_record.txt`
+- `amct_summary.json`
+
+### 示例
+
+```bash
+REPO_ROOT="$PWD" . scripts/load_amct_env.sh
+
+uv run src/amct_main.py \
+  --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx
+```
