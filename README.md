@@ -2,13 +2,14 @@
 
 ## 概述
 
-本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练代码实现，围绕 2D `.npy` 数据集构建了五阶段工程主线：
+本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练代码实现，围绕 2D `.npy` 数据集构建了六阶段工程主线：
 
 - `base_model`：基座模型训练、验证、测试与可视化
 - `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
 - `qat`：基于 Torch 原生 FX graph mode 的保守单路径 QAT，消费 pruning checkpoint 并导出 prepare 后 QAT checkpoint
 - `onnx`：导出 pruning FP16 ONNX 或 QAT convert ONNX，并用 ONNX Runtime 评估精度
 - `amct`：消费 `qat_convert` ONNX，转换为 ATC 可接受的 deploy/fakequant ONNX 产物
+- `atc`：消费 pruning FP16 ONNX 或 AMCT deploy ONNX，编译固定 batch=1 的 `.om` 产物
 
 当前代码主线已经完整覆盖：
 
@@ -23,6 +24,7 @@
 - `qat`：已落地，负责消费 pruning checkpoint、恢复剪枝结构并执行保守 QAT 微调
 - `onnx`：已落地，负责导出 `pruning_fp16` 与 `qat_convert` 两条标准 ONNX 分支并执行 ORT 精度评估
 - `amct`：已落地，负责消费仓库 `qat_convert` ONNX 产物并生成 ATC 可接受的 `deploy_model.onnx`
+- `atc`：已落地，负责消费 pruning FP16 ONNX 与 AMCT deploy ONNX，并编译 `Ascend310B4` 目标 `.om`
 
 ## 核心能力
 
@@ -39,6 +41,7 @@
 - ONNX opset 16 双分支导出
 - ONNX Runtime 精度评估
 - AMCT deploy / fakequant ONNX 转换
+- pruning FP16 / AMCT deploy ONNX 的 ATC 编译
 - 最终测试混淆矩阵生成
 - TensorBoard 日志记录
 
@@ -183,6 +186,33 @@ uv run src/amct_main.py \
   --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx
 ```
 
+### ATC 编译
+
+ATC 阶段当前支持两条输入分支：
+
+- `pruning_fp16`：消费 `output/onnx/pruning_fp16/.../model_fp16.onnx`
+- `amct_deploy`：消费 `output/amct/.../deploy_model.onnx`
+
+默认固定：
+
+- `soc_version=Ascend310B4`
+- `input_format=NCHW`
+- `input_shape="input:1,1,543,512"`
+
+```bash
+. scripts/load_atc_env.sh
+
+# pruning_fp16 ONNX -> ATC
+pixi run python src/atc_main.py \
+  --branch pruning_fp16 \
+  --onnx_model output/onnx/pruning_fp16/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/model_fp16.onnx
+
+# AMCT deploy ONNX -> ATC
+pixi run python src/atc_main.py \
+  --branch amct_deploy \
+  --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
+```
+
 ### 基座模型符号链接约定
 
 剪枝入口不会手动接收基座 checkpoint 路径，而是固定读取：
@@ -197,7 +227,7 @@ output/base_model/<model>/best_model.pth
 
 自动化脚本默认要求当前 shell 已由 `direnv` 激活 [`.envrc`](.envrc) 公共环境层；未加载时会直接报错。需要阶段增量环境的脚本会在内部 source 对应 `load_*_env.sh`。
 
-项目根目录当前提供五份顺序执行脚本：
+项目根目录当前提供六份顺序执行脚本：
 
 - [autorun_base_model.sh](autorun_base_model.sh)
   - 批量训练全部 5 个基座模型
@@ -214,8 +244,11 @@ output/base_model/<model>/best_model.pth
 - [autorun_amct.sh](autorun_amct.sh)
   - 批量消费 `output/onnx/qat_convert` 下的 `model_quant.onnx`
   - 顺序执行 AMCT 转换并生成 deploy / fakequant ONNX
+- [autorun_atc.sh](autorun_atc.sh)
+  - 批量消费 `output/onnx/pruning_fp16` 下的 `model_fp16.onnx` 与 `output/amct` 下的 `deploy_model.onnx`
+  - 顺序执行 ATC 编译并生成 `.om`
 
-三份脚本都采用“逐行命令、顺序执行、无复杂控制流”的风格，适合在服务器终端直接监控。
+这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的风格，适合在服务器终端直接监控。
 
 ## 数据划分清单
 
@@ -239,6 +272,7 @@ ResNet/
 │   ├── qat_main.py             # QAT 入口
 │   ├── onnx_main.py            # ONNX 导出与评估入口
 │   ├── amct_main.py            # AMCT 转换入口
+│   ├── atc_main.py             # ATC 编译入口
 │   ├── base_model/
 │   │   ├── args.py
 │   │   ├── dataset.py
@@ -278,10 +312,15 @@ ResNet/
 │       ├── args.py
 │       ├── converter.py
 │       └── output.py
+│   └── atc/
+│       ├── args.py
+│       ├── converter.py
+│       └── output.py
 ├── docs/
 ├── Data/
 ├── output/
 ├── autorun_amct.sh
+├── autorun_atc.sh
 ├── autorun_base_model.sh
 ├── autorun_onnx.sh
 ├── autorun_pruning.sh

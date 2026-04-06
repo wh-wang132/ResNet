@@ -2,15 +2,16 @@
 
 ## 概述
 
-当前仓库在项目根目录提供五份顺序执行脚本：
+当前仓库在项目根目录提供六份顺序执行脚本：
 
 - `autorun_base_model.sh`
 - `autorun_pruning.sh`
 - `autorun_qat.sh`
 - `autorun_onnx.sh`
 - `autorun_amct.sh`
+- `autorun_atc.sh`
 
-三份脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
+这些脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
 
 ## 运行前准备
 
@@ -126,12 +127,42 @@ uv run src/qat_main.py ...
 output/qat/<model>/from_<pruning_exp>/
 ```
 
+## ATC 自动运行
+
+入口脚本：
+
+```bash
+bash autorun_atc.sh
+```
+
+脚本内部逐行调用：
+
+```bash
+pixi run python src/atc_main.py ...
+```
+
+当前覆盖范围：
+
+- 输入分支：
+  - `output/onnx/pruning_fp16/**/model_fp16.onnx`
+  - `output/amct/**/deploy_model.onnx`
+- 固定设置：
+  - `soc_version=Ascend310B4`
+  - `input_format=NCHW`
+  - `input_shape="input:1,1,543,512"`
+- 输出默认写入：
+
+```text
+output/atc/pruning_fp16/<model>/from_<exp>/
+output/atc/amct_deploy/<model>/from_<exp>/
+```
+
 ## 使用建议
 
 1. 先单独运行一条命令确认环境与数据路径正常。
 2. 服务器长时运行时建议直接进入项目根目录后执行脚本。
 3. 若你依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
-4. `autorun_base_model.sh` / `autorun_onnx.sh` / `autorun_amct.sh` 会在公共层基础上补各自阶段增量环境；`autorun_pruning.sh` / `autorun_qat.sh` 仅依赖公共层。
+4. `autorun_base_model.sh` / `autorun_onnx.sh` / `autorun_amct.sh` / `autorun_atc.sh` 会在公共层基础上补各自阶段增量环境；`autorun_pruning.sh` / `autorun_qat.sh` 仅依赖公共层。
 5. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
 6. `autorun_onnx.sh` 当前会沿用 ONNX CLI 默认 `eval_batch_size=64` 做精度评估；若机器资源不足，可在脚本中的 `uv run src/onnx_main.py ...` 后显式追加更小的 `--eval_batch_size`。
