@@ -7,8 +7,8 @@ from __future__ import annotations
 import os
 import subprocess
 
-from atc.output import create_output_directory
-from atc.utils import (
+from .output import create_output_directory
+from .utils import (
     build_atc_subprocess_env,
     ensure_file_exists,
     get_repo_root,

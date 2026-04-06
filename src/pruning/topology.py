@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """剪枝后模型拓扑导出。"""
 
-from pruning.utils import build_architecture_signature, get_raw_model
+from .utils import build_architecture_signature, get_raw_model
 
 
 def _extract_downsample_cfg(downsample):

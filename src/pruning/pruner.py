@@ -5,8 +5,8 @@
 import math
 import torch
 
-from pruning.evaluator import count_model_stats
-from pruning.utils import get_raw_model
+from .evaluator import count_model_stats
+from .utils import get_raw_model
 
 
 def compute_step_pruning_ratio(target_total_ratio, pruning_steps):

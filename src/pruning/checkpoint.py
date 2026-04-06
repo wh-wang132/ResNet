@@ -5,7 +5,7 @@
 import os
 import torch
 
-from pruning.utils import load_model_map, load_state_dict_safely, to_repo_relative_path
+from .utils import load_model_map, load_state_dict_safely, to_repo_relative_path
 
 
 class CheckpointRestoreError(RuntimeError):

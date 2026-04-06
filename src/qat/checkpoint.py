@@ -16,8 +16,8 @@ from base_model.resnet_standard import (
     resnet18_2d_from_cfg,
     resnet34_2d_from_cfg,
 )
-from qat.quantization import prepare_model_for_qat
-from qat.utils import load_state_dict_safely, to_repo_relative_path
+from .quantization import prepare_model_for_qat
+from .utils import load_state_dict_safely, to_repo_relative_path
 
 
 class CheckpointRestoreError(RuntimeError):

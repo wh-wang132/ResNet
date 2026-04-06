@@ -15,8 +15,8 @@ from tqdm import tqdm
 
 from base_model.lr_scheduler import WarmupCosineAnnealingLR
 from base_model.utils import configure_cudnn
-from pruning.topology import build_topology_metadata
-from pruning.utils import get_raw_model, load_state_dict_safely, to_repo_relative_path
+from .topology import build_topology_metadata
+from .utils import get_raw_model, load_state_dict_safely, to_repo_relative_path
 
 
 def _build_pruning_checkpoint(

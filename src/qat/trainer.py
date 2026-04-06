@@ -14,8 +14,8 @@ from tqdm import tqdm
 
 from base_model.lr_scheduler import WarmupCosineAnnealingLR
 from base_model.utils import configure_cudnn
-from qat.quantization import maybe_apply_qat_freeze_policy
-from qat.utils import get_raw_model, load_state_dict_safely
+from .quantization import maybe_apply_qat_freeze_policy
+from .utils import get_raw_model, load_state_dict_safely
 
 
 def _build_qat_checkpoint(

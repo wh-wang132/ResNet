@@ -16,7 +16,7 @@ from torch.ao.quantization.observer import (
 from torch.ao.quantization.quantize_fx import prepare_qat_fx
 from torch.nn.intrinsic.qat import freeze_bn_stats
 
-from qat.utils import INPUT_SHAPE_NCHW
+from .utils import INPUT_SHAPE_NCHW
 
 
 QUANTIZATION_SCHEME_VERSION = 3

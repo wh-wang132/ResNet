@@ -7,8 +7,8 @@ import os
 
 import onnx
 
-from amct.output import create_output_directory
-from amct.utils import (
+from .output import create_output_directory
+from .utils import (
     ensure_file_exists,
     get_repo_root,
     load_json,
