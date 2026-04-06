@@ -9,7 +9,6 @@ import torch
 
 from base_model.dataset import data_set_split
 from base_model.plotting import configure_matplotlib
-from base_model.utils import create_optimized_dataloader, release_gpu_memory, setup_device
 from onnx_export.args import parse_args
 from onnx_export.evaluator import (
     create_onnx_session,
@@ -23,7 +22,12 @@ from onnx_export.exporter import (
     resolve_branch_opset_version,
 )
 from onnx_export.output import create_output_directory, save_summary
-from qat.utils import to_repo_relative_path
+from onnx_export.utils import (
+    create_optimized_dataloader,
+    release_gpu_memory,
+    setup_device,
+    to_repo_relative_path,
+)
 
 configure_matplotlib()
 

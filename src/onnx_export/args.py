@@ -4,7 +4,7 @@
 
 import argparse
 
-from base_model.utils import str2bool
+from onnx_export.utils import str2bool
 
 
 def positive_int(value):
