@@ -9,12 +9,17 @@ import subprocess
 
 from .output import create_output_directory
 from .utils import (
+    SUMMARY_VERSION,
     build_atc_subprocess_env,
     ensure_file_exists,
+    ensure_summary_keys,
+    ensure_summary_version,
     get_repo_root,
     load_json,
     resolve_repo_path,
     to_repo_relative_path,
+    validate_input_shape_argument_matches_interface,
+    validate_interface_dict,
 )
 
 
@@ -28,20 +33,32 @@ ATC_OUTPUT_SUFFIX = ".om"
 CHECK_REPORT_NAME = "check_result.json"
 FUSION_RESULT_NAME = "fusion_result.json"
 REQUIRED_PRUNING_SUMMARY_KEYS = {
+    "summary_version",
     "branch",
     "model_name",
     "source_checkpoint_path",
     "onnx_path",
     "example_input_shape",
     "opset_version",
+    "interface",
 }
 REQUIRED_AMCT_SUMMARY_KEYS = {
+    "summary_version",
     "stage",
     "model_name",
     "source_onnx_path",
     "source_onnx_summary_path",
     "source_checkpoint_path",
+    "source_branch",
+    "source_interface",
     "deploy_model_path",
+    "deploy_interface",
+    "deploy_domains",
+    "deploy_op_types",
+    "fake_quant_model_path",
+    "fake_quant_interface",
+    "fake_quant_domains",
+    "fake_quant_op_types",
     "example_input_shape",
     "opset_version",
 }
@@ -49,14 +66,6 @@ REQUIRED_AMCT_SUMMARY_KEYS = {
 
 class ATCCompilationError(RuntimeError):
     """ATC 阶段输入校验或编译错误。"""
-
-
-def _ensure_summary_keys(summary, required_keys, summary_name):
-    missing_keys = sorted(required_keys - set(summary.keys()))
-    if missing_keys:
-        raise ATCCompilationError(
-            f"{summary_name} 缺少关键字段: {', '.join(missing_keys)}"
-        )
 
 
 def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
@@ -68,13 +77,26 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
             "pruning_fp16 分支当前只接受仓库导出的 model_fp16.onnx"
         )
 
-    summary_path = os.path.join(
-        os.path.dirname(onnx_model_path),
-        EXPECTED_PRUNING_SUMMARY_NAME,
-    )
+    summary_path = os.path.join(os.path.dirname(onnx_model_path), EXPECTED_PRUNING_SUMMARY_NAME)
     ensure_file_exists(summary_path, "ONNX 摘要")
     summary = load_json(summary_path)
-    _ensure_summary_keys(summary, REQUIRED_PRUNING_SUMMARY_KEYS, EXPECTED_PRUNING_SUMMARY_NAME)
+    ensure_summary_keys(
+        summary,
+        REQUIRED_PRUNING_SUMMARY_KEYS,
+        EXPECTED_PRUNING_SUMMARY_NAME,
+        error_cls=ATCCompilationError,
+    )
+    ensure_summary_version(
+        summary,
+        EXPECTED_PRUNING_SUMMARY_NAME,
+        expected_version=SUMMARY_VERSION,
+        error_cls=ATCCompilationError,
+    )
+    validate_interface_dict(
+        summary["interface"],
+        label=f"{EXPECTED_PRUNING_SUMMARY_NAME}.interface",
+        error_cls=ATCCompilationError,
+    )
 
     if summary["branch"] != EXPECTED_PRUNING_BRANCH:
         raise ATCCompilationError("onnx_summary.json.branch 必须为 pruning_fp16")
@@ -83,7 +105,7 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise ATCCompilationError("onnx_summary.json 中的 onnx_path 与当前输入文件不匹配")
 
-    return summary, summary_path
+    return summary, summary_path, summary["interface"]
 
 
 def _load_amct_summary(onnx_model_path, repo_root=None):
@@ -95,13 +117,36 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
             "amct_deploy 分支当前只接受仓库导出的 deploy_model.onnx"
         )
 
-    summary_path = os.path.join(
-        os.path.dirname(onnx_model_path),
-        EXPECTED_AMCT_SUMMARY_NAME,
-    )
+    summary_path = os.path.join(os.path.dirname(onnx_model_path), EXPECTED_AMCT_SUMMARY_NAME)
     ensure_file_exists(summary_path, "AMCT 摘要")
     summary = load_json(summary_path)
-    _ensure_summary_keys(summary, REQUIRED_AMCT_SUMMARY_KEYS, EXPECTED_AMCT_SUMMARY_NAME)
+    ensure_summary_keys(
+        summary,
+        REQUIRED_AMCT_SUMMARY_KEYS,
+        EXPECTED_AMCT_SUMMARY_NAME,
+        error_cls=ATCCompilationError,
+    )
+    ensure_summary_version(
+        summary,
+        EXPECTED_AMCT_SUMMARY_NAME,
+        expected_version=SUMMARY_VERSION,
+        error_cls=ATCCompilationError,
+    )
+    validate_interface_dict(
+        summary["source_interface"],
+        label=f"{EXPECTED_AMCT_SUMMARY_NAME}.source_interface",
+        error_cls=ATCCompilationError,
+    )
+    validate_interface_dict(
+        summary["deploy_interface"],
+        label=f"{EXPECTED_AMCT_SUMMARY_NAME}.deploy_interface",
+        error_cls=ATCCompilationError,
+    )
+    validate_interface_dict(
+        summary["fake_quant_interface"],
+        label=f"{EXPECTED_AMCT_SUMMARY_NAME}.fake_quant_interface",
+        error_cls=ATCCompilationError,
+    )
 
     if summary["stage"] != EXPECTED_AMCT_STAGE:
         raise ATCCompilationError("amct_summary.json.stage 必须为 amct")
@@ -113,7 +158,7 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise ATCCompilationError("amct_summary.json 中的 deploy_model_path 与当前输入文件不匹配")
 
-    return summary, summary_path
+    return summary, summary_path, summary["deploy_interface"]
 
 
 def load_branch_summary(branch, onnx_model_path, repo_root=None):
@@ -187,6 +232,8 @@ def _run_atc_compile(
 def _build_summary(
     branch,
     input_summary,
+    validated_interface,
+    validated_input_shape,
     onnx_model_path,
     source_summary_path,
     om_path,
@@ -206,6 +253,10 @@ def _build_summary(
         "source_model_path": to_repo_relative_path(onnx_model_path, repo_root=repo_root),
         "source_summary_path": to_repo_relative_path(source_summary_path, repo_root=repo_root),
         "source_checkpoint_path": to_repo_relative_path(source_checkpoint_path, repo_root=repo_root),
+        "validated_source_summary_version": input_summary["summary_version"],
+        "source_interface": validated_interface,
+        "resolved_input_name": validated_input_shape["input_name"],
+        "resolved_input_shape": validated_input_shape["input_shape"],
         "input_shape": input_shape,
         "input_format": input_format,
         "soc_version": soc_version,
@@ -234,11 +285,18 @@ def build_atc_artifacts(
     repo_root=None,
 ):
     repo_root = get_repo_root() if repo_root is None else repo_root
-    input_summary, source_summary_path = load_branch_summary(
+    input_summary, source_summary_path, validated_interface = load_branch_summary(
         branch,
         onnx_model_path,
         repo_root=repo_root,
     )
+    validated_input_shape = validate_input_shape_argument_matches_interface(
+        input_shape,
+        validated_interface,
+        label="ATC input_shape",
+        error_cls=ATCCompilationError,
+    )
+
     if branch == "pruning_fp16":
         source_rel_path = input_summary["onnx_path"]
     else:
@@ -263,6 +321,8 @@ def build_atc_artifacts(
     summary = _build_summary(
         branch=branch,
         input_summary=input_summary,
+        validated_interface=validated_interface,
+        validated_input_shape=validated_input_shape,
         onnx_model_path=os.path.abspath(onnx_model_path),
         source_summary_path=os.path.abspath(source_summary_path),
         om_path=om_path,
