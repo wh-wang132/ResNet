@@ -12,17 +12,29 @@
 4. 每轮进行验证与可选微调
 5. 仅最终轮保存 pruning checkpoint
 
-当前 pruning 阶段**不负责**读取 pruning checkpoint 并恢复模型；该职责留给后续 QAT / ONNX 模块。
+当前 pruning 阶段不负责读取 pruning checkpoint 并恢复模型；该职责由后续 QAT / ONNX 模块承担。
 
 ## 环境前提
 
-剪枝入口默认运行在项目标准 `pixi + uv` 环境中：
+### 需要用户手动安装的项目
 
-- `pixi`：提供系统/工具链环境
-- `uv`：提供 Python 依赖与 `uv run ...` 入口
-- `direnv`：推荐自动激活 [`.envrc`](../.envrc) 公共环境层
+- `git`
+- `pixi`
+- `uv`
+- `direnv`（可选）
 
-推荐先在项目根目录完成：
+### 自动安装的内容
+
+- `pixi install`
+  - Python 3.12 运行时
+  - GCC / G++ / Make / CMake
+  - CUDA runtime、cuDNN、CANN toolkit 等工具链内容
+- `uv sync`
+  - `torch`
+  - `torch-pruning`
+  - 以及其余 Python 包依赖
+
+### 推荐初始化顺序
 
 ```bash
 pixi install
@@ -35,7 +47,7 @@ direnv allow
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
-pruning 阶段本身只依赖这层公共环境，不需要额外 `load_*_env.sh`。当前不再保证未加载 `.envrc` 时直接运行命令。
+pruning 阶段只依赖这层公共环境，不需要额外 `load_*_env.sh`。
 
 ## 工作流
 
@@ -60,7 +72,7 @@ output/base_model/<model>/best_model.pth
 
 - 路径存在
 - 若为符号链接，必须能正常解析
-- checkpoint 内的 `model_structure.model_name` 必须与命令行 `--model` 一致
+- checkpoint 中的 `model_structure.model_name` 必须与命令行 `--model` 一致
 
 ## CLI 参数总览
 
@@ -132,50 +144,31 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `Confusion_matrix.png`（仅最终测试阶段生成）
 - `runs/round_<n>/`
 
-## `best_pruned_info.txt`
-
-该文件不是“只记录最终轮”，而是：
-
-- 每轮微调结束后追加一行
-- 每行记录该轮的：
-  - `round`
-  - `best_val_acc`
-  - `best_val_loss`
-  - `best_epoch`
-
-若 `finetune_epochs=0`，则不会生成该文件。
-
 ## `pruning_summary.json` 当前结构
 
-顶层摘要当前包括：
+顶层摘要包括：
 
 - `model_name`
 - `pruning_steps`
 - `labels`
 - `baseline`
-  - `val`
-  - `test`
-  - `stats`
 - `rounds`
 - `pruning_meta`
 - `finetune_summary`
 - `final`
-  - `val`
-  - `test`
-  - `stats`
 - `final_topology`
 - `checkpoint_link_path`
 - `resolved_checkpoint_path`
 
 其中：
 
-- `rounds[*].before_finetune.topology` 保留每轮剪枝后的过程拓扑
+- `rounds[*].before_finetune.topology` 保留每轮剪枝过程拓扑
 - `final_topology` 保留最终模型拓扑快照
 - 顶层 `pruning_meta` 是最终轮的紧凑摘要
 
 ## pruning checkpoint 当前结构
 
-`best_pruned_model.pth` 目前保存的主要字段为：
+`best_pruned_model.pth` 主要字段包括：
 
 - `model_state_dict`
 - `epoch`
@@ -185,7 +178,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `model_structure`
 - `pruning_meta`
 
-### `model_structure`
+其中 `model_structure` 保存：
 
 - `model_name`
 - `model_class`
@@ -196,52 +189,3 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `input_tensor_meta`
 - `channel_cfg`
 - `architecture_signature`
-
-### `pruning_meta`
-
-- `step_index`
-- `pruning_steps`
-- `step_ratio`
-- `target_total_ratio`
-- `global_pruning`
-- `ignored_layers`
-- `example_input_shape`
-- `torch_pruning_version`
-- `params_before`
-- `params_after`
-- `macs_before`
-- `macs_after`
-
-### `train_context`
-
-- `stage`
-- `checkpoint_link_path`
-- `resolved_checkpoint_path`
-- `model_name`
-- `round_index`
-- `class_num`
-- `finetune_epochs`
-- `batch_size`
-- `lr`
-- `weight_decay`
-- `warmup_ratio`
-- `warmup_steps`
-- `min_lr`
-- `data_dtype`
-- `full_load`
-
-## 当前阶段边界
-
-- pruning 模块只负责产出 pruning checkpoint
-- pruning checkpoint 的恢复入口将由后续 QAT / ONNX 阶段实现
-- 因此当前 pruning checkpoint 已经包含：
-  - 可定位基座类定义的 `model_name / model_kwargs`
-  - 可恢复剪枝后拓扑的 `channel_cfg`
-  - 可校验结构一致性的 `architecture_signature`
-  - 最终权重 `model_state_dict`
-
-## 补充说明
-
-- `--pruning_ratio` 的有效精度固定为 2 位小数；输出目录、summary 与 checkpoint 使用同一规范值。
-- pruning 当前复用基座模型的 Warmup + Cosine 调度器实现，但默认学习率已下调到更适合微调恢复的 `1e-4`。
-- 只有最终测试阶段才会生成 `Confusion_matrix.png`；baseline 和中间轮验证不会生成混淆矩阵。

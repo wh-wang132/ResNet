@@ -1,16 +1,6 @@
 # 贡献指南
 
-感谢您对本项目的关注！我们欢迎任何形式的贡献。
-
-## 贡献方式
-
-您可以通过以下方式为项目做出贡献：
-
-1. 报告 Bug
-2. 提交功能建议
-3. 改进文档
-4. 提交代码修复
-5. 添加新功能
+感谢您对本项目的关注。
 
 ## 开发环境设置
 
@@ -21,203 +11,117 @@ git clone git@github.com:wh-wang132/ResNet.git
 cd ResNet
 ```
 
-### 2. 安装系统/工具链环境
+### 2. 手动前置项
+
+参与开发前，用户只需要独立手动安装：
+
+- `git`
+- `pixi`
+- `uv`
+- `direnv`（可选）
+
+### 3. 安装项目环境
 
 ```bash
 pixi install
-```
-
-### 3. 安装 Python 依赖
-
-```bash
 uv sync
-```
-
-### 4. 启用项目环境（推荐）
-
-```bash
 direnv allow
 ```
 
+说明：
+
+- `pixi install` 会自动安装 Python 3.12 运行时、GCC/G++、CUDA runtime、cuDNN、CANN toolkit 等工具链内容
+- `uv sync` 会自动安装 `torch`、`onnx`、`torch-pruning` 等 Python 包依赖
+- 这些自动安装项不再作为“手动环境依赖”单独列出
+
+### 4. 公共环境层
+
 项目默认工作流为：
 
-- `pixi` 负责系统工具链环境
-- `uv` 负责 Python 依赖与运行
-- `direnv` 负责自动激活 [`.envrc`](../.envrc) 公共环境层
+- `pixi`：系统工具链与运行时
+- `uv`：Python 包依赖与运行入口
+- `direnv`：推荐自动激活 [`.envrc`](../.envrc)
 
-其中 [`.envrc`](../.envrc) 当前只负责导出：
+其中 [`.envrc`](../.envrc) 当前只负责：
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
-阶段相关的额外环境变量统一由 `scripts/load_*_env.sh` 按需补充；这些脚本不再作为完整环境激活入口单独使用。
+阶段相关的额外环境变量统一由 `scripts/load_*_env.sh` 按需补充。
 
-### 5. 配置开发工具
+### 5. 阶段专用说明
 
-确保您的编辑器配置了以下工具：
-- Python 3.12+
-- PEP 8 代码格式化
-- 类型检查（可选但推荐）
+- AMCT 相关开发依赖仓库附带的 `amct_onnx` wheel 与算子包；它们不在 `uv sync` 管理范围内
+- 若要做真实的 CUDA / Ascend 侧验证，宿主机需要对应硬件与驱动环境
 
 ## 代码规范
 
 ### Python 代码风格
 
-- 遵循 [PEP 8](https://peps.python.org/pep-0008/) 规范
+- 遵循 [PEP 8](https://peps.python.org/pep-0008/)
 - 使用 4 空格缩进
-- 每行不超过 120 字符
-- 使用有意义的变量和函数名
+- 每行尽量不超过 120 字符
+- 使用有意义的变量名、函数名和模块名
 
 ### 文档字符串
 
-所有公共函数和类都应该包含文档字符串：
-
-```python
-def example_function(param1, param2):
-    """
-    简要描述函数功能。
-
-    更详细的说明（如果需要）。
-
-    Args:
-        param1: 参数 1 的说明
-        param2: 参数 2 的说明
-
-    Returns:
-        返回值的说明
-    """
-    pass
-```
+公共函数和类应带有简洁、准确的文档字符串。
 
 ### 类型注解
 
-推荐使用类型注解：
+推荐为新增或重构代码补充类型注解。
 
-```python
-def add(a: int, b: int) -> int:
-    return a + b
-```
+## 提交建议
 
-## 提交 Pull Request
+1. 修改前先确认对应阶段边界与输入输出契约
+2. 修改后至少验证：
+   - 入口脚本参数是否仍与文档一致
+   - 输出目录与 summary 是否保持兼容
+   - 文档是否同步更新
 
-### 1. 创建分支
+## Pull Request 建议
 
-```bash
-git checkout -b feature/your-feature-name
-# 或
-git checkout -b fix/your-bug-fix
-```
+PR 描述中建议明确说明：
 
-### 2. 进行修改
+- 变更属于哪个阶段：`base_model / pruning / qat / onnx / amct / atc`
+- 是否影响跨阶段契约：
+  - `model_structure`
+  - `channel_cfg`
+  - `architecture_signature`
+  - `quantization_meta`
+  - `onnx_summary.json / amct_summary.json / atc_summary.json`
+- 是否需要更新自动化脚本或文档
 
-- 确保代码符合项目规范
-- 添加必要的测试
-- 更新相关文档
+## 测试与验证
 
-### 3. 提交更改
+当前仓库更强调“阶段入口可运行 + 产物契约正确”，建议按变更范围做验证：
 
-```bash
-git add .
-git commit -m "清晰的提交信息"
-```
+- 基座训练相关：至少跑通一次 `src/base_model_main.py`
+- 剪枝相关：至少验证 `pruning_summary.json` 与 checkpoint 输出
+- QAT 相关：至少验证 QAT checkpoint 可恢复
+- ONNX 相关：至少验证导出与 ORT 精度评估
+- AMCT / ATC 相关：至少验证输入契约检查逻辑；若环境允许，再做真实阶段运行
 
-提交信息规范：
-- 使用现在时态（"Add feature" 而非 "Added feature"）
-- 首字母大写
-- 简短描述（50 字符以内）
-- 必要时添加详细说明
+## 文档贡献
 
-### 4. 推送到远程仓库
+文档改进同样重要。更新文档时请保持以下原则：
 
-```bash
-git push origin feature/your-feature-name
-```
-
-### 5. 创建 Pull Request
-
-在 GitHub 上创建 Pull Request，包含：
-- 清晰的标题
-- 详细的描述
-- 相关的 Issue 引用（如果有）
-
-## 测试
-
-### 运行测试
-
-在提交代码前，请确保：
-1. 代码可以正常运行
-2. 训练和测试流程正常
-3. 没有引入新的错误
-
-### 测试建议
-
-- 测试不同的模型架构
-- 测试不同的参数组合
-- 验证输出文件是否正确生成
-
-## 文档改进
-
-文档改进也是重要的贡献！您可以：
-
-- 修复拼写错误
-- 改进说明
-- 添加示例
-- 翻译文档
-- 更新过时的内容
-
-## 报告 Bug
-
-报告 Bug 时请包含：
-
-1. **清晰的标题**
-2. **复现步骤**
-3. **预期行为**
-4. **实际行为**
-5. **环境信息**：
-   - Python 版本
-   - 依赖版本
-   - 操作系统
-6. **错误日志**（如果有）
-7. **截图**（如果有帮助）
-
-## 功能建议
-
-提出功能建议时请说明：
-
-1. 功能的用途
-2. 为什么需要这个功能
-3. 可能的实现方案
-4. 替代方案（如果有）
-
-## 行为准则
-
-### 我们倡导
-
-- 友好和包容的态度
-- 尊重不同的观点
-- 优雅地接受建设性批评
-- 关注对社区最有利的事情
-- 对其他社区成员表示同理心
-
-### 我们不能容忍
-
-- 骚扰或歧视性言论
-- 公开或私下骚扰
-- 发布他人的私人信息
-- 其他不专业或不当的行为
+- 以当前代码实现为准
+- 不把 `pixi install` / `uv sync` 会自动安装的内容写成“用户手动依赖”
+- 不把“已实现”误写成“已充分验证”
+- 不保留过时的五阶段、旧入口或旧参数描述
 
 ## 获取帮助
 
-如果您有任何问题或需要帮助：
+如果需要快速了解项目：
 
-1. 查看 [README.md](../README.md)
-2. 查看 [文档目录](./)
-3. 提交 Issue
+1. 先看 [README.md](../README.md)
+2. 再看 [项目架构分析](PROJECT_ARCHITECTURE.md)
+3. 最后按阶段查看：
+   - [命令行参数详解](CLI_ARGUMENTS.md)
+   - [自动化脚本说明](AUTOMATED_TRAINING.md)
+   - [剪枝指南](PRUNING_GUIDE.md)
 
 ## 许可证
 
 通过贡献代码，您同意您的贡献将根据项目的 [LICENSE](../LICENSE) 进行许可。
-
----
-
-再次感谢您的贡献！

@@ -2,7 +2,7 @@
 
 ## 概述
 
-当前仓库在项目根目录提供六份顺序执行脚本：
+当前仓库在项目根目录提供 6 份顺序执行脚本：
 
 - `autorun_base_model.sh`
 - `autorun_pruning.sh`
@@ -11,17 +11,37 @@
 - `autorun_amct.sh`
 - `autorun_atc.sh`
 
-这些脚本都采用非常直接的风格：逐行命令、顺序执行、无复杂控制流，适合在服务器终端手动监视。
+这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的形式，便于直接在服务器终端观察运行状态。
 
 ## 运行前准备
 
-当前项目默认工作流由“公共层 + 阶段增量层”组成：
+### 需要用户手动安装的项目
 
-- `pixi`：提供 GCC / Make / CMake 等系统工具链环境
-- `uv`：安装 Python 依赖并执行 `uv run ...`
-- `direnv`：推荐自动激活 [`.envrc`](../.envrc) 公共环境层
+- `git`
+- `pixi`
+- `uv`
+- `direnv`（可选）
 
-推荐最小运行顺序：
+### `pixi install` / `uv sync` 会自动安装的内容
+
+- `pixi install`
+  - Python 3.12 运行时
+  - GCC / G++ / Make / CMake
+  - `cuda-runtime`、`cudnn`
+  - `ascend-cann-toolkit`、`ascend-cann-310b-ops`
+- `uv sync`
+  - `torch`
+  - `onnx`
+  - `onnxruntime-gpu`
+  - `torch-pruning`
+  - 以及 `pyproject.toml` 中声明的其余 Python 依赖
+
+### 条件性宿主机要求
+
+- 若要使用 CUDA 加速训练，宿主机需要可用的 NVIDIA GPU 与驱动。
+- 若要执行真实的 AMCT / ATC / Ascend 部署验证，宿主机需要对应的 Ascend 设备/驱动环境。
+
+### 推荐初始化顺序
 
 ```bash
 pixi install
@@ -34,29 +54,46 @@ direnv allow
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
-自动化脚本默认要求公共层已存在；若未经过 `direnv` 加载 `.envrc`，脚本会直接报错。
+### 阶段专用手动准备
+
+AMCT 阶段额外依赖仓库自带组件：
+
+- `amct_onnx/amct_onnx-0.23.2-py3-none-linux_x86_64.whl`
+- `amct_onnx/amct_onnx_op.tar.gz`
+
+说明：
+
+- 上述文件已经随仓库提供
+- 它们不属于 `uv sync` / `pixi install` 的自动安装范围
+- 在运行 `autorun_amct.sh` 前，需要按目标环境自行安装或部署
+
+## 环境层次
+
+自动化脚本默认都要求当前 shell 已激活公共环境层 `.envrc`。在此基础上：
+
+- `autorun_base_model.sh`：内部加载 `load_base_model_env.sh`
+- `autorun_pruning.sh`：只依赖公共层
+- `autorun_qat.sh`：只依赖公共层
+- `autorun_onnx.sh`：内部加载 `load_onnx_env.sh`
+- `autorun_amct.sh`：内部加载 `load_amct_env.sh`
+- `autorun_atc.sh`：内部加载 `load_atc_env.sh`
 
 ## 基座模型自动训练
 
-入口脚本：
+入口：
 
 ```bash
 bash autorun_base_model.sh
 ```
 
-脚本内部逐行调用：
-
-```bash
-uv run src/base_model_main.py ...
-```
-
-当前覆盖范围：
+当前行为：
 
 - 模型：`resnet6_2d` / `resnet10_2d` / `resnet14_2d` / `resnet18_2d` / `resnet34_2d`
 - 搜索维度：模型对应的训练轮数 + `batch_size`
-- 固定设置：每条命令显式传入 `--full_load True`
+- 每条命令显式传入：`--full_load True`
+- 内部执行：`uv run src/base_model_main.py ...`
 
-输出默认写入：
+输出目录：
 
 ```text
 output/base_model/<model>/epochs<epochs>_bs<batch_size>/
@@ -64,34 +101,24 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 
 ## 剪枝自动运行
 
-入口脚本：
+入口：
 
 ```bash
 bash autorun_pruning.sh
 ```
 
-脚本内部逐行调用：
-
-```bash
-uv run src/pruning_main.py ...
-```
-
-当前覆盖范围：
+当前行为：
 
 - 模型：全部 5 个基座模型
 - 搜索维度：
   - `--model`
   - `--pruning_ratio`
   - `--pruning_steps`
-- 固定设置：每条命令显式传入 `--full_load True`
-- 其他 pruning 参数使用 [src/pruning/args.py](../src/pruning/args.py) 的默认值，例如：
-  - `batch_size=64`
-  - `finetune_epochs=10`
-  - `global_pruning=True`
-  - `ignore_fc=True`
-  - `evaluate_test=True`
+- 每条命令显式传入：`--full_load True`
+- 其余参数沿用 pruning CLI 默认值
+- 内部执行：`uv run src/pruning_main.py ...`
 
-输出默认写入：
+输出目录：
 
 ```text
 output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
@@ -99,58 +126,91 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 ## QAT 自动运行
 
-入口脚本：
+入口：
 
 ```bash
 bash autorun_qat.sh
 ```
 
-脚本内部逐行调用：
+当前行为：
 
-```bash
-uv run src/qat_main.py ...
-```
+- 输入：pruning 自动脚本产出的 `best_pruned_model.pth`
+- 每条命令显式传入：`--full_load True`
+- 其余参数沿用 QAT CLI 默认值
+- 内部执行：`uv run src/qat_main.py ...`
 
-当前覆盖范围：
-
-- 输入：由 pruning 自动脚本产出的 pruning checkpoint 组合
-- 固定设置：每条命令显式传入 `--full_load True`
-- 其他 QAT 参数使用 [src/qat/args.py](../src/qat/args.py) 的默认值，例如：
-  - `qat_epochs=10`
-  - `batch_size=64`
-  - `lr=1e-5`
-  - `evaluate_test=True`
-
-输出默认写入：
+输出目录：
 
 ```text
 output/qat/<model>/from_<pruning_exp>/
 ```
 
+## ONNX 自动运行
+
+入口：
+
+```bash
+bash autorun_onnx.sh
+```
+
+当前行为：
+
+- 遍历：
+  - `output/pruning/**/best_pruned_model.pth`
+  - `output/qat/**/best_qat_prepare_model.pth`
+- 内部执行：`uv run src/onnx_main.py ...`
+- 当前沿用 ONNX CLI 默认值：
+  - `full_load=False`
+  - `evaluate_test=True`
+  - `eval_batch_size=64`
+
+输出目录：
+
+```text
+output/onnx/pruning_fp16/<model>/from_<exp>/
+output/onnx/qat_convert/<model>/from_<exp>/
+```
+
+## AMCT 自动运行
+
+入口：
+
+```bash
+bash autorun_amct.sh
+```
+
+当前行为：
+
+- 只遍历 `output/onnx/qat_convert/**/model_quant.onnx`
+- 内部执行：`uv run src/amct_main.py ...`
+- 运行前需先完成仓库内 `amct_onnx` wheel 与算子包的手动安装或部署
+
+输出目录：
+
+```text
+output/amct/<model>/from_<exp>/
+```
+
 ## ATC 自动运行
 
-入口脚本：
+入口：
 
 ```bash
 bash autorun_atc.sh
 ```
 
-脚本内部逐行调用：
-
-```bash
-pixi run python src/atc_main.py ...
-```
-
-当前覆盖范围：
+当前行为：
 
 - 输入分支：
   - `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - `output/amct/**/deploy_model.onnx`
-- 固定设置：
+- 内部执行：`pixi run python src/atc_main.py ...`
+- 当前沿用 ATC CLI 默认值：
   - `soc_version=Ascend310B4`
   - `input_format=NCHW`
   - `input_shape="input:1,1,543,512"`
-- 输出默认写入：
+
+输出目录：
 
 ```text
 output/atc/pruning_fp16/<model>/from_<exp>/
@@ -159,16 +219,15 @@ output/atc/amct_deploy/<model>/from_<exp>/
 
 ## 使用建议
 
-1. 先单独运行一条命令确认环境与数据路径正常。
-2. 服务器长时运行时建议直接进入项目根目录后执行脚本。
-3. 若你依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
-4. `autorun_base_model.sh` / `autorun_onnx.sh` / `autorun_amct.sh` / `autorun_atc.sh` 会在公共层基础上补各自阶段增量环境；`autorun_pruning.sh` / `autorun_qat.sh` 仅依赖公共层。
-5. pruning 自动脚本依赖：
+1. 先单独运行一条命令，确认环境、数据路径与驱动条件正常。
+2. 若依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
+3. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
-6. `autorun_onnx.sh` 当前会沿用 ONNX CLI 默认 `eval_batch_size=64` 做精度评估；若机器资源不足，可在脚本中的 `uv run src/onnx_main.py ...` 后显式追加更小的 `--eval_batch_size`。
+4. `autorun_onnx.sh` 当前不会显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。
+5. `autorun_amct.sh` 与 `autorun_atc.sh` 都属于阶段性部署脚本，建议在对应目标环境上运行。
 
 ## 注意事项
 
 - 当前脚本不做并行调度。
-- 当前脚本不做失败重试、断点续跑或日志切分。
-- 若需要修改搜索网格，直接编辑脚本中的命令列表即可。
+- 当前脚本不做失败重试或断点续跑。
+- 若需要调整搜索网格，直接编辑脚本中的命令列表即可。

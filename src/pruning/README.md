@@ -8,18 +8,43 @@
 uv run src/pruning_main.py --help
 ```
 
-默认前提：当前 shell 已处于项目标准 `pixi + uv` 环境中。推荐直接在项目根目录通过 `.envrc` 自动激活；若未使用 `direnv`，则应先手动进入 `pixi` 环境后再执行 `uv run ...`。
+## 环境说明
+
+运行 pruning 阶段前，用户只需要独立手动安装：
+
+- `git`
+- `pixi`
+- `uv`
+- `direnv`（可选）
+
+随后执行：
+
+```bash
+pixi install
+uv sync
+direnv allow
+```
+
+说明：
+
+- Python 运行时、工具链、CUDA runtime 等由 `pixi install` 自动提供
+- Python 包依赖由 `uv sync` 自动提供
+- pruning 阶段本身只依赖公共环境层，不需要额外 `load_*_env.sh`
 
 ## 当前阶段定位
 
-当前 pruning 阶段负责：
+pruning 阶段负责：
 
 - 从 `output/base_model/<model>/best_model.pth` 恢复基座模型
 - 执行 iterative structured pruning
 - 每轮进行验证与可选微调
 - 仅最终轮保存 pruning checkpoint
 
-当前 pruning 阶段**不负责**恢复 pruning checkpoint；后续恢复入口将由 QAT / ONNX 阶段负责。
+不负责：
+
+- 恢复 pruning checkpoint
+- 导出 ONNX
+- 执行量化训练
 
 ## 当前输入约定
 
@@ -29,7 +54,7 @@ uv run src/pruning_main.py --help
 output/base_model/<model>/best_model.pth
 ```
 
-这里的 `best_model.pth` 应是你在对应基座模型根目录下维护的最佳权重符号链接。
+这里的 `best_model.pth` 应是对应基座模型目录下维护的最佳权重符号链接。
 
 ## 当前输出约定
 
@@ -42,7 +67,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `best_pruned_model.pth`
 - `best_pruned_info.txt`
 - `pruning_summary.json`
-- `Confusion_matrix.png`（仅最终测试阶段生成）
+- `Confusion_matrix.png`
 - `runs/round_<n>/`
 
 ## 关键产物语义
@@ -54,7 +79,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 ### `pruning_summary.json`
 
-当前顶层结构为：
+当前顶层结构包括：
 
 - `baseline`
 - `rounds`
@@ -67,7 +92,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 ### pruning checkpoint
 
-当前主要字段为：
+当前主要字段包括：
 
 - `model_state_dict`
 - `model_structure`
@@ -76,7 +101,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `best_acc`
 - `best_val_loss`
 
-其中 `model_structure` 会保存未来恢复所需的：
+其中 `model_structure` 保存未来恢复所需的：
 
 - `model_name`
 - `model_kwargs`
