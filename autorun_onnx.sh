@@ -48,5 +48,5 @@ run_branch() {
 
 cd "$REPO_ROOT"
 
-# run_branch "pruning_fp16" "output/pruning" "best_pruned_model.pth"
+run_branch "pruning_fp16" "output/pruning" "best_pruned_model.pth"
 run_branch "qat_convert" "output/qat" "best_qat_prepare_model.pth"

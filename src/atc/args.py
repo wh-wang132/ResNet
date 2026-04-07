@@ -31,8 +31,8 @@ def parse_args():
     parser.add_argument(
         "--input_shape",
         type=str,
-        default="input:1,1,543,512",
-        help='静态输入形状 (默认 "input:1,1,543,512")',
+        default=None,
+        help="可选显式输入形状；默认从上游摘要 interface 派生并将 batch 固定为 1",
     )
     parser.add_argument(
         "--input_format",
