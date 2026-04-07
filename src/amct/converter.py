@@ -34,6 +34,7 @@ REQUIRED_ONNX_SUMMARY_KEYS = {
     "branch",
     "model_name",
     "source_checkpoint_path",
+    "source_architecture_signature",
     "onnx_path",
     "example_input_shape",
     "opset_version",
@@ -50,6 +51,16 @@ def _validate_input_onnx_model(onnx_model_path):
         raise AMCTConversionError("AMCT 输入文件必须是 .onnx")
     if os.path.basename(onnx_model_path) != EXPECTED_INPUT_MODEL_NAME:
         raise AMCTConversionError("AMCT 当前只接受仓库 qat_convert 产出的 model_quant.onnx")
+
+
+def _validate_summary_architecture_signature(summary, label):
+    architecture_signature = summary.get("source_architecture_signature")
+    if not isinstance(architecture_signature, dict):
+        raise AMCTConversionError(f"{label} 缺少 source_architecture_signature")
+    signature_hash = architecture_signature.get("signature_hash")
+    if not signature_hash:
+        raise AMCTConversionError(f"{label}.source_architecture_signature 缺少 signature_hash")
+    return architecture_signature
 
 
 def load_and_validate_qat_source(onnx_model_path, repo_root=None):
@@ -82,6 +93,11 @@ def load_and_validate_qat_source(onnx_model_path, repo_root=None):
     if onnx_summary["branch"] != EXPECTED_ONNX_BRANCH:
         raise AMCTConversionError("AMCT 当前只接受 branch=qat_convert 的 ONNX 摘要")
 
+    architecture_signature = _validate_summary_architecture_signature(
+        onnx_summary,
+        EXPECTED_ONNX_SUMMARY_NAME,
+    )
+
     resolved_summary_onnx_path = resolve_repo_path(onnx_summary["onnx_path"], repo_root=repo_root)
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise AMCTConversionError("onnx_summary.json 中的 onnx_path 与当前输入文件不匹配")
@@ -97,6 +113,7 @@ def load_and_validate_qat_source(onnx_model_path, repo_root=None):
         "onnx_summary_path": os.path.abspath(summary_path),
         "source_onnx_path": onnx_model_path,
         "source_interface": source_contract["interface"],
+        "source_architecture_signature": architecture_signature,
     }
 
 
@@ -181,6 +198,7 @@ def validate_amct_outputs_and_build_summary(
             onnx_summary["source_checkpoint_path"],
             repo_root=repo_root,
         ),
+        "source_architecture_signature": source_info["source_architecture_signature"],
         "source_branch": EXPECTED_ONNX_BRANCH,
         "source_interface": source_info["source_interface"],
         "example_input_shape": onnx_summary["example_input_shape"],

@@ -112,12 +112,14 @@ def main():
         **artifacts.export_meta,
         **({} if ort_provider_meta is None else ort_provider_meta),
     }
+    model_structure = artifacts.checkpoint_meta.get("model_structure", {})
     summary = {
         "summary_version": SUMMARY_VERSION,
         "branch": artifacts.branch,
         "model_name": artifacts.checkpoint_meta["model_name"],
         "labels": labels__,
         "source_checkpoint_path": to_repo_relative_path(args.checkpoint),
+        "source_architecture_signature": model_structure.get("architecture_signature"),
         "opset_version": actual_opset_version,
         "example_input_shape": artifacts.export_shape,
         "onnx_path": to_repo_relative_path(artifacts.onnx_path),

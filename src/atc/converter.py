@@ -37,6 +37,7 @@ REQUIRED_PRUNING_SUMMARY_KEYS = {
     "branch",
     "model_name",
     "source_checkpoint_path",
+    "source_architecture_signature",
     "onnx_path",
     "example_input_shape",
     "opset_version",
@@ -49,6 +50,7 @@ REQUIRED_AMCT_SUMMARY_KEYS = {
     "source_onnx_path",
     "source_onnx_summary_path",
     "source_checkpoint_path",
+    "source_architecture_signature",
     "source_branch",
     "source_interface",
     "deploy_model_path",
@@ -66,6 +68,16 @@ REQUIRED_AMCT_SUMMARY_KEYS = {
 
 class ATCCompilationError(RuntimeError):
     """ATC 阶段输入校验或编译错误。"""
+
+
+def _validate_summary_architecture_signature(summary, summary_name):
+    architecture_signature = summary.get("source_architecture_signature")
+    if not isinstance(architecture_signature, dict):
+        raise ATCCompilationError(f"{summary_name} 缺少 source_architecture_signature")
+    signature_hash = architecture_signature.get("signature_hash")
+    if not signature_hash:
+        raise ATCCompilationError(f"{summary_name}.source_architecture_signature 缺少 signature_hash")
+    return architecture_signature
 
 
 def _load_summary_contract(
@@ -121,13 +133,18 @@ def _load_summary_contract(
             error_cls=ATCCompilationError,
         )
 
+    architecture_signature = _validate_summary_architecture_signature(
+        summary,
+        expected_summary_name,
+    )
+
     resolved_summary_onnx_path = resolve_repo_path(summary[path_key], repo_root=repo_root)
     if os.path.normpath(resolved_summary_onnx_path) != os.path.normpath(onnx_model_path):
         raise ATCCompilationError(
             f"{expected_summary_name} 中的 {path_key} 与当前输入文件不匹配"
         )
 
-    return summary, summary_path, summary[validated_interface_key]
+    return summary, summary_path, summary[validated_interface_key], architecture_signature
 
 
 def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
@@ -274,6 +291,7 @@ def _run_atc_compile(
 def _build_summary(
     branch,
     input_summary,
+    source_architecture_signature,
     validated_interface,
     resolved_input_shape,
     onnx_model_path,
@@ -295,6 +313,7 @@ def _build_summary(
         "source_model_path": to_repo_relative_path(onnx_model_path, repo_root=repo_root),
         "source_summary_path": to_repo_relative_path(source_summary_path, repo_root=repo_root),
         "source_checkpoint_path": to_repo_relative_path(source_checkpoint_path, repo_root=repo_root),
+        "source_architecture_signature": source_architecture_signature,
         "validated_source_summary_version": input_summary["summary_version"],
         "source_interface": validated_interface,
         "resolved_input_name": resolved_input_shape["input_name"],
@@ -327,7 +346,7 @@ def build_atc_artifacts(
     repo_root=None,
 ):
     repo_root = get_repo_root() if repo_root is None else repo_root
-    input_summary, source_summary_path, validated_interface = load_branch_summary(
+    input_summary, source_summary_path, validated_interface, source_architecture_signature = load_branch_summary(
         branch,
         onnx_model_path,
         repo_root=repo_root,
@@ -362,6 +381,7 @@ def build_atc_artifacts(
     summary = _build_summary(
         branch=branch,
         input_summary=input_summary,
+        source_architecture_signature=source_architecture_signature,
         validated_interface=validated_interface,
         resolved_input_shape=resolved_input_shape,
         onnx_model_path=os.path.abspath(onnx_model_path),

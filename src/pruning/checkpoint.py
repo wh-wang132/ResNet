@@ -5,11 +5,28 @@
 import os
 import torch
 
-from .utils import load_model_map, load_state_dict_safely, to_repo_relative_path
+from .utils import (
+    build_architecture_signature,
+    load_model_map,
+    load_state_dict_safely,
+    to_repo_relative_path,
+)
 
 
 class CheckpointRestoreError(RuntimeError):
     """剪枝阶段 checkpoint 恢复错误。"""
+
+
+def _validate_architecture_signature(model, expected_signature, label):
+    actual_signature = build_architecture_signature(model)
+    expected_hash = expected_signature.get("signature_hash")
+    actual_hash = actual_signature.get("signature_hash")
+    if expected_hash is None or actual_hash is None:
+        raise CheckpointRestoreError(f"{label} 缺少 architecture_signature.signature_hash，无法校验")
+    if actual_hash != expected_hash:
+        raise CheckpointRestoreError(
+            f"{label} 的 architecture_signature 校验失败: expected={expected_hash}, actual={actual_hash}"
+        )
 
 
 def resolve_base_checkpoint_path(model_name):
@@ -52,6 +69,10 @@ def load_base_checkpoint(model_name, device):
     if checkpoint_model_name is None:
         raise CheckpointRestoreError("checkpoint 中缺少 model_name，无法校验与命令行指定模型的一致性")
 
+    architecture_signature = model_structure.get("architecture_signature")
+    if architecture_signature is None:
+        raise CheckpointRestoreError("checkpoint 中缺少 architecture_signature，无法执行强校验")
+
     model_kwargs = dict(model_structure.get("model_kwargs", {}))
     model_kwargs.setdefault(
         "num_classes",
@@ -64,6 +85,7 @@ def load_base_checkpoint(model_name, device):
         raise CheckpointRestoreError(f"不支持的模型名: {model_name}")
 
     model = model_map[model_name](**model_kwargs)
+    _validate_architecture_signature(model, architecture_signature, "基座 checkpoint")
     success = load_state_dict_safely(model, checkpoint["model_state_dict"], strict=True)
     if not success:
         raise CheckpointRestoreError("无法以 strict=True 加载基座 checkpoint 权重")

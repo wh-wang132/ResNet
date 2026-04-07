@@ -219,6 +219,10 @@ QAT 当前依赖：
 - `model_structure.architecture_signature`
 - `model_state_dict`
 
+说明：
+
+- 所有 `.pth` checkpoint 消费步骤统一对 `architecture_signature` 执行强校验
+
 ### QAT checkpoint -> ONNX
 
 ONNX 当前依赖：
@@ -230,16 +234,26 @@ ONNX 当前依赖：
 - `quantization_meta`
 - prepare 后 graph 的 `model_state_dict`
 
+说明：
+
+- `qat_convert` 与 `pruning_fp16` 两条 ONNX 导出路径都属于 `.pth` 消费链，因此同样执行 `architecture_signature` 强校验
+
 ### ONNX -> AMCT
 
 AMCT 当前依赖：
 
+- ONNX 实体接口与图事实
 - `onnx_summary.json.branch == "qat_convert"`
 - `onnx_summary.json.onnx_path`
 - `onnx_summary.json.model_name`
 - `onnx_summary.json.source_checkpoint_path`
+- `onnx_summary.json.source_architecture_signature`
 - `onnx_summary.json.example_input_shape`
 - `onnx_summary.json.opset_version`
+
+说明：
+
+- 由于 ONNX 当前无法可靠嵌入 `architecture_signature`，AMCT 通过 `onnx_summary.json` 消费上游签名引用作为必要补充
 
 ### ONNX / AMCT -> ATC
 
@@ -248,10 +262,16 @@ ATC 当前依赖：
 - `pruning_fp16` 分支：
   - `model_fp16.onnx`
   - 同目录 `onnx_summary.json`
+  - `onnx_summary.json.source_architecture_signature`
 - `amct_deploy` 分支：
   - `deploy_model.onnx`
   - 同目录 `amct_summary.json`
+  - `amct_summary.json.source_architecture_signature`
 
+说明：
+
+- ATC 仍优先校验实体 interface；当 ONNX / deploy ONNX 无法可靠承载签名时，再通过 summary 中的签名引用补充校验
+'},
 ## 设计上的关键点
 
 ### 1. checkpoint 从“只存权重”升级为“可恢复对象”

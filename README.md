@@ -45,6 +45,8 @@ base_model checkpoint
 - 稳定的数据集切分与 `output/splits/` manifest 复用
 - 基座、剪枝、QAT 三类结构化 checkpoint
 - 剪枝后完整拓扑导出：`channel_cfg + architecture_signature`
+- 所有消费 `.pth` checkpoint 的步骤统一强校验 `architecture_signature`
+- ONNX / deploy ONNX 当前通过 summary 传递上游 `architecture_signature` 引用，作为实体无法可靠嵌入签名时的必要补充
 - Torch 原生 FX graph mode QAT
 - `pruning_fp16` / `qat_convert` 双分支 ONNX 导出
 - QAT ONNX rewrite + validate，用于 CANN/AMCT/ATC 兼容约束

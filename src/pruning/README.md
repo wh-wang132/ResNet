@@ -109,3 +109,8 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `model_kwargs`
 - `channel_cfg`
 - `architecture_signature`
+
+说明：
+
+- 后续所有直接消费 pruning checkpoint 的 `.pth` 链路，都会对 `architecture_signature` 执行强校验
+- 若后续进入 ONNX / AMCT / ATC 等当前无法可靠嵌入该签名的阶段，则通过对应 summary 传递上游签名引用作为必要补充

@@ -203,6 +203,7 @@ src/
 
 - 解析 `output/base_model/<model>/best_model.pth`
 - 严格恢复基座 checkpoint
+- 对 base checkpoint 执行 `architecture_signature` 强校验
 
 ### `pruning/pruner.py`
 
@@ -248,6 +249,7 @@ src/
 
 - 读取 pruning / QAT checkpoint
 - 用 `*_from_cfg()` 恢复剪枝结构
+- 对 pruning / QAT checkpoint 执行 `architecture_signature` 强校验
 - 严格加载权重
 
 ### `qat/quantization.py`
@@ -309,6 +311,7 @@ src/
 
 - ONNX 输出目录命名
 - 保存 `onnx_summary.json`
+- 在 ONNX 无法可靠嵌入 `architecture_signature` 时，通过 summary 传递上游签名引用
 
 ### `onnx_export/utils.py`
 
@@ -324,8 +327,10 @@ src/
 
 - 校验输入 `model_quant.onnx`
 - 校验 `onnx_summary.json`
+- 在 ONNX 实体无法可靠承载签名时，消费 summary 中的 `architecture_signature` 引用
 - 调用 `amct_onnx.convert_qat_model(...)`
 - 校验 deploy / fakequant ONNX 输出
+- 在 `amct_summary.json` 中继续传递上游签名引用
 
 ### `amct/output.py`
 
@@ -347,6 +352,7 @@ src/
 ### `atc/converter.py`
 
 - 按 `pruning_fp16` / `amct_deploy` 加载输入契约
+- 优先校验实体 interface，并在 ONNX / deploy ONNX 无法嵌入签名时消费 summary 中的 `architecture_signature` 引用
 - 构建 `atc` 子进程命令
 - 收集 `.om` 与工具产物
 - 生成 `atc_summary.json`

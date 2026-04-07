@@ -17,11 +17,23 @@ from base_model.resnet_standard import (
     resnet34_2d_from_cfg,
 )
 from .quantization import prepare_model_for_qat
-from .utils import load_state_dict_safely, to_repo_relative_path
+from .utils import build_architecture_signature, load_state_dict_safely, to_repo_relative_path
 
 
 class CheckpointRestoreError(RuntimeError):
     """QAT 阶段 checkpoint 恢复错误。"""
+
+
+def _validate_architecture_signature(model, expected_signature, label):
+    actual_signature = build_architecture_signature(model)
+    expected_hash = expected_signature.get("signature_hash")
+    actual_hash = actual_signature.get("signature_hash")
+    if expected_hash is None or actual_hash is None:
+        raise CheckpointRestoreError(f"{label} 缺少 architecture_signature.signature_hash，无法校验")
+    if actual_hash != expected_hash:
+        raise CheckpointRestoreError(
+            f"{label} 的 architecture_signature 校验失败: expected={expected_hash}, actual={actual_hash}"
+        )
 
 
 FROM_CFG_MODEL_MAP = {
@@ -65,6 +77,11 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
 
     restore_spec = _build_restore_spec(model_structure, checkpoint)
     model = _build_float_model_from_restore_spec(restore_spec)
+    _validate_architecture_signature(
+        model,
+        model_structure["architecture_signature"],
+        "pruning checkpoint",
+    )
     success = load_state_dict_safely(model, checkpoint["model_state_dict"], strict=True)
     if not success:
         raise CheckpointRestoreError("无法以 strict=True 加载 pruning checkpoint 权重")
@@ -98,6 +115,10 @@ def _build_restore_spec(model_structure, checkpoint):
     model_name = model_structure["model_name"]
     if model_name not in FROM_CFG_MODEL_MAP:
         raise CheckpointRestoreError(f"不支持的模型名: {model_name}")
+
+    architecture_signature = model_structure.get("architecture_signature")
+    if architecture_signature is None:
+        raise CheckpointRestoreError("checkpoint 中缺少 architecture_signature，无法执行强校验")
 
     model_kwargs = dict(model_structure.get("model_kwargs", {}))
     model_kwargs.setdefault("num_classes", checkpoint.get("train_context", {}).get("class_num", 24))
@@ -137,6 +158,11 @@ def load_qat_checkpoint(qat_checkpoint_path, device):
     model_structure = checkpoint["model_structure"]
     restore_spec = _build_restore_spec(model_structure, checkpoint)
     float_model = _build_float_model_from_restore_spec(restore_spec)
+    _validate_architecture_signature(
+        float_model,
+        model_structure["architecture_signature"],
+        "QAT checkpoint",
+    )
     float_model.to(device)
 
     try:
