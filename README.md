@@ -258,37 +258,37 @@ output/base_model/<model>/best_model.pth
 
 ## 自动化脚本
 
-项目根目录当前提供 6 份顺序执行脚本：
+`autorun/` 目录当前提供 6 份顺序执行脚本：
 
-- [autorun_base_model.sh](autorun_base_model.sh)
-- [autorun_pruning.sh](autorun_pruning.sh)
-- [autorun_qat.sh](autorun_qat.sh)
-- [autorun_onnx.sh](autorun_onnx.sh)
-- [autorun_amct.sh](autorun_amct.sh)
-- [autorun_atc.sh](autorun_atc.sh)
+- [autorun/autorun_base_model.sh](autorun/autorun_base_model.sh)
+- [autorun/autorun_pruning.sh](autorun/autorun_pruning.sh)
+- [autorun/autorun_qat.sh](autorun/autorun_qat.sh)
+- [autorun/autorun_onnx.sh](autorun/autorun_onnx.sh)
+- [autorun/autorun_amct.sh](autorun/autorun_amct.sh)
+- [autorun/autorun_atc.sh](autorun/autorun_atc.sh)
 
 这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的形式，适合直接在服务器终端监视运行。
 
 当前脚本行为概览：
 
-- `autorun_base_model.sh`
+- `autorun/autorun_base_model.sh`
   - 批量训练 5 个基座模型
   - 搜索维度：模型与 `batch_size`
   - 固定显式传入：`--full_load True`
-- `autorun_pruning.sh`
+- `autorun/autorun_pruning.sh`
   - 批量运行 pruning 实验
   - 搜索维度：模型、`pruning_ratio`、`pruning_steps`
   - 固定显式传入：`--full_load True`
-- `autorun_qat.sh`
+- `autorun/autorun_qat.sh`
   - 批量消费 pruning checkpoint
   - 固定显式传入：`--full_load True`
-- `autorun_onnx.sh`
+- `autorun/autorun_onnx.sh`
   - 遍历 `output/pruning/**/best_pruned_model.pth`
   - 遍历 `output/qat/**/best_qat_prepare_model.pth`
   - 沿用 ONNX CLI 默认 `evaluate_test=True`、`eval_batch_size=64`
-- `autorun_amct.sh`
+- `autorun/autorun_amct.sh`
   - 遍历 `output/onnx/qat_convert/**/model_quant.onnx`
-- `autorun_atc.sh`
+- `autorun/autorun_atc.sh`
   - 遍历 `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - 遍历 `output/amct/**/deploy_model.onnx`
   - 沿用 ATC CLI 默认 `soc_version=Ascend310B4`

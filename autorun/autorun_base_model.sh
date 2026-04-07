@@ -1,8 +1,7 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-. "$SCRIPT_DIR/scripts/_require_public_env.sh"
+. "$REPO_ROOT/scripts/_require_public_env.sh"
 require_public_env
 
 . "$REPO_ROOT/scripts/load_base_model_env.sh"

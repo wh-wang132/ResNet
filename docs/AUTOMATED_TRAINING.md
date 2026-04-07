@@ -2,14 +2,14 @@
 
 ## 概述
 
-当前仓库在项目根目录提供 6 份顺序执行脚本：
+当前仓库在 `autorun/` 目录提供 6 份顺序执行脚本：
 
-- `autorun_base_model.sh`
-- `autorun_pruning.sh`
-- `autorun_qat.sh`
-- `autorun_onnx.sh`
-- `autorun_amct.sh`
-- `autorun_atc.sh`
+- `autorun/autorun_base_model.sh`
+- `autorun/autorun_pruning.sh`
+- `autorun/autorun_qat.sh`
+- `autorun/autorun_onnx.sh`
+- `autorun/autorun_amct.sh`
+- `autorun/autorun_atc.sh`
 
 这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的形式，便于直接在服务器终端观察运行状态。
 
@@ -65,25 +65,25 @@ AMCT 阶段额外依赖仓库自带组件：
 
 - 上述文件已经随仓库提供
 - 它们不属于 `uv sync` / `pixi install` 的自动安装范围
-- 在运行 `autorun_amct.sh` 前，需要按目标环境自行安装或部署
+- 在运行 `autorun/autorun_amct.sh` 前，需要按目标环境自行安装或部署
 
 ## 环境层次
 
 自动化脚本默认都要求当前 shell 已激活公共环境层 `.envrc`。在此基础上：
 
-- `autorun_base_model.sh`：内部加载 `load_base_model_env.sh`
-- `autorun_pruning.sh`：只依赖公共层
-- `autorun_qat.sh`：只依赖公共层
-- `autorun_onnx.sh`：内部加载 `load_onnx_env.sh`
-- `autorun_amct.sh`：内部加载 `load_amct_env.sh`
-- `autorun_atc.sh`：内部加载 `load_atc_env.sh`
+- `autorun/autorun_base_model.sh`：内部加载 `load_base_model_env.sh`
+- `autorun/autorun_pruning.sh`：只依赖公共层
+- `autorun/autorun_qat.sh`：只依赖公共层
+- `autorun/autorun_onnx.sh`：内部加载 `load_onnx_env.sh`
+- `autorun/autorun_amct.sh`：内部加载 `load_amct_env.sh`
+- `autorun/autorun_atc.sh`：内部加载 `load_atc_env.sh`
 
 ## 基座模型自动训练
 
 入口：
 
 ```bash
-bash autorun_base_model.sh
+bash autorun/autorun_base_model.sh
 ```
 
 当前行为：
@@ -104,7 +104,7 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 入口：
 
 ```bash
-bash autorun_pruning.sh
+bash autorun/autorun_pruning.sh
 ```
 
 当前行为：
@@ -129,7 +129,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 入口：
 
 ```bash
-bash autorun_qat.sh
+bash autorun/autorun_qat.sh
 ```
 
 当前行为：
@@ -150,7 +150,7 @@ output/qat/<model>/from_<pruning_exp>/
 入口：
 
 ```bash
-bash autorun_onnx.sh
+bash autorun/autorun_onnx.sh
 ```
 
 当前行为：
@@ -176,7 +176,7 @@ output/onnx/qat_convert/<model>/from_<exp>/
 入口：
 
 ```bash
-bash autorun_amct.sh
+bash autorun/autorun_amct.sh
 ```
 
 当前行为：
@@ -196,7 +196,7 @@ output/amct/<model>/from_<exp>/
 入口：
 
 ```bash
-bash autorun_atc.sh
+bash autorun/autorun_atc.sh
 ```
 
 当前行为：
@@ -223,8 +223,8 @@ output/atc/amct_deploy/<model>/from_<exp>/
 2. 若依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
 3. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
-4. `autorun_onnx.sh` 当前不会显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。
-5. `autorun_amct.sh` 与 `autorun_atc.sh` 都属于阶段性部署脚本，建议在对应目标环境上运行。
+4. `autorun/autorun_onnx.sh` 当前不会显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。
+5. `autorun/autorun_amct.sh` 与 `autorun/autorun_atc.sh` 都属于阶段性部署脚本，建议在对应目标环境上运行。
 
 ## 注意事项
 
