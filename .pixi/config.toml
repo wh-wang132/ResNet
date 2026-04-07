@@ -6,7 +6,6 @@ run-post-link-scripts = "insecure"
 
 [mirrors]
 "https://conda.anaconda.org/conda-forge" = ["https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge"]
-"https://conda.anaconda.org/pytorch" = ["https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch"]
 
 [pypi-config]
 index-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
