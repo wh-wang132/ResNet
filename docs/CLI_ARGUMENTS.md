@@ -339,11 +339,14 @@ pixi run python src/atc_main.py --help
   - 输入 `deploy_model.onnx`
   - 同目录必须存在 `amct_summary.json`
   - 通过 `amct_summary.json.source_architecture_signature` 补充上游签名引用
+  - 同时回读 `amct_summary.json.source_onnx_summary_path` 指向的 `onnx_summary.json`
+  - 要求 `onnx_path`、`source_architecture_signature`、`interface` 与 `amct_summary.json` 桥接一致
 
 说明：
 
 - 所有直接消费 `.pth checkpoint` 的链路都执行 `architecture_signature` 强校验
 - ONNX / deploy ONNX 当前无法可靠嵌入等价结构签名，因此下游通过 summary 读取上游签名引用作为必要补充
+- `amct_deploy -> atc` 不只检查 `amct_summary.json` 自身字段，还会回读上游 `onnx_summary.json`，以形成完整的签名桥接闭环
 
 ### 输出产物
 

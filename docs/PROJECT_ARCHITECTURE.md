@@ -267,11 +267,13 @@ ATC 当前依赖：
   - `deploy_model.onnx`
   - 同目录 `amct_summary.json`
   - `amct_summary.json.source_architecture_signature`
+  - `amct_summary.json.source_onnx_summary_path` 指向的 `onnx_summary.json`
 
 说明：
 
 - ATC 仍优先校验实体 interface；当 ONNX / deploy ONNX 无法可靠承载签名时，再通过 summary 中的签名引用补充校验
-'},
+- `amct_deploy -> atc` 不只检查 `amct_summary.json.source_architecture_signature` 是否存在，还会回读 `source_onnx_summary_path` 指向的 `onnx_summary.json`，并要求 `onnx_path`、`source_architecture_signature`、`interface` 三者与 `amct_summary.json` 桥接一致
+
 ## 设计上的关键点
 
 ### 1. checkpoint 从“只存权重”升级为“可恢复对象”

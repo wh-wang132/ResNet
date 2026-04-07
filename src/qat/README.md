@@ -77,7 +77,7 @@ QAT 训练入口依赖 pruning checkpoint 中的：
 
 - 所有直接消费 pruning / QAT checkpoint 的 `.pth` 链路，都会对 `architecture_signature` 执行强校验
 - 若后续进入 ONNX / AMCT / ATC 等当前无法可靠嵌入该签名的阶段，则通过对应 summary 传递上游签名引用作为必要补充
-'},
+
 ### QAT checkpoint -> 后续导出
 
 QAT checkpoint 提供独立恢复接口：
@@ -87,7 +87,7 @@ QAT checkpoint 提供独立恢复接口：
 3. 对 `architecture_signature` 执行强校验
 4. 按当前代码内固定的 canonical QAT 方案重建同一条 `prepare_qat_fx` 图
 5. `strict=True` 加载 prepared 权重
-'},
+
 当前 ONNX 导出阶段已经直接消费 `load_qat_checkpoint(...)`，不再回退到 pruning checkpoint。
 
 ## 输出产物

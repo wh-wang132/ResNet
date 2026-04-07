@@ -162,9 +162,65 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
     )
 
 
+def _load_and_validate_amct_source_onnx_summary(amct_summary, repo_root):
+    source_onnx_summary_path = resolve_repo_path(
+        amct_summary["source_onnx_summary_path"],
+        repo_root=repo_root,
+    )
+    ensure_file_exists(source_onnx_summary_path, "AMCT 上游 ONNX 摘要")
+    onnx_summary = load_json(source_onnx_summary_path)
+    ensure_summary_keys(
+        onnx_summary,
+        REQUIRED_PRUNING_SUMMARY_KEYS,
+        EXPECTED_PRUNING_SUMMARY_NAME,
+        error_cls=ATCCompilationError,
+    )
+    ensure_summary_version(
+        onnx_summary,
+        EXPECTED_PRUNING_SUMMARY_NAME,
+        expected_version=SUMMARY_VERSION,
+        error_cls=ATCCompilationError,
+    )
+    if onnx_summary["branch"] != "qat_convert":
+        raise ATCCompilationError(
+            "amct_summary.json.source_onnx_summary_path 指向的 ONNX 摘要必须来自 qat_convert 分支"
+        )
+    validate_interface_dict(
+        onnx_summary["interface"],
+        label=f"{EXPECTED_PRUNING_SUMMARY_NAME}.interface",
+        error_cls=ATCCompilationError,
+    )
+    onnx_architecture_signature = _validate_summary_architecture_signature(
+        onnx_summary,
+        EXPECTED_PRUNING_SUMMARY_NAME,
+    )
+
+    resolved_source_onnx_path = resolve_repo_path(
+        onnx_summary["onnx_path"],
+        repo_root=repo_root,
+    )
+    resolved_amct_source_onnx_path = resolve_repo_path(
+        amct_summary["source_onnx_path"],
+        repo_root=repo_root,
+    )
+    if os.path.normpath(resolved_source_onnx_path) != os.path.normpath(resolved_amct_source_onnx_path):
+        raise ATCCompilationError(
+            "amct_summary.json.source_onnx_path 与 source_onnx_summary_path 指向的 onnx_summary.json.onnx_path 不一致"
+        )
+    if onnx_architecture_signature != amct_summary["source_architecture_signature"]:
+        raise ATCCompilationError(
+            "amct_summary.json.source_architecture_signature 与上游 onnx_summary.json 不一致"
+        )
+    if onnx_summary["interface"] != amct_summary["source_interface"]:
+        raise ATCCompilationError(
+            "amct_summary.json.source_interface 与上游 onnx_summary.json.interface 不一致"
+        )
+    return onnx_summary
+
+
 def _load_amct_summary(onnx_model_path, repo_root=None):
     repo_root = get_repo_root() if repo_root is None else repo_root
-    return _load_summary_contract(
+    summary, summary_path, validated_interface, architecture_signature = _load_summary_contract(
         onnx_model_path=onnx_model_path,
         repo_root=repo_root,
         expected_input_model_name=EXPECTED_AMCT_INPUT_MODEL_NAME,
@@ -176,6 +232,8 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
         validated_interface_key="deploy_interface",
         additional_interface_keys=("source_interface", "fake_quant_interface"),
     )
+    _load_and_validate_amct_source_onnx_summary(summary, repo_root)
+    return summary, summary_path, validated_interface, architecture_signature
 
 
 def load_branch_summary(branch, onnx_model_path, repo_root=None):
@@ -327,6 +385,8 @@ def _build_summary(
     }
     if source_onnx_path is not None:
         summary["source_onnx_path"] = to_repo_relative_path(source_onnx_path, repo_root=repo_root)
+    if branch == "amct_deploy" and "source_onnx_summary_path" in input_summary:
+        summary["source_onnx_summary_path"] = input_summary["source_onnx_summary_path"]
     if "source_branch" in input_summary:
         summary["source_branch"] = input_summary["source_branch"]
     if "stage" in input_summary and branch == "amct_deploy":
