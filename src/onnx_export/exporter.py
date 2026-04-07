@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 import torch
@@ -46,14 +47,24 @@ class BranchArtifacts:
     folder_path: str
 
 
-def inspect_branch_checkpoint(branch, checkpoint_path, device):
-    if branch == "pruning_fp16":
-        _, checkpoint_meta, _ = load_pruning_checkpoint(checkpoint_path, device)
-        return checkpoint_meta
-    if branch == "qat_convert":
-        _, checkpoint_meta, _ = load_qat_checkpoint(checkpoint_path, torch.device("cpu"))
-        return checkpoint_meta
-    raise ValueError(f"不支持的 ONNX 导出分支: {branch}")
+@dataclass(frozen=True)
+class BranchSpec:
+    loader: Callable[[str, BranchRuntime], tuple[torch.nn.Module, dict, dict]]
+    runtime_factory: Callable[[torch.device], BranchRuntime]
+    export_shape_resolver: Callable[[dict, dict], list[int]]
+    onnx_filename: str
+    input_dtype: torch.dtype
+    export_input_dtype_label: str
+    post_export: Callable[[str], None] = field(default=lambda _onnx_path: None)
+    validate_export: Callable[[str, dict, int], dict] = field(
+        default=lambda _onnx_path, _checkpoint_meta, _opset_version: {}
+    )
+    model_builder: Callable[[torch.nn.Module], torch.nn.Module] = field(
+        default=lambda model: model.eval()
+    )
+    exported_model_builder: Callable[[torch.nn.Module, torch.device], torch.nn.Module] = field(
+        default=lambda model, _device: copy.deepcopy(model).eval()
+    )
 
 
 def normalize_export_shape(example_input_shape):
@@ -77,10 +88,12 @@ def _resolve_pruning_export_shape(checkpoint_meta, checkpoint):
     return normalize_export_shape(candidate_shape)
 
 
-def _resolve_qat_export_shape(checkpoint_meta):
+def _resolve_qat_export_shape(checkpoint_meta, _checkpoint):
     candidate_shape = checkpoint_meta.get("example_input_shape")
     if candidate_shape is None:
-        candidate_shape = checkpoint_meta.get("quantization_meta", {}).get("example_input_shape")
+        candidate_shape = checkpoint_meta.get("quantization_meta", {}).get(
+            "example_input_shape"
+        )
     if candidate_shape is None:
         raise ValueError("QAT checkpoint 缺少导出所需的输入形状")
     return normalize_export_shape(candidate_shape)
@@ -99,104 +112,165 @@ def _export_model_to_onnx(model, example_input, onnx_path, opset_version):
     )
 
 
+def _build_pruning_runtime(device):
+    return BranchRuntime(
+        source_device=device,
+        dataset_dtype="fp32",
+        onnx_input_dtype=np.float16,
+    )
+
+
+def _build_qat_runtime(_device):
+    return BranchRuntime(
+        source_device=torch.device("cpu"),
+        dataset_dtype="fp32",
+        onnx_input_dtype=np.float32,
+    )
+
+
+def _load_pruning_artifacts(checkpoint_path, runtime):
+    return load_pruning_checkpoint(checkpoint_path, runtime.source_device)
+
+
+def _load_qat_artifacts(checkpoint_path, runtime):
+    return load_qat_checkpoint(checkpoint_path, runtime.source_device)
+
+
+def _validate_pruning_export(onnx_path, _checkpoint_meta, expected_opset_version):
+    return validate_fp16_onnx(onnx_path, expected_opset_version)
+
+
+def _rewrite_qat_export(onnx_path):
+    rewrite_cann_qat_onnx(onnx_path)
+
+
+def _validate_qat_export(onnx_path, checkpoint_meta, expected_opset_version):
+    return validate_qat_quantized_onnx(
+        onnx_path,
+        checkpoint_meta["quantization_meta"],
+        expected_opset_version,
+    )
+
+
+def _build_pruning_exported_model(model, device):
+    return copy.deepcopy(model).eval().to(device).half()
+
+
+def _build_qat_quantized_model(model, _device):
+    return convert_fx(model.eval())
+
+
+def _resolve_branch_spec(branch):
+    try:
+        return BRANCH_SPECS[branch]
+    except KeyError as exc:
+        raise ValueError(f"不支持的 ONNX 导出分支: {branch}") from exc
+
+
 def _resolve_branch_runtime(branch, device):
-    if branch == "pruning_fp16":
-        return BranchRuntime(
-            source_device=device,
-            dataset_dtype="fp32",
-            onnx_input_dtype=np.float16,
-        )
-    if branch == "qat_convert":
-        return BranchRuntime(
-            source_device=torch.device("cpu"),
-            dataset_dtype="fp32",
-            onnx_input_dtype=np.float32,
-        )
-    raise ValueError(f"不支持的 ONNX 导出分支: {branch}")
+    return _resolve_branch_spec(branch).runtime_factory(device)
+
+
+def _load_branch_artifacts(branch, checkpoint_path, runtime):
+    return _resolve_branch_spec(branch).loader(checkpoint_path, runtime)
+
+
+def _build_export_meta(export_meta, runtime, export_shape, input_dtype_label):
+    export_meta.update(
+        {
+            "torch_device": str(runtime.source_device),
+            "input_dtype": input_dtype_label,
+            "export_shape": export_shape,
+            "dynamic_batch": True,
+        }
+    )
+    return export_meta
+
+
+def _build_branch_artifacts_from_loaded(
+    branch,
+    runtime,
+    model,
+    checkpoint_meta,
+    checkpoint,
+    opset_version,
+):
+    spec = _resolve_branch_spec(branch)
+    folder_path = create_output_directory(branch, checkpoint_meta)
+    export_shape = spec.export_shape_resolver(checkpoint_meta, checkpoint)
+    export_model = spec.exported_model_builder(model, runtime.source_device)
+    example_input = torch.randn(
+        *export_shape,
+        dtype=spec.input_dtype,
+        device=runtime.source_device,
+    )
+    onnx_path = f"{folder_path}/{spec.onnx_filename}"
+    _export_model_to_onnx(export_model, example_input, onnx_path, opset_version)
+    spec.post_export(onnx_path)
+    export_meta = spec.validate_export(onnx_path, checkpoint_meta, opset_version)
+    export_meta = _build_export_meta(
+        export_meta=export_meta,
+        runtime=runtime,
+        export_shape=export_shape,
+        input_dtype_label=spec.export_input_dtype_label,
+    )
+    return BranchArtifacts(
+        branch=branch,
+        runtime=runtime,
+        model=spec.model_builder(model),
+        checkpoint_meta=checkpoint_meta,
+        checkpoint=checkpoint,
+        export_shape=export_shape,
+        onnx_path=onnx_path,
+        export_meta=export_meta,
+        folder_path=folder_path,
+    )
+
+
+def inspect_branch_checkpoint(branch, checkpoint_path, device):
+    runtime = _resolve_branch_runtime(branch, device)
+    _, checkpoint_meta, _ = _load_branch_artifacts(branch, checkpoint_path, runtime)
+    return checkpoint_meta
+
+
+BRANCH_SPECS = {
+    "pruning_fp16": BranchSpec(
+        loader=_load_pruning_artifacts,
+        runtime_factory=_build_pruning_runtime,
+        export_shape_resolver=_resolve_pruning_export_shape,
+        onnx_filename="model_fp16.onnx",
+        input_dtype=torch.float16,
+        export_input_dtype_label="float16",
+        validate_export=_validate_pruning_export,
+        model_builder=lambda model: model.eval(),
+        exported_model_builder=_build_pruning_exported_model,
+    ),
+    "qat_convert": BranchSpec(
+        loader=_load_qat_artifacts,
+        runtime_factory=_build_qat_runtime,
+        export_shape_resolver=_resolve_qat_export_shape,
+        onnx_filename="model_quant.onnx",
+        input_dtype=torch.float32,
+        export_input_dtype_label="float32",
+        post_export=_rewrite_qat_export,
+        validate_export=_validate_qat_export,
+        model_builder=lambda model: model.eval(),
+        exported_model_builder=_build_qat_quantized_model,
+    ),
+}
+
+
+_SUPPORTED_EXPORT_BRANCH_SET = set(SUPPORTED_EXPORT_BRANCHES)
 
 
 def resolve_branch_opset_version(branch, requested_opset_version):
-    if branch not in SUPPORTED_EXPORT_BRANCHES:
+    if branch not in _SUPPORTED_EXPORT_BRANCH_SET:
         raise ValueError(f"不支持的 ONNX 导出分支: {branch}")
     if requested_opset_version is None:
         return ONNX_OPSET_VERSION
     if requested_opset_version != ONNX_OPSET_VERSION:
         raise ValueError("ONNX 导出当前仅支持 opset 16")
     return requested_opset_version
-
-
-def _export_pruning_fp16_branch(checkpoint_path, runtime, folder_path, opset_version):
-    model, checkpoint_meta, checkpoint = load_pruning_checkpoint(
-        checkpoint_path,
-        runtime.source_device,
-    )
-    export_shape = _resolve_pruning_export_shape(checkpoint_meta, checkpoint)
-
-    export_model = copy.deepcopy(model).eval().to(runtime.source_device).half()
-    example_input = torch.randn(*export_shape, dtype=torch.float16, device=runtime.source_device)
-    onnx_path = f"{folder_path}/model_fp16.onnx"
-    _export_model_to_onnx(export_model, example_input, onnx_path, opset_version)
-    export_meta = validate_fp16_onnx(onnx_path, ONNX_OPSET_VERSION)
-    export_meta.update(
-        {
-            "torch_device": str(runtime.source_device),
-            "input_dtype": "float16",
-            "export_shape": export_shape,
-            "dynamic_batch": True,
-        }
-    )
-    return BranchArtifacts(
-        branch="pruning_fp16",
-        runtime=runtime,
-        model=model.eval(),
-        checkpoint_meta=checkpoint_meta,
-        checkpoint=checkpoint,
-        export_shape=export_shape,
-        onnx_path=onnx_path,
-        export_meta=export_meta,
-        folder_path=folder_path,
-    )
-
-
-def _export_qat_convert_branch(checkpoint_path, runtime, folder_path, opset_version):
-    if opset_version != ONNX_OPSET_VERSION:
-        raise ValueError("qat_convert 分支导出时必须使用 opset 16")
-
-    prepared_model, checkpoint_meta, checkpoint = load_qat_checkpoint(
-        checkpoint_path,
-        runtime.source_device,
-    )
-    quantization_meta = checkpoint_meta["quantization_meta"]
-    quantized_model = convert_fx(prepared_model.eval())
-    export_shape = _resolve_qat_export_shape(checkpoint_meta)
-    example_input = torch.randn(*export_shape, dtype=torch.float32, device=runtime.source_device)
-    onnx_path = f"{folder_path}/model_quant.onnx"
-    _export_model_to_onnx(quantized_model, example_input, onnx_path, opset_version)
-    rewrite_cann_qat_onnx(onnx_path)
-    export_meta = validate_qat_quantized_onnx(
-        onnx_path,
-        quantization_meta,
-        ONNX_OPSET_VERSION,
-    )
-    export_meta.update(
-        {
-            "torch_device": str(runtime.source_device),
-            "input_dtype": "float32",
-            "export_shape": export_shape,
-            "dynamic_batch": True,
-        }
-    )
-    return BranchArtifacts(
-        branch="qat_convert",
-        runtime=runtime,
-        model=quantized_model.eval(),
-        checkpoint_meta=checkpoint_meta,
-        checkpoint=checkpoint,
-        export_shape=export_shape,
-        onnx_path=onnx_path,
-        export_meta=export_meta,
-        folder_path=folder_path,
-    )
 
 
 def build_metric_delta(source_metrics, onnx_metrics):
@@ -211,24 +285,19 @@ def build_metric_delta(source_metrics, onnx_metrics):
 
 def build_branch_artifacts(branch, checkpoint_path, device, opset_version):
     runtime = _resolve_branch_runtime(branch, device)
-    checkpoint_meta = inspect_branch_checkpoint(branch, checkpoint_path, runtime.source_device)
-    folder_path = create_output_directory(branch, checkpoint_meta)
-
-    if branch == "pruning_fp16":
-        return _export_pruning_fp16_branch(
-            checkpoint_path=checkpoint_path,
-            runtime=runtime,
-            folder_path=folder_path,
-            opset_version=opset_version,
-        )
-    if branch == "qat_convert":
-        return _export_qat_convert_branch(
-            checkpoint_path=checkpoint_path,
-            runtime=runtime,
-            folder_path=folder_path,
-            opset_version=opset_version,
-        )
-    raise ValueError(f"不支持的 ONNX 导出分支: {branch}")
+    model, checkpoint_meta, checkpoint = _load_branch_artifacts(
+        branch=branch,
+        checkpoint_path=checkpoint_path,
+        runtime=runtime,
+    )
+    return _build_branch_artifacts_from_loaded(
+        branch=branch,
+        runtime=runtime,
+        model=model,
+        checkpoint_meta=checkpoint_meta,
+        checkpoint=checkpoint,
+        opset_version=opset_version,
+    )
 
 
 __all__ = [

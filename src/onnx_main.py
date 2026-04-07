@@ -93,6 +93,11 @@ def main():
             progress_desc="ONNX exported test",
         )
 
+    interface = extract_onnx_contract(artifacts.onnx_path)["interface"]
+    export_meta = {
+        **artifacts.export_meta,
+        **({} if ort_provider_meta is None else ort_provider_meta),
+    }
     summary = {
         "summary_version": SUMMARY_VERSION,
         "branch": artifacts.branch,
@@ -102,14 +107,11 @@ def main():
         "opset_version": actual_opset_version,
         "example_input_shape": artifacts.export_shape,
         "onnx_path": to_repo_relative_path(artifacts.onnx_path),
-        "interface": extract_onnx_contract(artifacts.onnx_path)["interface"],
+        "interface": interface,
         "source_test_metrics": source_test_metrics,
         "onnx_test_metrics": onnx_test_metrics,
         "metric_delta": build_metric_delta(source_test_metrics, onnx_test_metrics),
-        "export_meta": {
-            **artifacts.export_meta,
-            **({} if ort_provider_meta is None else ort_provider_meta),
-        },
+        "export_meta": export_meta,
     }
 
     summary_path = save_summary(artifacts.folder_path, summary)

@@ -43,70 +43,57 @@ def _build_tensorrt_provider_options():
     return provider_options
 
 
-def _create_tensorrt_session(onnx_path, available_providers):
-    available_providers = ort.get_available_providers()
-    if TENSORRT_PROVIDER not in available_providers:
+def _create_session_with_provider(onnx_path, requested_provider, available_providers, providers):
+    if requested_provider not in available_providers:
         raise OnnxSessionProviderError(
-            f"当前 ONNX 评估要求 {TENSORRT_PROVIDER} 可用，实际 providers={available_providers}"
+            f"当前 ONNX 评估要求 {requested_provider} 可用，实际 providers={available_providers}"
         )
 
+    try:
+        session = ort.InferenceSession(onnx_path, providers=providers)
+    except Exception as exc:
+        raise OnnxSessionProviderError(
+            f"无法使用 {requested_provider} 创建 ONNX Runtime session: {exc}"
+        ) from exc
+
+    selected_providers = session.get_providers()
+    selected_provider = selected_providers[0] if selected_providers else None
+    if selected_provider != requested_provider:
+        raise OnnxSessionProviderError(
+            f"请求 {requested_provider}，实际选中 {selected_provider}；providers={selected_providers}"
+        )
+
+    provider_meta = {
+        "requested_provider": requested_provider,
+        "selected_provider": selected_provider,
+        "ort_providers": selected_providers,
+        "gpu_acceleration_enabled": True,
+    }
+    return session, provider_meta
+
+
+def _create_tensorrt_session(onnx_path, available_providers):
     provider_options = _build_tensorrt_provider_options()
     providers = (
         [(TENSORRT_PROVIDER, provider_options)]
         if provider_options
         else [TENSORRT_PROVIDER]
     )
-
-    try:
-        session = ort.InferenceSession(onnx_path, providers=providers)
-    except Exception as exc:
-        raise OnnxSessionProviderError(
-            f"无法使用 {TENSORRT_PROVIDER} 创建 ONNX Runtime session: {exc}"
-        ) from exc
-
-    selected_providers = session.get_providers()
-    selected_provider = selected_providers[0] if selected_providers else None
-    if selected_provider != TENSORRT_PROVIDER:
-        raise OnnxSessionProviderError(
-            f"请求 {TENSORRT_PROVIDER}，实际选中 {selected_provider}；providers={selected_providers}"
-        )
-
-    provider_meta = {
-        "requested_provider": TENSORRT_PROVIDER,
-        "selected_provider": selected_provider,
-        "ort_providers": selected_providers,
-        "gpu_acceleration_enabled": True,
-    }
-    return session, provider_meta
+    return _create_session_with_provider(
+        onnx_path=onnx_path,
+        requested_provider=TENSORRT_PROVIDER,
+        available_providers=available_providers,
+        providers=providers,
+    )
 
 
 def _create_cuda_session(onnx_path, available_providers):
-    if CUDA_PROVIDER not in available_providers:
-        raise OnnxSessionProviderError(
-            f"当前 ONNX 评估要求 {CUDA_PROVIDER} 可用，实际 providers={available_providers}"
-        )
-
-    try:
-        session = ort.InferenceSession(onnx_path, providers=[CUDA_PROVIDER])
-    except Exception as exc:
-        raise OnnxSessionProviderError(
-            f"无法使用 {CUDA_PROVIDER} 创建 ONNX Runtime session: {exc}"
-        ) from exc
-
-    selected_providers = session.get_providers()
-    selected_provider = selected_providers[0] if selected_providers else None
-    if selected_provider != CUDA_PROVIDER:
-        raise OnnxSessionProviderError(
-            f"请求 {CUDA_PROVIDER}，实际选中 {selected_provider}；providers={selected_providers}"
-        )
-
-    provider_meta = {
-        "requested_provider": CUDA_PROVIDER,
-        "selected_provider": selected_provider,
-        "ort_providers": selected_providers,
-        "gpu_acceleration_enabled": True,
-    }
-    return session, provider_meta
+    return _create_session_with_provider(
+        onnx_path=onnx_path,
+        requested_provider=CUDA_PROVIDER,
+        available_providers=available_providers,
+        providers=[CUDA_PROVIDER],
+    )
 
 
 def create_onnx_session(onnx_path, branch):
