@@ -42,16 +42,15 @@ direnv allow
 - `uv`：Python 包依赖与运行入口
 - `direnv`：推荐自动激活 [`.envrc`](../.envrc)
 
-其中 [`.envrc`](../.envrc) 当前只负责：
+其中 [`.envrc`](../.envrc) 当前提供仓库级公共变量：
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
 说明：
 
-- `autorun/autorun_*.sh` 与阶段环境脚本统一依赖已激活的 `.envrc`
-- 当前不再允许通过脚本位置自行推导仓库根来替代 `REPO_ROOT`
-- 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
+- `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
+- 当前统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根，不再根据脚本位置推导
 
 阶段相关的额外环境变量统一由 `scripts/load_*_env.sh` 按需补充。
 

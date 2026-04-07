@@ -42,10 +42,12 @@ uv sync
 direnv allow
 ```
 
-其中 [`.envrc`](../.envrc) 当前只负责导出：
+其中 [`.envrc`](../.envrc) 当前提供仓库级公共变量：
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
+
+`direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量。
 
 pruning 阶段只依赖这层公共环境，不需要额外 `load_*_env.sh`。
 

@@ -25,7 +25,7 @@ direnv allow
 - Python 包依赖由 `uv sync` 自动提供
 - QAT 阶段只依赖公共环境层，不需要额外 `load_*_env.sh`
 - 当前 README 默认从仓库根执行；若结合 `autorun/autorun_qat.sh` 使用，必须先激活 `.envrc` 以提供 `REPO_ROOT`
-- 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
+- `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
 
 ## 当前职责
 
