@@ -31,6 +31,16 @@ from onnx_export.utils import (
 configure_matplotlib()
 
 
+def _resolve_source_test_model_and_device(artifacts, default_device):
+    source_test_model = artifacts.model
+    source_test_device = artifacts.runtime.source_device
+    if artifacts.branch != "qat_convert" or default_device.type != "cuda":
+        return source_test_model, source_test_device
+    source_test_model = artifacts.model.to(default_device).eval()
+    source_test_device = default_device
+    return source_test_model, source_test_device
+
+
 def main():
     args = parse_args()
     print(args)
@@ -71,9 +81,13 @@ def main():
             drop_last=False,
             loader_name="ONNX 测试集 DataLoader",
         )
+        source_test_model, source_test_device = _resolve_source_test_model_and_device(
+            artifacts=artifacts,
+            default_device=device,
+        )
         source_test_metrics = evaluate_torch_model(
-            model=artifacts.model,
-            device=artifacts.runtime.source_device,
+            model=source_test_model,
+            device=source_test_device,
             dataloader=test_loader,
             num_samples=len(test_dataset),
             input_dtype=torch.float32,
