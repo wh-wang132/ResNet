@@ -17,6 +17,7 @@ from base_model.confusionMatrix import ConfusionMatrix
 
 
 TENSORRT_PROVIDER = "TensorrtExecutionProvider"
+CUDA_PROVIDER = "CUDAExecutionProvider"
 
 
 class OnnxSessionProviderError(RuntimeError):
@@ -42,7 +43,7 @@ def _build_tensorrt_provider_options():
     return provider_options
 
 
-def create_onnx_session(onnx_path):
+def _create_tensorrt_session(onnx_path, available_providers):
     available_providers = ort.get_available_providers()
     if TENSORRT_PROVIDER not in available_providers:
         raise OnnxSessionProviderError(
@@ -77,6 +78,44 @@ def create_onnx_session(onnx_path):
         "gpu_acceleration_enabled": True,
     }
     return session, provider_meta
+
+
+def _create_cuda_session(onnx_path, available_providers):
+    if CUDA_PROVIDER not in available_providers:
+        raise OnnxSessionProviderError(
+            f"当前 ONNX 评估要求 {CUDA_PROVIDER} 可用，实际 providers={available_providers}"
+        )
+
+    try:
+        session = ort.InferenceSession(onnx_path, providers=[CUDA_PROVIDER])
+    except Exception as exc:
+        raise OnnxSessionProviderError(
+            f"无法使用 {CUDA_PROVIDER} 创建 ONNX Runtime session: {exc}"
+        ) from exc
+
+    selected_providers = session.get_providers()
+    selected_provider = selected_providers[0] if selected_providers else None
+    if selected_provider != CUDA_PROVIDER:
+        raise OnnxSessionProviderError(
+            f"请求 {CUDA_PROVIDER}，实际选中 {selected_provider}；providers={selected_providers}"
+        )
+
+    provider_meta = {
+        "requested_provider": CUDA_PROVIDER,
+        "selected_provider": selected_provider,
+        "ort_providers": selected_providers,
+        "gpu_acceleration_enabled": True,
+    }
+    return session, provider_meta
+
+
+def create_onnx_session(onnx_path, branch):
+    available_providers = ort.get_available_providers()
+    if branch == "pruning_fp16":
+        return _create_tensorrt_session(onnx_path, available_providers)
+    if branch == "qat_convert":
+        return _create_cuda_session(onnx_path, available_providers)
+    raise ValueError(f"不支持的 ONNX 评估分支: {branch}")
 
 
 @torch.no_grad()

@@ -79,7 +79,10 @@ def main():
             input_dtype=torch.float32,
             progress_desc="ONNX source test",
         )
-        ort_session, ort_provider_meta = create_onnx_session(artifacts.onnx_path)
+        ort_session, ort_provider_meta = create_onnx_session(
+            artifacts.onnx_path,
+            artifacts.branch,
+        )
         onnx_test_metrics = evaluate_onnx_model_with_confusion_matrix(
             session=ort_session,
             dataloader=test_loader,
