@@ -110,6 +110,10 @@ base_model checkpoint
    当前项目根目录的 [`.envrc`](.envrc) 只负责：
    - 导出 `REPO_ROOT`
    - 导出 `PYTHONPATH=$REPO_ROOT/src`
+
+   说明：
+   - 当前 `autorun/autorun_*.sh` 与阶段环境脚本统一依赖已激活的 `.envrc`
+   - 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
 5. 若需要运行 AMCT 阶段，额外准备仓库附带的 AMCT 组件
    - `amct_onnx/amct_onnx-0.23.2-py3-none-linux_x86_64.whl`
    - `amct_onnx/amct_onnx_op.tar.gz`
@@ -240,11 +244,12 @@ pixi run python src/atc_main.py \
   --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
 ```
 
-默认固定：
+当前默认：
 
 - `soc_version=Ascend310B4`
 - `input_format=NCHW`
-- `input_shape="input:1,1,543,512"`
+- `input_shape` 默认从上游摘要 interface 派生，并将 batch 固定为 `1`
+- 用户也可以通过 `--input_shape` 显式覆盖
 
 ## 基座模型符号链接约定
 
@@ -268,6 +273,11 @@ output/base_model/<model>/best_model.pth
 - [autorun/autorun_atc.sh](autorun/autorun_atc.sh)
 
 这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的形式，适合直接在服务器终端监视运行。
+
+运行前提：
+
+- 当前 shell 必须已自动或手动激活项目根目录的 `.envrc`
+- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT`，不再根据脚本位置推导仓库根
 
 当前脚本行为概览：
 

@@ -18,7 +18,7 @@ cd ResNet
 - `git`
 - `pixi`
 - `uv`
-- `direnv`（可选）
+- `direnv`（推荐）
 
 ### 3. 安装项目环境
 
@@ -47,7 +47,15 @@ direnv allow
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
+说明：
+
+- `autorun/autorun_*.sh` 与阶段环境脚本统一依赖已激活的 `.envrc`
+- 当前不再允许通过脚本位置自行推导仓库根来替代 `REPO_ROOT`
+- 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
+
 阶段相关的额外环境变量统一由 `scripts/load_*_env.sh` 按需补充。
+
+维护建议：新增或更新 autorun / 文档时，应默认以 `.envrc -> REPO_ROOT` 为统一前提，不再写“脚本可自行推导仓库根”的描述。
 
 ### 5. 阶段专用说明
 

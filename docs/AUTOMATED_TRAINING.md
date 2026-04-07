@@ -20,7 +20,7 @@
 - `git`
 - `pixi`
 - `uv`
-- `direnv`（可选）
+- `direnv`（推荐）
 
 ### `pixi install` / `uv sync` 会自动安装的内容
 
@@ -54,6 +54,12 @@ direnv allow
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
 
+说明：
+
+- 当前 `autorun/autorun_*.sh` 与阶段环境脚本统一依赖已激活的 `.envrc`
+- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT`，不再根据脚本位置推导仓库根
+- 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
+
 ### 阶段专用手动准备
 
 AMCT 阶段额外依赖仓库自带组件：
@@ -69,7 +75,7 @@ AMCT 阶段额外依赖仓库自带组件：
 
 ## 环境层次
 
-自动化脚本默认都要求当前 shell 已激活公共环境层 `.envrc`。在此基础上：
+自动化脚本默认都要求当前 shell 已激活公共环境层 `.envrc`，并通过其中的 `REPO_ROOT` 作为统一仓库根。当前不再支持 autorun 根据脚本位置自行推导仓库根。在此基础上：
 
 - `autorun/autorun_base_model.sh`：内部加载 `load_base_model_env.sh`
 - `autorun/autorun_pruning.sh`：只依赖公共层
@@ -208,7 +214,8 @@ bash autorun/autorun_atc.sh
 - 当前沿用 ATC CLI 默认值：
   - `soc_version=Ascend310B4`
   - `input_format=NCHW`
-  - `input_shape="input:1,1,543,512"`
+  - `input_shape` 默认从上游摘要 interface 派生，并将 batch 固定为 `1`
+  - 用户可通过 `--input_shape` 显式覆盖
 
 输出目录：
 
@@ -220,7 +227,7 @@ output/atc/amct_deploy/<model>/from_<exp>/
 ## 使用建议
 
 1. 先单独运行一条命令，确认环境、数据路径与驱动条件正常。
-2. 若依赖 `direnv`，先确认当前 shell 已加载项目根目录的 `.envrc`。
+2. 先确认当前 shell 已加载项目根目录的 `.envrc`；若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量。
 3. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
 4. `autorun/autorun_onnx.sh` 当前不会显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。

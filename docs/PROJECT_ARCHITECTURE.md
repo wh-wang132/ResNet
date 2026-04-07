@@ -80,6 +80,8 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 - 公共层：`.envrc`
   - `REPO_ROOT`
   - `PYTHONPATH=$REPO_ROOT/src`
+  - `autorun/autorun_*.sh` 与阶段环境脚本统一直接依赖这里提供的 `REPO_ROOT`
+  - 当前不再根据脚本位置推导仓库根
 - 阶段增量层：
   - `load_base_model_env.sh`
   - `load_onnx_env.sh`
@@ -189,11 +191,12 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
   - `atc_summary.json`
   - `check_result.json` / `fusion_result.json`（若工具链生成）
 
-默认参数：
+当前默认：
 
 - `soc_version=Ascend310B4`
 - `input_format=NCHW`
-- `input_shape="input:1,1,543,512"`
+- `input_shape` 默认从上游摘要 interface 派生，并将 batch 固定为 `1`
+- 用户可通过 `--input_shape` 显式覆盖
 
 ## 阶段之间的契约
 

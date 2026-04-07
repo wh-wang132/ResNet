@@ -20,7 +20,7 @@
 - `git`
 - `pixi`
 - `uv`
-- `direnv`（可选）
+- `direnv`（推荐）
 
 ### `pixi install` / `uv sync` 会自动安装的内容
 
@@ -55,6 +55,12 @@ direnv allow
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
+
+说明：
+
+- `autorun/autorun_*.sh` 与阶段环境脚本统一依赖已激活的 `.envrc`
+- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT`，不再根据脚本位置推导仓库根
+- 若不使用 `direnv` 自动激活，也需要手动提供与 `.envrc` 等价的环境变量
 
 各阶段如需额外环境变量，再按需 source `scripts/load_*_env.sh`。
 
@@ -321,7 +327,7 @@ pixi run python src/atc_main.py --help
 | `--branch` | 必填 | `pruning_fp16` 或 `amct_deploy` |
 | `--onnx_model` | 必填 | pruning 分支传 `model_fp16.onnx`，AMCT 分支传 `deploy_model.onnx` |
 | `--soc_version` | `Ascend310B4` | 目标芯片版本 |
-| `--input_shape` | `input:1,1,543,512` | 静态输入形状 |
+| `--input_shape` | `None` | 可选显式输入形状；默认从上游摘要 interface 派生并将 batch 固定为 `1` |
 | `--input_format` | `NCHW` | 输入格式 |
 
 ### 输入契约
