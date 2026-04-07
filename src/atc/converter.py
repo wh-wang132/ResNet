@@ -32,7 +32,7 @@ EXPECTED_AMCT_STAGE = "amct"
 ATC_OUTPUT_SUFFIX = ".om"
 CHECK_REPORT_NAME = "check_result.json"
 FUSION_RESULT_NAME = "fusion_result.json"
-REQUIRED_PRUNING_SUMMARY_KEYS = {
+REQUIRED_ONNX_SUMMARY_KEYS = {
     "summary_version",
     "branch",
     "model_name",
@@ -154,7 +154,7 @@ def _load_pruning_fp16_summary(onnx_model_path, repo_root=None):
         repo_root=repo_root,
         expected_input_model_name=EXPECTED_PRUNING_INPUT_MODEL_NAME,
         expected_summary_name=EXPECTED_PRUNING_SUMMARY_NAME,
-        required_summary_keys=REQUIRED_PRUNING_SUMMARY_KEYS,
+        required_summary_keys=REQUIRED_ONNX_SUMMARY_KEYS,
         expected_marker_key="branch",
         expected_marker_value=EXPECTED_PRUNING_BRANCH,
         path_key="onnx_path",

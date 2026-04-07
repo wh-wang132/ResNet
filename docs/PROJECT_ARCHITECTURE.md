@@ -271,8 +271,9 @@ ATC 当前依赖：
 
 说明：
 
-- ATC 仍优先校验实体 interface；当 ONNX / deploy ONNX 无法可靠承载签名时，再通过 summary 中的签名引用补充校验
+- ATC 当前直接校验摘要中的 interface 契约字段；当 ONNX / deploy ONNX 无法可靠承载签名时，再通过 summary 中的签名引用补充校验
 - `amct_deploy -> atc` 不只检查 `amct_summary.json.source_architecture_signature` 是否存在，还会回读 `source_onnx_summary_path` 指向的 `onnx_summary.json`，并要求 `onnx_path`、`source_architecture_signature`、`interface` 三者与 `amct_summary.json` 桥接一致
+- 因而当前形成的是 `amct_summary.json <-> onnx_summary.json` 的摘要桥接闭环，而不是再次回到 `deploy_model.onnx` 实体做独立 interface 复核
 
 ## 设计上的关键点
 

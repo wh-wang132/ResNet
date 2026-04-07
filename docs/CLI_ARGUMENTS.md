@@ -347,6 +347,7 @@ pixi run python src/atc_main.py --help
 - 所有直接消费 `.pth checkpoint` 的链路都执行 `architecture_signature` 强校验
 - ONNX / deploy ONNX 当前无法可靠嵌入等价结构签名，因此下游通过 summary 读取上游签名引用作为必要补充
 - `amct_deploy -> atc` 不只检查 `amct_summary.json` 自身字段，还会回读上游 `onnx_summary.json`，以形成完整的签名桥接闭环
+- 当前闭环针对的是 `amct_summary.json <-> onnx_summary.json` 摘要一致性，不是再次对 `deploy_model.onnx` 实体做独立 interface 复核
 
 ### 输出产物
 
