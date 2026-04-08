@@ -334,11 +334,12 @@ pixi run python src/atc_main.py --help
 - `pruning_fp16`：
   - 输入 `model_fp16.onnx`
   - 同目录必须存在 `onnx_summary.json`
-  - 通过 `onnx_summary.json.source_architecture_signature` 补充上游签名引用
+  - 读取并校验 `onnx_summary.json.source_architecture_signature`，作为上游签名引用
 - `amct_deploy`：
   - 输入 `deploy_model.onnx`
   - 同目录必须存在 `amct_summary.json`
-  - 通过 `amct_summary.json.source_architecture_signature` 补充上游签名引用
+  - 独立复核 `deploy_model.onnx` 与 `amct_summary.json.deploy_interface` 一致
+  - 要求 `deploy_domains`、`deploy_op_types` 与 `amct_summary.json` 记录一致
   - 同时回读 `amct_summary.json.source_onnx_summary_path` 指向的 `onnx_summary.json`
   - 要求 `onnx_path`、`source_architecture_signature`、`interface` 与 `amct_summary.json` 桥接一致
 
@@ -346,8 +347,8 @@ pixi run python src/atc_main.py --help
 
 - 所有直接消费 `.pth checkpoint` 的链路都执行 `architecture_signature` 强校验
 - ONNX / deploy ONNX 当前无法可靠嵌入等价结构签名，因此下游通过 summary 读取上游签名引用作为必要补充
-- `amct_deploy -> atc` 不只检查 `amct_summary.json` 自身字段，还会回读上游 `onnx_summary.json`，以形成完整的签名桥接闭环
-- 当前闭环针对的是 `amct_summary.json <-> onnx_summary.json` 摘要一致性，不是再次对 `deploy_model.onnx` 实体做独立 interface 复核
+- `pruning_fp16 -> atc` 当前强度是“上游签名引用 + 摘要契约校验”
+- `amct_deploy -> atc` 当前强度是“deploy 实体复核 + 上游摘要桥接”的双闭环
 
 ### 输出产物
 
