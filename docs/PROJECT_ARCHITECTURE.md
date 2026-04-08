@@ -272,9 +272,9 @@ ATC 当前依赖：
 说明：
 
 - `pruning_fp16` 分支通过 `onnx_summary.json.source_architecture_signature` 引用并校验上游签名，同时结合 `onnx_path` 与 `interface` 完成摘要契约校验
-- `amct_deploy -> atc` 会先独立复核 `deploy_model.onnx` 实体与 `amct_summary.json.deploy_interface` 一致，并要求 `deploy_domains`、`deploy_op_types` 与 `amct_summary.json` 记录一致
-- 在此基础上，ATC 还会回读 `source_onnx_summary_path` 指向的 `onnx_summary.json`，并要求 `onnx_path`、`source_architecture_signature`、`interface` 三者与 `amct_summary.json` 桥接一致
-- 因而当前 `amct_deploy -> atc` 形成的是“deploy 实体复核 + 上游摘要桥接”的双闭环，而不再只是摘要桥接闭环
+- `amct_deploy -> atc` 在 pixi 环境下不导入 ONNX，而是基于 `amct_summary.json` 与上游 `onnx_summary.json` 做摘要契约校验
+- `amct_summary.json.deploy_interface` 必须与 `source_interface` 一致，且 `source_onnx_summary_path` 指向的 `onnx_summary.json` 必须在 `onnx_path`、`source_architecture_signature`、`interface` 三者上与 `amct_summary.json` 桥接一致
+- 因而当前 `amct_deploy -> atc` 形成的是摘要桥接闭环与 summary 内部一致性校验，而不再在 ATC 阶段做 deploy ONNX 实体复核
 
 ## 设计上的关键点
 

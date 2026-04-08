@@ -338,8 +338,7 @@ pixi run python src/atc_main.py --help
 - `amct_deploy`：
   - 输入 `deploy_model.onnx`
   - 同目录必须存在 `amct_summary.json`
-  - 独立复核 `deploy_model.onnx` 与 `amct_summary.json.deploy_interface` 一致
-  - 要求 `deploy_domains`、`deploy_op_types` 与 `amct_summary.json` 记录一致
+  - `amct_summary.json.deploy_interface` 必须与 `source_interface` 一致
   - 同时回读 `amct_summary.json.source_onnx_summary_path` 指向的 `onnx_summary.json`
   - 要求 `onnx_path`、`source_architecture_signature`、`interface` 与 `amct_summary.json` 桥接一致
 
@@ -348,7 +347,7 @@ pixi run python src/atc_main.py --help
 - 所有直接消费 `.pth checkpoint` 的链路都执行 `architecture_signature` 强校验
 - ONNX / deploy ONNX 当前无法可靠嵌入等价结构签名，因此下游通过 summary 读取上游签名引用作为必要补充
 - `pruning_fp16 -> atc` 当前强度是“上游签名引用 + 摘要契约校验”
-- `amct_deploy -> atc` 当前强度是“deploy 实体复核 + 上游摘要桥接”的双闭环
+- `amct_deploy -> atc` 当前强度是“摘要桥接闭环 + summary 内部一致性校验”，ATC 在 pixi 环境下不依赖 ONNX 实体复核
 
 ### 输出产物
 

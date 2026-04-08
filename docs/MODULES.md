@@ -352,7 +352,7 @@ src/
 ### `atc/converter.py`
 
 - 按 `pruning_fp16` / `amct_deploy` 加载输入契约
-- 优先校验实体 interface，并在 ONNX / deploy ONNX 无法嵌入签名时消费 summary 中的 `architecture_signature` 引用
+- 在 pixi 环境下消费 summary 契约与上游 `architecture_signature` 引用，不再在 ATC 阶段导入 ONNX 做 deploy 实体复核
 - 构建 `atc` 子进程命令
 - 收集 `.om` 与工具产物
 - 生成 `atc_summary.json`

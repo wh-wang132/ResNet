@@ -7,12 +7,6 @@ from __future__ import annotations
 import os
 import subprocess
 
-from amct.utils import (
-    AMCT_ALLOWED_OP_TYPES,
-    AMCT_DEPLOY_ALLOWED_DOMAINS,
-    validate_onnx_contract,
-)
-
 from .output import create_output_directory
 from .utils import (
     SUMMARY_VERSION,
@@ -61,8 +55,6 @@ REQUIRED_AMCT_SUMMARY_KEYS = {
     "source_interface",
     "deploy_model_path",
     "deploy_interface",
-    "deploy_domains",
-    "deploy_op_types",
     "fake_quant_model_path",
     "fake_quant_interface",
     "fake_quant_domains",
@@ -224,33 +216,9 @@ def _load_and_validate_amct_source_onnx_summary(amct_summary, repo_root):
     return onnx_summary
 
 
-def _validate_amct_deploy_onnx_entity(onnx_model_path, amct_summary):
-    deploy_contract = validate_onnx_contract(
-        onnx_model_path,
-        expected_interface=amct_summary["deploy_interface"],
-        allowed_domains=AMCT_DEPLOY_ALLOWED_DOMAINS,
-        allowed_op_types=AMCT_ALLOWED_OP_TYPES,
-        label="ATC AMCT deploy ONNX",
-        error_cls=ATCCompilationError,
-    )
-    if amct_summary["deploy_interface"] != amct_summary["source_interface"]:
-        raise ATCCompilationError(
-            "amct_summary.json.deploy_interface 与 source_interface 不一致"
-        )
-    if deploy_contract["domains"] != amct_summary["deploy_domains"]:
-        raise ATCCompilationError(
-            "deploy_model.onnx 实体 domains 与 amct_summary.json.deploy_domains 不一致"
-        )
-    if deploy_contract["op_types"] != amct_summary["deploy_op_types"]:
-        raise ATCCompilationError(
-            "deploy_model.onnx 实体 op_types 与 amct_summary.json.deploy_op_types 不一致"
-        )
-    return deploy_contract
-
-
 def _load_amct_summary(onnx_model_path, repo_root=None):
     repo_root = get_repo_root() if repo_root is None else repo_root
-    summary, summary_path, _, architecture_signature = _load_summary_contract(
+    summary, summary_path, validated_interface, architecture_signature = _load_summary_contract(
         onnx_model_path=onnx_model_path,
         repo_root=repo_root,
         expected_input_model_name=EXPECTED_AMCT_INPUT_MODEL_NAME,
@@ -262,9 +230,12 @@ def _load_amct_summary(onnx_model_path, repo_root=None):
         validated_interface_key="deploy_interface",
         additional_interface_keys=("source_interface", "fake_quant_interface"),
     )
-    deploy_contract = _validate_amct_deploy_onnx_entity(onnx_model_path, summary)
+    if summary["deploy_interface"] != summary["source_interface"]:
+        raise ATCCompilationError(
+            "amct_summary.json.deploy_interface 与 source_interface 不一致"
+        )
     _load_and_validate_amct_source_onnx_summary(summary, repo_root)
-    return summary, summary_path, deploy_contract["interface"], architecture_signature
+    return summary, summary_path, validated_interface, architecture_signature
 
 
 def load_branch_summary(branch, onnx_model_path, repo_root=None):
