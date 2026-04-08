@@ -1,6 +1,6 @@
 # QAT
 
-QAT 阶段当前负责消费 pruning checkpoint、恢复剪枝结构，并执行保守的 Torch 原生 FX graph mode QAT 微调。
+QAT 阶段负责消费 pruning checkpoint、恢复剪枝结构，并执行保守的 Torch 原生 FX graph mode QAT 微调。
 
 ## 环境说明
 
@@ -24,12 +24,12 @@ direnv allow
 - Python 运行时、工具链、CUDA runtime 等由 `pixi install` 自动提供
 - Python 包依赖由 `uv sync` 自动提供
 - QAT 阶段只依赖公共环境层，不需要额外 `load_*_env.sh`
-- 当前 README 默认从仓库根执行；若结合 `autorun/autorun_qat.sh` 使用，必须先激活 `.envrc` 以提供 `REPO_ROOT`
+- README 默认从仓库根执行；若结合 `autorun/autorun_qat.sh` 使用，必须先激活 `.envrc` 以提供 `REPO_ROOT`
 - `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
 
-## 当前职责
+## 职责
 
-QAT 阶段当前负责：
+QAT 阶段负责：
 
 1. 读取 pruning checkpoint
 2. 按 `model_structure.model_name + channel_cfg` 调用 `*_from_cfg()` 恢复剪枝后的浮点模型
@@ -46,13 +46,13 @@ QAT 阶段当前负责：
 
 ## 数据与量化约束
 
-- QAT 当前固定纯 `fp32`
+- QAT 固定纯 `fp32`
 - 无论在 CPU 还是 GPU 上，训练 / 验证 / 测试统一为 `fp32`
-- 当前量化方案采用固定 canonical 契约：
+- 量化方案采用固定 canonical 契约：
   - `quantization_scheme_version=3`
   - `scheme_name="torch_fx_qat_cann_v1"`
 
-## 当前恢复链
+## 恢复链
 
 ### pruning checkpoint -> QAT 训练
 
@@ -76,7 +76,7 @@ QAT 训练入口依赖 pruning checkpoint 中的：
 说明：
 
 - 所有直接消费 pruning / QAT checkpoint 的 `.pth` 链路，都会对 `architecture_signature` 执行强校验
-- 若后续进入 ONNX / AMCT / ATC 等当前无法可靠嵌入该签名的阶段，则通过对应 summary 传递上游签名引用作为必要补充
+- 后续 ONNX / AMCT / ATC 阶段统一通过对应 summary 读取并校验上游签名与来源信息
 
 ### QAT checkpoint -> 后续导出
 
@@ -88,7 +88,7 @@ QAT checkpoint 提供独立恢复接口：
 4. 按当前代码内固定的 canonical QAT 方案重建同一条 `prepare_qat_fx` 图
 5. `strict=True` 加载 prepared 权重
 
-当前 ONNX 导出阶段已经直接消费 `load_qat_checkpoint(...)`，不再回退到 pruning checkpoint。
+ONNX 导出阶段直接消费 `load_qat_checkpoint(...)` 恢复的 QAT checkpoint。
 
 ## 输出产物
 

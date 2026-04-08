@@ -30,10 +30,10 @@ direnv allow
 - Python 运行时、工具链、CUDA runtime 等由 `pixi install` 自动提供
 - Python 包依赖由 `uv sync` 自动提供
 - pruning 阶段本身只依赖公共环境层，不需要额外 `load_*_env.sh`
-- 当前 README 默认从仓库根执行；若结合 `autorun/autorun_pruning.sh` 使用，必须先激活 `.envrc` 以提供 `REPO_ROOT`
+- README 默认从仓库根执行；若结合 `autorun/autorun_pruning.sh` 使用，必须先激活 `.envrc` 以提供 `REPO_ROOT`
 - `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
 
-## 当前阶段定位
+## 阶段定位
 
 pruning 阶段负责：
 
@@ -48,7 +48,7 @@ pruning 阶段负责：
 - 导出 ONNX
 - 执行量化训练
 
-## 当前输入约定
+## 输入约定
 
 基座模型来源固定为：
 
@@ -58,7 +58,7 @@ output/base_model/<model>/best_model.pth
 
 这里的 `best_model.pth` 应是对应基座模型目录下维护的最佳权重符号链接。
 
-## 当前输出约定
+## 输出约定
 
 ```text
 output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<batch_size>/
@@ -81,7 +81,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 ### `pruning_summary.json`
 
-当前顶层结构包括：
+顶层结构包括：
 
 - `baseline`
 - `rounds`
@@ -94,7 +94,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 
 ### pruning checkpoint
 
-当前主要字段包括：
+主要字段包括：
 
 - `model_state_dict`
 - `model_structure`
@@ -113,4 +113,4 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 说明：
 
 - 后续所有直接消费 pruning checkpoint 的 `.pth` 链路，都会对 `architecture_signature` 执行强校验
-- 若后续进入 ONNX / AMCT / ATC 等当前无法可靠嵌入该签名的阶段，则通过对应 summary 传递上游签名引用作为必要补充
+- 后续 ONNX / AMCT / ATC 阶段统一通过对应 summary 读取并校验上游签名与来源信息

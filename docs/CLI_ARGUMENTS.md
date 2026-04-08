@@ -2,7 +2,7 @@
 
 ## 概述
 
-当前项目包含 6 套独立 CLI：
+项目包含 6 套独立 CLI：
 
 - 基座训练：`uv run src/base_model_main.py ...`
 - 剪枝：`uv run src/pruning_main.py ...`
@@ -51,7 +51,7 @@ uv sync
 direnv allow
 ```
 
-其中 [`.envrc`](../.envrc) 当前提供仓库级公共变量：
+其中 [`.envrc`](../.envrc) 提供仓库级公共变量：
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
@@ -59,7 +59,7 @@ direnv allow
 说明：
 
 - `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
-- 当前统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根，不再根据脚本位置推导
+- 所有脚本统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根
 
 各阶段如需额外环境变量，再按需 source `scripts/load_*_env.sh`。
 
@@ -212,7 +212,7 @@ uv run src/qat_main.py --help
 ### 特点
 
 - QAT 固定纯 `fp32`
-- 当前只落 prepare checkpoint，不在本阶段做 `torch.convert`
+- QAT 阶段输出 prepare checkpoint，不在本阶段做 `torch.convert`
 - QAT checkpoint 使用最小 `quantization_meta` 契约，供后续 ONNX 恢复
 
 ### 示例

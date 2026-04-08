@@ -2,9 +2,9 @@
 
 ## 概述
 
-当前项目已提供基于 `torch-pruning` 的 iterative structured pruning + 微调框架。该阶段以基座模型 checkpoint 为输入，输出 pruning checkpoint，供后续 QAT / ONNX 阶段恢复使用。
+项目提供基于 `torch-pruning` 的 iterative structured pruning + 微调框架。该阶段以基座模型 checkpoint 为输入，输出 pruning checkpoint，供后续 QAT / ONNX 阶段恢复使用。
 
-当前 pruning 阶段负责：
+pruning 阶段负责：
 
 1. 按模型名读取基座模型符号链接
 2. 恢复默认模型并严格加载基座权重
@@ -12,7 +12,7 @@
 4. 每轮进行验证与可选微调
 5. 仅最终轮保存 pruning checkpoint
 
-当前 pruning 阶段不负责读取 pruning checkpoint 并恢复模型；该职责由后续 QAT / ONNX 模块承担。
+pruning 阶段不负责读取 pruning checkpoint 并恢复模型；该职责由后续 QAT / ONNX 模块承担。
 
 ## 环境前提
 
@@ -42,7 +42,7 @@ uv sync
 direnv allow
 ```
 
-其中 [`.envrc`](../.envrc) 当前提供仓库级公共变量：
+其中 [`.envrc`](../.envrc) 提供仓库级公共变量：
 
 - `REPO_ROOT`
 - `PYTHONPATH=$REPO_ROOT/src`
@@ -146,7 +146,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `Confusion_matrix.png`（仅最终测试阶段生成）
 - `runs/round_<n>/`
 
-## `pruning_summary.json` 当前结构
+## `pruning_summary.json` 结构
 
 顶层摘要包括：
 
@@ -168,7 +168,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 - `final_topology` 保留最终模型拓扑快照
 - 顶层 `pruning_meta` 是最终轮的紧凑摘要
 
-## pruning checkpoint 当前结构
+## pruning checkpoint 结构
 
 `best_pruned_model.pth` 主要字段包括：
 
@@ -195,4 +195,4 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 说明：
 
 - 后续所有消费该 pruning checkpoint 的 `.pth` 链路，都会对 `architecture_signature` 执行强校验
-- 若后续进入 ONNX / AMCT / ATC 等无法可靠嵌入该签名的阶段，则通过对应 summary 传递上游签名引用作为必要补充
+- 后续 ONNX / AMCT / ATC 阶段统一通过对应 summary 读取并校验上游签名与来源信息

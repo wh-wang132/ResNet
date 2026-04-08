@@ -2,7 +2,7 @@
 
 ## 总体架构
 
-当前项目采用按阶段拆分的结构，真实主线为：
+项目采用按阶段拆分的结构，主线为：
 
 ```text
 base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
@@ -75,13 +75,13 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 ### 4. 环境层
 
-当前环境采用“公共层 + 阶段增量层”：
+环境采用“公共层 + 阶段增量层”：
 
 - 公共层：`.envrc`
   - `REPO_ROOT`
   - `PYTHONPATH=$REPO_ROOT/src`
   - `autorun/autorun_*.sh` 与阶段环境脚本统一直接依赖这里提供的 `REPO_ROOT`
-  - 当前统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根，不再根据脚本位置推导
+  - 所有脚本统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根
 - 阶段增量层：
   - `load_base_model_env.sh`
   - `load_onnx_env.sh`
@@ -92,7 +92,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 - `pixi install` 负责系统工具链、Python 运行时、CUDA runtime、cuDNN、CANN toolkit 等自动安装内容
 - `uv sync` 负责 Python 包依赖
-- `amct_onnx` 相关 wheel 与算子包当前不在 `uv sync` 管理范围内，是 AMCT 阶段专用的手动补充项
+- `amct_onnx` 相关 wheel 与算子包不在 `uv sync` 管理范围内，由 AMCT 阶段按目标环境单独准备
 
 ## 当前阶段状态
 
@@ -142,11 +142,11 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 - `best_qat_prepare_model.pth`
 - `qat_summary.json`
 
-当前约束：
+约束：
 
 - 数据链固定 `fp32`
 - `quantization_meta` 采用最小恢复契约
-- QAT 阶段只落 prepare checkpoint，不直接承担导出
+- QAT 阶段输出 prepare checkpoint，由后续 ONNX 导出阶段继续消费
 
 ### `onnx`
 
@@ -253,7 +253,7 @@ AMCT 当前依赖：
 
 说明：
 
-- 由于 ONNX 当前无法可靠嵌入 `architecture_signature`，AMCT 通过 `onnx_summary.json` 消费上游签名引用作为必要补充
+- AMCT 统一通过同目录 `onnx_summary.json` 读取并校验上游签名、来源路径与输入接口信息
 
 ### ONNX / AMCT -> ATC
 

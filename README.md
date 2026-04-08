@@ -2,7 +2,7 @@
 
 ## 概述
 
-本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练端代码实现。仓库围绕 2D `.npy` 数据集构建了当前的六阶段主线：
+本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练端代码实现。仓库围绕 2D `.npy` 数据集构建了六阶段主线：
 
 - `base_model`：基座模型训练、验证、测试与 UMAP/混淆矩阵可视化
 - `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
@@ -35,7 +35,7 @@ base_model checkpoint
 说明：
 
 - “已实现 / 已接入主线”表示代码、入口脚本和产物契约已经落地。
-- 仓库内不同阶段的实验产物覆盖程度并不完全相同；文档描述以当前代码实现为准，不把所有阶段都表述为“已充分验证”。
+- 文档统一以代码实现与标准产物契约为准，不把“已实现”误写成“已充分验证”。
 
 ## 核心能力
 
@@ -46,7 +46,7 @@ base_model checkpoint
 - 基座、剪枝、QAT 三类结构化 checkpoint
 - 剪枝后完整拓扑导出：`channel_cfg + architecture_signature`
 - 所有消费 `.pth` checkpoint 的步骤统一强校验 `architecture_signature`
-- ONNX / deploy ONNX 当前通过 summary 传递上游 `architecture_signature` 引用，作为实体无法可靠嵌入签名时的必要补充
+- ONNX / deploy ONNX 阶段统一通过同目录 summary 读取并校验上游 `architecture_signature` 与来源信息
 - Torch 原生 FX graph mode QAT
 - `pruning_fp16` / `qat_convert` 双分支 ONNX 导出
 - QAT ONNX rewrite + validate，用于 CANN/AMCT/ATC 兼容约束
@@ -115,7 +115,7 @@ base_model checkpoint
 
    说明：
    - `direnv` 为推荐方案；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量
-   - 当前统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根，不再根据脚本位置推导
+   - 所有脚本统一通过 `.envrc` 提供的 `REPO_ROOT` 识别仓库根
 5. 若需要运行 AMCT 阶段，额外准备仓库附带的 AMCT 组件
    - `amct_onnx/amct_onnx-0.23.2-py3-none-linux_x86_64.whl`
    - `amct_onnx/amct_onnx_op.tar.gz`
@@ -144,7 +144,7 @@ base_model checkpoint
 
 - `.envrc` 是唯一公共入口，只负责仓库级变量。
 - `scripts/load_*_env.sh` 只负责补齐阶段增量环境。
-- 当前不再保证“未加载 `.envrc` 时直接 source 阶段脚本”这一用法。
+- 阶段脚本默认在已加载 `.envrc` 的 shell 中运行。
 
 ## 基本使用
 
@@ -265,7 +265,7 @@ output/base_model/<model>/best_model.pth
 
 ## 自动化脚本
 
-`autorun/` 目录当前提供 6 份顺序执行脚本：
+`autorun/` 目录提供 6 份顺序执行脚本：
 
 - [autorun/autorun_base_model.sh](autorun/autorun_base_model.sh)
 - [autorun/autorun_pruning.sh](autorun/autorun_pruning.sh)
@@ -278,10 +278,10 @@ output/base_model/<model>/best_model.pth
 
 运行前提：
 
-- 当前 shell 必须已自动或手动激活项目根目录的 `.envrc`
-- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT`，不再根据脚本位置推导仓库根
+- shell 必须已自动或手动激活项目根目录的 `.envrc`
+- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT` 作为仓库根
 
-当前脚本行为概览：
+脚本行为概览：
 
 - `autorun/autorun_base_model.sh`
   - 批量训练 5 个基座模型
@@ -297,13 +297,13 @@ output/base_model/<model>/best_model.pth
 - `autorun/autorun_onnx.sh`
   - 遍历 `output/pruning/**/best_pruned_model.pth`
   - 遍历 `output/qat/**/best_qat_prepare_model.pth`
-  - 沿用 ONNX CLI 默认 `evaluate_test=True`、`eval_batch_size=64`
+  - 默认参数与 ONNX CLI 保持一致：`evaluate_test=True`、`eval_batch_size=64`
 - `autorun/autorun_amct.sh`
   - 遍历 `output/onnx/qat_convert/**/model_quant.onnx`
 - `autorun/autorun_atc.sh`
   - 遍历 `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - 遍历 `output/amct/**/deploy_model.onnx`
-  - 沿用 ATC CLI 默认 `soc_version=Ascend310B4`
+  - 默认参数与 ATC CLI 保持一致：`soc_version=Ascend310B4`
 
 ## 数据划分清单
 
