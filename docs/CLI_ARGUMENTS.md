@@ -241,7 +241,7 @@ uv run src/onnx_main.py --help
 | `--num_workers` | `None` | 数据加载工作线程数 |
 | `--evaluate_test` | `True` | 是否在导出后执行测试集精度评估 |
 | `--eval_batch_size` | `64` | Torch / ORT 评估 batch size，不影响导出图结构 |
-| `--opset_version` | `16` | 当前固定 ONNX opset 16 |
+| `--opset_version` | `16` | 固定 ONNX opset 16 |
 
 ### 分支说明
 
@@ -250,7 +250,7 @@ uv run src/onnx_main.py --help
 - `qat_convert`
   - QAT checkpoint -> `convert_fx` -> quantized ONNX
 
-### 当前约束
+### 约束
 
 - 导出使用动态 batch
 - `--eval_batch_size` 仅影响评估
@@ -345,9 +345,9 @@ pixi run python src/atc_main.py --help
 说明：
 
 - 所有直接消费 `.pth checkpoint` 的链路都执行 `architecture_signature` 强校验
-- ONNX / deploy ONNX 当前无法可靠嵌入等价结构签名，因此下游通过 summary 读取上游签名引用作为必要补充
-- `pruning_fp16 -> atc` 当前强度是“上游签名引用 + 摘要契约校验”
-- `amct_deploy -> atc` 当前强度是“摘要桥接闭环 + summary 内部一致性校验”，ATC 在 pixi 环境下不依赖 ONNX 实体复核
+- ONNX / deploy ONNX 阶段通过同目录 summary 读取并校验上游签名与来源信息
+- `pruning_fp16 -> atc` 的校验内容包括上游签名引用与摘要契约校验
+- `amct_deploy -> atc` 的校验内容包括摘要桥接闭环与 summary 内部一致性校验，ATC 在 pixi 环境下不依赖 ONNX 实体复核
 
 ### 输出产物
 

@@ -220,7 +220,7 @@ output/atc/amct_deploy/<model>/from_<exp>/
 ## 使用建议
 
 1. 先单独运行一条命令，确认环境、数据路径与驱动条件正常。
-2. 先确认当前 shell 已加载项目根目录的 `.envrc`；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量。
+2. 先确认执行脚本前的 shell 已加载项目根目录的 `.envrc`；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量。
 3. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
 4. `autorun/autorun_onnx.sh` 默认不显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。
@@ -228,6 +228,6 @@ output/atc/amct_deploy/<model>/from_<exp>/
 
 ## 注意事项
 
-- 当前脚本不做并行调度。
-- 当前脚本不做失败重试或断点续跑。
+- 脚本不做并行调度。
+- 脚本不做失败重试或断点续跑。
 - 若需要调整搜索网格，直接编辑脚本中的命令列表即可。

@@ -38,7 +38,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 ### 1. 数据层
 
 - 数据集采用 `Data/<class>/*.npy` 目录组织
-- 当前默认输入形状为 `(1, 543, 512)`
+- 默认输入形状为 `(1, 543, 512)`
 - `data_set_split()` 负责：
   - 自然排序扫描
   - 分层切分 train / val / test
@@ -49,7 +49,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 - 轻量模型定义位于 `base_model/resnet_lightweight.py`
 - 标准模型定义位于 `base_model/resnet_standard.py`
-- 当前仅支持 5 个模型：
+- 仅支持 5 个模型：
   - `resnet6_2d`
   - `resnet10_2d`
   - `resnet14_2d`
@@ -62,7 +62,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 ### 3. 阶段编排层
 
-顶层入口当前位于 `src/` 根目录：
+顶层入口位于 `src/` 根目录：
 
 - `src/base_model_main.py`
 - `src/pruning_main.py`
@@ -94,7 +94,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 - `uv sync` 负责 Python 包依赖
 - `amct_onnx` 相关 wheel 与算子包不在 `uv sync` 管理范围内，由 AMCT 阶段按目标环境单独准备
 
-## 当前阶段状态
+## 阶段状态
 
 ### `base_model`
 
@@ -191,7 +191,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
   - `atc_summary.json`
   - `check_result.json` / `fusion_result.json`（若工具链生成）
 
-当前默认：
+默认：
 
 - `soc_version=Ascend310B4`
 - `input_format=NCHW`
@@ -202,7 +202,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 ### 基座 checkpoint -> pruning
 
-pruning 当前依赖：
+pruning 依赖：
 
 - `model_structure.model_name`
 - `model_structure.model_kwargs`
@@ -211,7 +211,7 @@ pruning 当前依赖：
 
 ### pruning checkpoint -> QAT
 
-QAT 当前依赖：
+QAT 依赖：
 
 - `model_structure.model_name`
 - `model_structure.model_kwargs`
@@ -225,7 +225,7 @@ QAT 当前依赖：
 
 ### QAT checkpoint -> ONNX
 
-ONNX 当前依赖：
+ONNX 依赖：
 
 - `model_structure.model_name`
 - `model_structure.model_kwargs`
@@ -240,7 +240,7 @@ ONNX 当前依赖：
 
 ### ONNX -> AMCT
 
-AMCT 当前依赖：
+AMCT 依赖：
 
 - ONNX 实体接口与图事实
 - `onnx_summary.json.branch == "qat_convert"`
@@ -257,7 +257,7 @@ AMCT 当前依赖：
 
 ### ONNX / AMCT -> ATC
 
-ATC 当前依赖：
+ATC 依赖：
 
 - `pruning_fp16` 分支：
   - `model_fp16.onnx`
@@ -306,9 +306,9 @@ ATC 当前依赖：
 
 因此它是训练端与 Ascend 部署链之间最关键的衔接层。
 
-## 当前重点目标
+## 重点目标
 
-当前项目的重点目标不是继续扩展模型种类，而是收敛部署前主线：
+项目的重点目标不是继续扩展模型种类，而是收敛部署前主线：
 
 1. 保持基座 / pruning / QAT 的恢复契约稳定
 2. 让 `qat_convert` ONNX 的 rewrite / validate 规则更稳

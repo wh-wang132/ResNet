@@ -11,8 +11,7 @@
 - `amct`：消费 `qat_convert` ONNX，生成 Ascend 侧可继续下游处理的 deploy/fakequant ONNX
 - `atc`：消费 `pruning_fp16` 或 `amct_deploy` ONNX，编译固定 batch=1 的 `.om`
 
-当前工程主线是：
-
+工程主线为：
 ```text
 base_model checkpoint
   -> pruning checkpoint
@@ -23,7 +22,7 @@ base_model checkpoint
   -> 后续部署 / 推理验证
 ```
 
-## 当前状态
+## 项目状态
 
 - `base_model`：已实现，作为训练主线上游稳定使用
 - `pruning`：已实现，支持多轮剪枝、微调、拓扑导出与实验摘要
@@ -58,7 +57,7 @@ base_model checkpoint
 
 ### 需要用户手动安装的项目
 
-当前项目只把以下项目视为“用户独立手动安装的前置项”：
+项目只把以下项目视为“用户独立手动安装的前置项”：
 
 - `git`：用于克隆仓库
 - `pixi`：负责系统工具链与运行时环境
@@ -129,7 +128,7 @@ base_model checkpoint
 
 ## 环境层次
 
-项目当前采用“公共层 + 阶段增量层”的环境结构：
+项目采用“公共层 + 阶段增量层”的环境结构：
 
 | 阶段 | 公共层 | 阶段增量层 |
 | --- | --- | --- |
@@ -246,7 +245,7 @@ pixi run python src/atc_main.py \
   --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
 ```
 
-当前默认：
+默认：
 
 - `soc_version=Ascend310B4`
 - `input_format=NCHW`
@@ -307,7 +306,7 @@ output/base_model/<model>/best_model.pth
 
 ## 数据划分清单
 
-`base_model.dataset.data_set_split()` 当前会优先读取：
+`base_model.dataset.data_set_split()` 会优先读取：
 
 ```text
 output/splits/
@@ -315,7 +314,7 @@ output/splits/
 
 中的数据集划分 manifest。若 manifest 不存在或与当前配置不匹配，则会重新划分并重新落盘。
 
-manifest 当前保存：
+manifest 保存：
 
 - 训练 / 验证 / 测试的相对路径清单
 - `class_names` 与 `class_to_idx`

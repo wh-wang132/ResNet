@@ -38,7 +38,7 @@ QAT 阶段负责：
 5. 导出 prepare 后的 QAT checkpoint
 6. 提供从 QAT checkpoint 直接恢复 prepared model 的正式接口
 
-当前阶段不负责：
+本阶段不负责：
 
 - ONNX 导出
 - AMCT / ATC
@@ -85,7 +85,7 @@ QAT checkpoint 提供独立恢复接口：
 1. 读取 QAT checkpoint
 2. 用 `model_structure.model_name + channel_cfg` 重建剪枝后的浮点模型
 3. 对 `architecture_signature` 执行强校验
-4. 按当前代码内固定的 canonical QAT 方案重建同一条 `prepare_qat_fx` 图
+4. 按代码中定义的固定 canonical QAT 方案重建同一条 `prepare_qat_fx` 图
 5. `strict=True` 加载 prepared 权重
 
 ONNX 导出阶段直接消费 `load_qat_checkpoint(...)` 恢复的 QAT checkpoint。
