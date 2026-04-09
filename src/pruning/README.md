@@ -37,7 +37,7 @@ direnv allow
 
 pruning 阶段负责：
 
-- 从 `output/base_model/<model>/best_model.pth` 恢复基座模型
+- 自动扫描 `output/base_model/<model>/` 下实验目录并选择最佳 `best_model.pth` 恢复基座模型
 - 执行 iterative structured pruning
 - 每轮进行验证与可选微调
 - 仅最终轮保存 pruning checkpoint
@@ -50,13 +50,13 @@ pruning 阶段负责：
 
 ## 输入约定
 
-基座模型来源固定为：
+基座模型来源为：
 
 ```text
-output/base_model/<model>/best_model.pth
+output/base_model/<model>/<experiment_dir>/best_model.pth
 ```
 
-这里的 `best_model.pth` 应是对应基座模型目录下维护的最佳权重符号链接。
+pruning 会遍历 `output/base_model/<model>/` 下所有直接子目录，读取每个目录 `best_val_acc_info.txt` 的最后一条有效记录，并按 `val acc` 优先、`val loss` 次优自动选择最佳实验权重。
 
 ## 输出约定
 

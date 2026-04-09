@@ -54,7 +54,8 @@ pruning 阶段只依赖这层公共环境，不需要额外 `load_*_env.sh`。
 ## 工作流
 
 ```text
-output/base_model/<model>/best_model.pth
+output/base_model/<model>/<experiment_dir>/best_model.pth
+  -> 自动选择最佳基座实验
   -> 恢复基座模型
   -> iterative structured pruning
   -> 每轮提取 topology(channel_cfg + architecture_signature)
@@ -64,16 +65,17 @@ output/base_model/<model>/best_model.pth
 
 ## 基座模型来源约定
 
-剪枝入口固定读取：
+剪枝入口会自动扫描：
 
 ```text
-output/base_model/<model>/best_model.pth
+output/base_model/<model>/<experiment_dir>/best_model.pth
 ```
 
-要求：
+选择规则：
 
-- 路径存在
-- 若为符号链接，必须能正常解析
+- 遍历 `output/base_model/<model>/` 下所有直接子目录
+- 读取每个子目录 `best_val_acc_info.txt` 的最后一条有效记录
+- 按 `val acc` 优先、`val loss` 次优选择最佳实验
 - checkpoint 中的 `model_structure.model_name` 必须与命令行 `--model` 一致
 
 ## CLI 参数总览

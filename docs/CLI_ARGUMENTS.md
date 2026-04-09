@@ -141,7 +141,7 @@ uv run src/pruning_main.py --help
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `--model` | 必填 | 基座模型名，自动解析 `output/base_model/<model>/best_model.pth` |
+| `--model` | 必填 | 基座模型名，自动扫描 `output/base_model/<model>/` 下实验目录并选择最佳 `best_model.pth` |
 | `--model_path` | `best_pruned_model.pth` | 最终剪枝模型文件名 |
 | `--data_dir` | `Data` | 数据集路径 |
 | `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |
@@ -167,7 +167,7 @@ uv run src/pruning_main.py --help
 
 ### 特点
 
-- pruning 不手动接收基座 checkpoint 路径，而是依赖 `best_model.pth` 符号链接
+- pruning 不手动接收基座 checkpoint 路径，而是自动扫描 base_model 实验目录并选择最佳 `best_model.pth`
 - 产物用于后续 QAT / ONNX 恢复
 
 ### 示例

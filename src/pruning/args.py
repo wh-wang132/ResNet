@@ -37,7 +37,7 @@ def parse_args():
             "resnet18_2d",
             "resnet34_2d",
         ],
-        help="基座模型名，将自动解析 output/base_model/<model>/best_model.pth 符号链接",
+        help="基座模型名，将自动扫描 output/base_model/<model>/ 下实验目录并选择最佳 best_model.pth",
     )
     parser.add_argument("--model_path", type=str, default="best_pruned_model.pth", help="剪枝后最佳模型保存文件名")
     parser.add_argument("--data_dir", type=str, default="Data", help="数据集路径")

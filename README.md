@@ -252,15 +252,15 @@ pixi run python src/atc_main.py \
 - `input_shape` 默认从上游摘要中的输入接口派生，并将 batch 固定为 `1`
 - 用户也可以通过 `--input_shape` 显式覆盖
 
-## 基座模型符号链接约定
+## 基座模型自动选择约定
 
-剪枝入口不会手动接收基座 checkpoint 路径，而是固定读取：
+剪枝入口不会手动接收基座 checkpoint 路径，而是自动扫描：
 
 ```text
-output/base_model/<model>/best_model.pth
+output/base_model/<model>/<experiment_dir>/best_model.pth
 ```
 
-这里的 `best_model.pth` 应由用户在对应基座模型目录下维护为最佳实验权重的符号链接。
+程序会遍历 `output/base_model/<model>/` 下各实验目录，读取每个目录 `best_val_acc_info.txt` 的最后一条有效记录，并按 `val acc` 优先、`val loss` 次优选择最佳实验权重进入剪枝链路。
 
 ## 自动化脚本
 

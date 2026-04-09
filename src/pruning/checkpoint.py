@@ -3,6 +3,8 @@
 """基座 checkpoint 读取与模型恢复。"""
 
 import os
+import re
+
 import torch
 
 from .utils import (
@@ -10,6 +12,12 @@ from .utils import (
     load_model_map,
     load_state_dict_safely,
     to_repo_relative_path,
+)
+
+
+BEST_VAL_ACC_INFO_PATTERN = re.compile(
+    r"^Best Validation Accuracy: (?P<val_acc>\d+(?:\.\d+)?), "
+    r"Best Validation Loss: (?P<val_loss>\d+(?:\.\d+)?) at Epoch: (?P<epoch>\d+)$"
 )
 
 
@@ -29,27 +37,82 @@ def _validate_architecture_signature(model, expected_signature, label):
         )
 
 
-def resolve_base_checkpoint_path(model_name):
-    checkpoint_link_path = os.path.join("output", "base_model", model_name, "best_model.pth")
-    if not os.path.lexists(checkpoint_link_path):
+def _parse_best_val_acc_info_line(line):
+    match = BEST_VAL_ACC_INFO_PATTERN.fullmatch(line.strip())
+    if match is None:
+        return None
+    return {
+        "val_acc": float(match.group("val_acc")),
+        "val_loss": float(match.group("val_loss")),
+        "epoch": int(match.group("epoch")),
+    }
+
+
+def _read_last_valid_best_record(info_path):
+    with open(info_path, "r", encoding="utf-8") as file_obj:
+        for raw_line in reversed(file_obj.readlines()):
+            line = raw_line.strip()
+            if not line:
+                continue
+            parsed = _parse_best_val_acc_info_line(line)
+            if parsed is not None:
+                return parsed
+    return None
+
+
+def _collect_base_model_candidates(model_name):
+    model_root = os.path.join("output", "base_model", model_name)
+    if not os.path.isdir(model_root):
         raise FileNotFoundError(
-            f"找不到基座模型符号链接: {checkpoint_link_path}\n"
-            f"期望路径: output/base_model/{model_name}/best_model.pth"
+            f"找不到基座模型目录: {model_root}\n"
+            f"期望路径: output/base_model/{model_name}/<experiment_dir>/best_model.pth"
         )
 
-    if os.path.islink(checkpoint_link_path):
-        resolved_checkpoint_path = os.path.realpath(checkpoint_link_path)
-        if not os.path.exists(resolved_checkpoint_path):
-            raise FileNotFoundError(
-                f"基座模型符号链接已断开: {checkpoint_link_path}\n"
-                f"当前指向: {resolved_checkpoint_path}"
-            )
-    else:
-        resolved_checkpoint_path = checkpoint_link_path
-        if not os.path.isfile(resolved_checkpoint_path):
-            raise FileNotFoundError(f"基座模型路径不是可读文件: {resolved_checkpoint_path}")
+    candidates = []
+    for entry_name in sorted(os.listdir(model_root)):
+        experiment_dir = os.path.join(model_root, entry_name)
+        if not os.path.isdir(experiment_dir):
+            continue
 
-    return checkpoint_link_path, resolved_checkpoint_path
+        info_path = os.path.join(experiment_dir, "best_val_acc_info.txt")
+        checkpoint_path = os.path.join(experiment_dir, "best_model.pth")
+        if not os.path.isfile(info_path) or not os.path.isfile(checkpoint_path):
+            continue
+
+        best_record = _read_last_valid_best_record(info_path)
+        if best_record is None:
+            continue
+
+        candidates.append(
+            {
+                "experiment_name": entry_name,
+                "checkpoint_path": checkpoint_path,
+                **best_record,
+            }
+        )
+
+    if not candidates:
+        raise FileNotFoundError(
+            "找不到可用的基座实验 checkpoint:\n"
+            f"已扫描目录: {model_root}\n"
+            "要求每个候选子目录同时包含可解析的 best_val_acc_info.txt 与 best_model.pth"
+        )
+
+    return candidates
+
+
+def _select_best_base_experiment(candidates):
+    return min(
+        candidates,
+        key=lambda item: (-item["val_acc"], item["val_loss"], item["experiment_name"]),
+    )
+
+
+def resolve_base_checkpoint_path(model_name):
+    candidates = _collect_base_model_candidates(model_name)
+    best_candidate = _select_best_base_experiment(candidates)
+    selected_checkpoint_path = best_candidate["checkpoint_path"]
+    return selected_checkpoint_path, selected_checkpoint_path
 
 
 def load_base_checkpoint(model_name, device):
