@@ -515,7 +515,7 @@ def _rewrite_quantized_weight_and_bias_paths(model):
             producer_map,
             initializer_map,
         )
-        if consumer.op_type == "Conv" and scale_array.size > 1:
+        if consumer.op_type == "Conv":
             detached_value_names.append(
                 _rewrite_conv_per_channel_weight_path(
                     model,
