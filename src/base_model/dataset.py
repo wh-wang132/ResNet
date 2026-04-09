@@ -6,16 +6,18 @@
 支持多线程预加载和性能监控
 """
 
-import os
-import time
 import json
+import os
+import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, TypeAlias, cast
+
 import numpy as np
 import torch
-import re
-from typing import Optional, TypeAlias, cast
-from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from torch.utils.data import Dataset
+
 from .utils import INPUT_SIZE_CHW
 
 Sample: TypeAlias = tuple[torch.Tensor, int]
@@ -28,6 +30,142 @@ DTYPE_MAP = {
 
 SPLIT_MANIFEST_VERSION = 1
 SPLIT_OUTPUT_DIR = os.path.join("output", "splits")
+EXPECTED_SAMPLE_SHAPE = INPUT_SIZE_CHW[1:]
+
+
+class DatasetSampleError(RuntimeError):
+    """单个样本读取或校验失败。"""
+
+
+class DatasetIntegrityError(RuntimeError):
+    """数据集完整性校验失败。"""
+
+    def __init__(self, message, sample_errors=None):
+        super().__init__(message)
+        self.sample_errors = [] if sample_errors is None else list(sample_errors)
+
+
+def _format_sample_context(path, *, idx=None, split=None, stage=None):
+    parts = [f"path={path}"]
+    if idx is not None:
+        parts.append(f"idx={idx}")
+    if split is not None:
+        parts.append(f"split={split}")
+    if stage is not None:
+        parts.append(f"stage={stage}")
+    return ", ".join(parts)
+
+
+def _build_sample_error(
+    path,
+    *,
+    idx=None,
+    split=None,
+    stage=None,
+    reason=None,
+    expected_shape=None,
+    actual_shape=None,
+):
+    context = _format_sample_context(path, idx=idx, split=split, stage=stage)
+    if expected_shape is not None:
+        return DatasetSampleError(
+            f"样本形状不合法: {context}, expected_shape={expected_shape}, actual_shape={actual_shape}"
+        )
+    return DatasetSampleError(f"样本读取失败: {context}, reason={reason}")
+
+
+def _build_integrity_error(sample_errors, *, split=None, stage=None, total_samples=None):
+    summary = [
+        "数据集完整性校验失败",
+        f"invalid_samples={len(sample_errors)}",
+    ]
+    if total_samples is not None:
+        summary.append(f"total_samples={total_samples}")
+    if split is not None:
+        summary.append(f"split={split}")
+    if stage is not None:
+        summary.append(f"stage={stage}")
+
+    preview_lines = [f"  - {error}" for error in sample_errors[:5]]
+    if len(sample_errors) > 5:
+        preview_lines.append(f"  ... 还有 {len(sample_errors) - 5} 个错误")
+
+    message = ", ".join(summary)
+    if preview_lines:
+        message = f"{message}\n" + "\n".join(preview_lines)
+    return DatasetIntegrityError(message, sample_errors=sample_errors)
+
+
+def _load_and_validate_numpy_sample(
+    file_path,
+    numpy_dtype,
+    *,
+    idx=None,
+    split=None,
+    stage=None,
+):
+    try:
+        data = np.load(file_path)
+    except Exception as exc:
+        raise _build_sample_error(
+            file_path,
+            idx=idx,
+            split=split,
+            stage=stage,
+            reason=str(exc),
+        ) from exc
+
+    if not isinstance(data, np.ndarray):
+        raise _build_sample_error(
+            file_path,
+            idx=idx,
+            split=split,
+            stage=stage,
+            reason=f"np.load 返回类型必须为 numpy.ndarray，当前为 {type(data).__name__}",
+        )
+
+    actual_shape = tuple(data.shape)
+    if actual_shape != EXPECTED_SAMPLE_SHAPE:
+        raise _build_sample_error(
+            file_path,
+            idx=idx,
+            split=split,
+            stage=stage,
+            expected_shape=EXPECTED_SAMPLE_SHAPE,
+            actual_shape=actual_shape,
+        )
+
+    if data.dtype != numpy_dtype:
+        data = data.astype(numpy_dtype)
+
+    return data
+
+
+def _numpy_sample_to_tensor(data, tensor_dtype):
+    return torch.from_numpy(data).to(tensor_dtype).unsqueeze(0)
+
+
+def _validate_split_file_paths(split_name, file_paths, numpy_dtype):
+    sample_errors = []
+    for idx, file_path in enumerate(file_paths):
+        try:
+            _load_and_validate_numpy_sample(
+                file_path,
+                numpy_dtype,
+                idx=idx,
+                split=split_name,
+                stage="split_validation",
+            )
+        except DatasetSampleError as exc:
+            sample_errors.append(exc)
+
+    if sample_errors:
+        raise _build_integrity_error(
+            sample_errors,
+            split=split_name,
+            stage="split_validation",
+            total_samples=len(file_paths),
+        )
 
 
 class NPYDataset(Dataset):
@@ -41,6 +179,7 @@ class NPYDataset(Dataset):
         full_load=False,
         num_workers=None,
         data_dtype="fp16",
+        split_name=None,
     ):
         """
         Args:
@@ -50,6 +189,7 @@ class NPYDataset(Dataset):
             full_load: 是否全量加载到内存
             num_workers: 预加载使用的线程数（None表示自动检测）
             data_dtype: 数据加载后的 tensor 精度（fp16 或 fp32）
+            split_name: 数据集 split 名称（train / val / test）
         """
         if data_dtype not in DTYPE_MAP:
             raise ValueError(f"不支持的数据精度: {data_dtype}")
@@ -61,6 +201,7 @@ class NPYDataset(Dataset):
         self.data_dtype = data_dtype
         self.numpy_dtype, self.tensor_dtype = DTYPE_MAP[data_dtype]
         self.data_cache: Optional[list[Optional[Sample]]] = None
+        self.split_name: Optional[str] = split_name
         cpu_count = os.cpu_count() or 1
         self.num_workers = num_workers if num_workers is not None else max(1, cpu_count)
 
@@ -70,28 +211,26 @@ class NPYDataset(Dataset):
         if self.full_load:
             self._preload_data_multithreaded()
 
+    def _load_tensor_sample(self, idx, *, stage):
+        data = _load_and_validate_numpy_sample(
+            self.file_paths[idx],
+            self.numpy_dtype,
+            idx=idx,
+            split=self.split_name,
+            stage=stage,
+        )
+        return _numpy_sample_to_tensor(data, self.tensor_dtype)
+
     def _load_single_sample(self, idx):
         """加载单个样本（线程安全）"""
+        start_time = time.time()
         try:
-            start_time = time.time()
-            data = np.load(self.file_paths[idx])
-            label = self.labels[idx]
-
-            if data.dtype != self.numpy_dtype:
-                data = data.astype(self.numpy_dtype)
-
-            data = torch.from_numpy(data).to(self.tensor_dtype)
-            data = data.unsqueeze(0)
-
+            data = self._load_tensor_sample(idx, stage="full_load_preload")
+            label = int(self.labels[idx])
             load_time = time.time() - start_time
-            return idx, (data, int(label)), load_time, None
-        except Exception as e:
-            return (
-                idx,
-                (torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0),
-                0.0,
-                str(e),
-            )
+            return idx, (data, label), load_time, None
+        except DatasetSampleError as exc:
+            return idx, None, 0.0, exc
 
     def _preload_data_multithreaded(self):
         """多线程预加载所有数据到内存"""
@@ -105,7 +244,7 @@ class NPYDataset(Dataset):
             list[Optional[Sample]], [None] * len(self.file_paths)
         )
         self.data_cache = cache
-        errors = []
+        sample_errors = []
         total_load_time = 0.0
 
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
@@ -117,12 +256,12 @@ class NPYDataset(Dataset):
             completed = 0
             for future in as_completed(futures):
                 idx, data, load_time, error = future.result()
-                cache[idx] = data
-                total_load_time += load_time
+                if data is not None:
+                    cache[idx] = data
+                    total_load_time += load_time
+                if error is not None:
+                    sample_errors.append(error)
                 completed += 1
-
-                if error:
-                    errors.append((self.file_paths[idx], error))
 
                 if completed % 1000 == 0:
                     elapsed = time.time() - start_total
@@ -133,22 +272,23 @@ class NPYDataset(Dataset):
                     )
 
         total_time = time.time() - start_total
-        avg_load_time = total_load_time / len(self.file_paths) * 1000
+        avg_load_time = total_load_time / len(self.file_paths) * 1000 if self.file_paths else 0.0
 
         assert self.data_cache is not None
+        if sample_errors:
+            raise _build_integrity_error(
+                sample_errors,
+                split=self.split_name,
+                stage="full_load_preload",
+                total_samples=len(self.file_paths),
+            )
+
         print(f"\n{'='*80}")
         print(f"✓ 预加载完成")
         print(f"  总样本数: {len(self.data_cache)}")
         print(f"  总耗时: {total_time:.2f}s")
         print(f"  平均每个样本: {avg_load_time:.2f}ms")
         print(f"  吞吐量: {len(self.file_paths)/total_time:.1f} 样本/秒")
-
-        if errors:
-            print(f"\n⚠️  警告：{len(errors)} 个样本加载失败")
-            for file_path, error in errors[:5]:
-                print(f"  - {file_path}: {error}")
-            if len(errors) > 5:
-                print(f"  ... 还有 {len(errors)-5} 个错误")
         print(f"{'='*80}\n")
 
     def __len__(self):
@@ -162,8 +302,15 @@ class NPYDataset(Dataset):
             cache = self.data_cache
             cached_sample = cache[idx]
             if cached_sample is None:
-                # 理论上不应发生；兜底保证类型安全和运行稳定性
-                return torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0
+                raise DatasetIntegrityError(
+                    "预加载缓存缺少样本: "
+                    + _format_sample_context(
+                        self.file_paths[idx],
+                        idx=idx,
+                        split=self.split_name,
+                        stage="cache_lookup",
+                    )
+                )
             data, label = cached_sample
             if self.transform:
                 data = self.transform(data)
@@ -172,34 +319,19 @@ class NPYDataset(Dataset):
             return data, label
 
         try:
-            # 加载.npy 文件
-            data = np.load(self.file_paths[idx])
-            label = self.labels[idx]
+            data = self._load_tensor_sample(idx, stage="lazy_getitem")
+            label = int(self.labels[idx])
 
-            # 确保数据类型与配置一致
-            if data.dtype != self.numpy_dtype:
-                data = data.astype(self.numpy_dtype)
-
-            # 转换为 torch tensor
-            data = torch.from_numpy(data).to(self.tensor_dtype)
-
-            # 添加通道维度 (H, W) -> (1, H, W)
-            data = data.unsqueeze(0)
-
-            # 应用变换
             if self.transform:
                 data = self.transform(data)
 
             load_time = (time.time() - start_time) * 1000
             self._record_load_time(load_time)
             return data, label
-
-        except Exception as e:
-            print(f"Error loading {self.file_paths[idx]}: {e}")
+        except DatasetSampleError:
             load_time = (time.time() - start_time) * 1000
             self._record_load_time(load_time)
-            # 返回空样本（为了训练继续）
-            return torch.zeros(*INPUT_SIZE_CHW, dtype=self.tensor_dtype), 0
+            raise
 
     def _record_load_time(self, load_time_ms):
         """记录加载时间用于性能监控"""
@@ -243,7 +375,11 @@ def data_set_split(
     Returns:
         train_dataset, validate_dataset, test_dataset, labels__
     """
+    if data_dtype not in DTYPE_MAP:
+        raise ValueError(f"不支持的数据精度: {data_dtype}")
+
     normalized_data_dir = os.path.normpath(data_dir)
+    numpy_dtype, _ = DTYPE_MAP[data_dtype]
 
     def natural_sort_key(text):
         """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
@@ -363,13 +499,12 @@ def data_set_split(
 
     manifest_split = try_load_split_manifest(manifest_path, labels__)
     if manifest_split is None:
-        # 两步划分法
         train_paths, temp_paths, train_labels, temp_labels = train_test_split(
             file_paths,
             labels,
             test_size=(1 - train_ratio),
             random_state=random_state,
-            stratify=labels,  # 保持类别比例
+            stratify=labels,
         )
 
         val_test_ratio = test_ratio / (test_ratio + val_ratio)
@@ -393,17 +528,22 @@ def data_set_split(
             manifest_split
         )
 
+    if not full_load:
+        _validate_split_file_paths("train", train_paths, numpy_dtype)
+        _validate_split_file_paths("val", val_paths, numpy_dtype)
+        _validate_split_file_paths("test", test_paths, numpy_dtype)
+
     print(f"训练集：{len(train_paths)} 样本")
     print(f"验证集：{len(val_paths)} 样本")
     print(f"测试集：{len(test_paths)} 样本")
 
-    # 创建数据集
     train_dataset = NPYDataset(
         train_paths,
         train_labels,
         full_load=full_load,
         num_workers=num_workers,
         data_dtype=data_dtype,
+        split_name="train",
     )
     validate_dataset = NPYDataset(
         val_paths,
@@ -411,6 +551,7 @@ def data_set_split(
         full_load=full_load,
         num_workers=num_workers,
         data_dtype=data_dtype,
+        split_name="val",
     )
     test_dataset = NPYDataset(
         test_paths,
@@ -418,6 +559,7 @@ def data_set_split(
         full_load=full_load,
         num_workers=num_workers,
         data_dtype=data_dtype,
+        split_name="test",
     )
 
     return train_dataset, validate_dataset, test_dataset, labels__
