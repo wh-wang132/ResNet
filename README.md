@@ -122,6 +122,7 @@ base_model checkpoint
    - 上述 wheel 与算子包已经随仓库提供
    - 它们不在 `pyproject.toml` 或 `pixi.toml` 中声明
    - 因此它们不是 `uv sync` / `pixi install` 自动安装的公共依赖，而是 AMCT 阶段专用的手动准备项
+   - 若宿主机已预装系统全局 CUDA，AMCT 在安装 `amct_onnx/amct_onnx_op.tar.gz` 或运行阶段可能优先搜索到系统 CUDA，从而引发 CUDA 版本不匹配错误；此场景建议在 Docker 环境中部署和运行 AMCT 相关流程
 6. 准备数据集
    - 将 `.npy` 数据集放入 `Data/`
    - 目录结构见 [数据准备指南](docs/DATA_PREPARATION.md)

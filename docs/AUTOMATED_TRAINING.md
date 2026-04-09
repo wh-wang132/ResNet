@@ -71,6 +71,7 @@ AMCT 阶段额外依赖仓库自带组件：
 - 上述文件已经随仓库提供
 - 它们不属于 `uv sync` / `pixi install` 的自动安装范围
 - 在运行 `autorun/autorun_amct.sh` 前，需要按目标环境自行安装或部署
+- 若宿主机已预装系统全局 CUDA，AMCT 在安装 `amct_onnx/amct_onnx_op.tar.gz` 或运行阶段可能优先搜索到系统 CUDA，从而引发 CUDA 版本不匹配错误；此场景建议在 Docker 环境中部署和运行 AMCT 相关流程
 
 ## 环境层次
 
