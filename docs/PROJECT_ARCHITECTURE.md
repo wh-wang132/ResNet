@@ -196,7 +196,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 - `soc_version=Ascend310B4`
 - `input_format=NCHW`
 - `input_shape` 默认从上游摘要中的输入接口派生，并将 batch 固定为 `1`
-- 用户可通过 `--input_shape` 显式覆盖
+- 若用户显式传入 `--input_shape`，其输入名与各维度必须与自动派生结果完全一致，否则直接报错
 
 ## 阶段之间的契约
 

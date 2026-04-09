@@ -11,7 +11,7 @@
 - `autorun/autorun_amct.sh`
 - `autorun/autorun_atc.sh`
 
-这些脚本都采用“逐行命令、顺序执行、无复杂控制流”的形式，便于直接在服务器终端观察运行状态。
+这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，便于在服务器终端观察运行状态并安全清理中间状态。
 
 ## 运行前准备
 

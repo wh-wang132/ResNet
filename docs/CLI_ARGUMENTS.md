@@ -326,7 +326,7 @@ pixi run python src/atc_main.py --help
 | `--branch` | 必填 | `pruning_fp16` 或 `amct_deploy` |
 | `--onnx_model` | 必填 | pruning 分支传 `model_fp16.onnx`，AMCT 分支传 `deploy_model.onnx` |
 | `--soc_version` | `Ascend310B4` | 目标芯片版本 |
-| `--input_shape` | `None` | 可选显式输入形状；默认从上游摘要中的输入接口派生，并将 batch 固定为 `1` |
+| `--input_shape` | `None` | 可选显式输入形状；默认从上游摘要中的输入接口派生并将 batch 固定为 `1`，显式传入时必须与自动派生结果完全一致 |
 | `--input_format` | `NCHW` | 输入格式 |
 
 ### 输入契约

@@ -6,11 +6,12 @@
 
 pruning 阶段负责：
 
-1. 按模型名读取基座模型符号链接
-2. 恢复默认模型并严格加载基座权重
-3. 执行多轮 iterative pruning
-4. 每轮进行验证与可选微调
-5. 仅最终轮保存 pruning checkpoint
+1. 扫描 `output/base_model/<model>/` 下的实验目录并收集候选基座权重
+2. 读取候选目录 `best_val_acc_info.txt` 的最后一条有效记录，按 `val_acc` 降序、`val_loss` 升序选择最佳实验
+3. 恢复默认模型并严格加载被选中的基座权重
+4. 执行多轮 iterative pruning
+5. 每轮进行验证与可选微调
+6. 仅最终轮保存 pruning checkpoint
 
 pruning 阶段不负责读取 pruning checkpoint 并恢复模型；该职责由后续 QAT / ONNX 模块承担。
 

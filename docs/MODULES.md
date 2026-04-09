@@ -201,7 +201,7 @@ src/
 
 ### `pruning/checkpoint.py`
 
-- 解析 `output/base_model/<model>/best_model.pth`
+- 扫描 `output/base_model/<model>/` 下实验目录并选择最佳 `best_model.pth`
 - 严格恢复基座 checkpoint
 - 对 base checkpoint 执行 `architecture_signature` 强校验
 

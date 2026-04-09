@@ -98,7 +98,7 @@ manifest 保存：
 ## 注意事项
 
 1. 确保所有 `.npy` 文件形状一致。
-2. 若存在损坏样本，数据加载流程会打印错误并用零张量兜底，以保证训练流程不中断。
+2. 数据加载阶段会校验样本可读性与 shape 合法性；若存在损坏样本，会抛 `DatasetSampleError` / `DatasetIntegrityError`，必须先修复样本再继续运行。
 3. `full_load=True` 时会把该 split 的所有样本预加载到内存中；内存不足时请保持默认 `False`。
 4. 若你修改了切分比例或随机种子，`output/splits` 中会生成新的 manifest 文件。
 
