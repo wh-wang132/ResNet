@@ -18,8 +18,6 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-from .utils import INPUT_SIZE_CHW
-
 Sample: TypeAlias = tuple[torch.Tensor, int]
 SplitEntries: TypeAlias = list[dict[str, object]]
 
@@ -30,7 +28,6 @@ DTYPE_MAP = {
 
 SPLIT_MANIFEST_VERSION = 1
 SPLIT_OUTPUT_DIR = os.path.join("output", "splits")
-EXPECTED_SAMPLE_SHAPE = INPUT_SIZE_CHW[1:]
 
 
 class DatasetSampleError(RuntimeError):
@@ -100,6 +97,7 @@ def _load_and_validate_numpy_sample(
     file_path,
     numpy_dtype,
     *,
+    expected_shape=None,
     idx=None,
     split=None,
     stage=None,
@@ -125,13 +123,13 @@ def _load_and_validate_numpy_sample(
         )
 
     actual_shape = tuple(data.shape)
-    if actual_shape != EXPECTED_SAMPLE_SHAPE:
+    if expected_shape is not None and actual_shape != tuple(expected_shape):
         raise _build_sample_error(
             file_path,
             idx=idx,
             split=split,
             stage=stage,
-            expected_shape=EXPECTED_SAMPLE_SHAPE,
+            expected_shape=tuple(expected_shape),
             actual_shape=actual_shape,
         )
 
@@ -145,13 +143,75 @@ def _numpy_sample_to_tensor(data, tensor_dtype):
     return torch.from_numpy(data).to(tensor_dtype).unsqueeze(0)
 
 
-def _validate_split_file_paths(split_name, file_paths, numpy_dtype):
+def _normalize_inferred_sample_shape(raw_shape):
+    shape = tuple(int(dim) for dim in raw_shape)
+    if len(shape) == 2:
+        sample_shape_chw = (1, *shape)
+        input_shape_nchw = (1, 1, *shape)
+        return shape, sample_shape_chw, input_shape_nchw
+    if len(shape) == 3:
+        sample_shape_chw = shape
+        input_shape_nchw = (1, *shape)
+        return shape, sample_shape_chw, input_shape_nchw
+    raise ValueError(
+        f"数据集样本维度必须为 2 或 3，当前 shape={shape}"
+    )
+
+
+def _normalize_dataset_shape_tuple(shape, expected_dims, label):
+    if shape is None:
+        raise ValueError(f"{label} 不能为空；请通过 data_set_split() 构造 NPYDataset")
+    normalized_shape = tuple(int(dim) for dim in shape)
+    if len(normalized_shape) != expected_dims:
+        raise ValueError(
+            f"{label} 必须是 {expected_dims} 维形状，当前为 {normalized_shape}"
+        )
+    if any(dim <= 0 for dim in normalized_shape):
+        raise ValueError(f"{label} 的每一维都必须大于 0，当前为 {normalized_shape}")
+    return normalized_shape
+
+
+def infer_dataset_sample_shapes(file_paths):
+    if not file_paths:
+        raise DatasetIntegrityError("数据集为空，无法推断样本形状")
+
+    sample_errors = []
+    for idx, file_path in enumerate(file_paths):
+        try:
+            data = _load_and_validate_numpy_sample(
+                file_path,
+                np.float32,
+                idx=idx,
+                stage="shape_inference",
+            )
+        except DatasetSampleError as exc:
+            sample_errors.append(exc)
+            continue
+
+        actual_shape = tuple(data.shape)
+        try:
+            return _normalize_inferred_sample_shape(actual_shape)
+        except ValueError as exc:
+            raise DatasetIntegrityError(
+                "数据集样本形状推断失败: "
+                f"path={file_path}, idx={idx}, actual_shape={actual_shape}, reason={exc}"
+            ) from exc
+
+    raise _build_integrity_error(
+        sample_errors,
+        stage="shape_inference",
+        total_samples=len(file_paths),
+    )
+
+
+def _validate_split_file_paths(split_name, file_paths, numpy_dtype, expected_shape):
     sample_errors = []
     for idx, file_path in enumerate(file_paths):
         try:
             _load_and_validate_numpy_sample(
                 file_path,
                 numpy_dtype,
+                expected_shape=expected_shape,
                 idx=idx,
                 split=split_name,
                 stage="split_validation",
@@ -180,6 +240,9 @@ class NPYDataset(Dataset):
         num_workers=None,
         data_dtype="fp16",
         split_name=None,
+        expected_sample_shape=None,
+        sample_shape_chw=None,
+        input_shape_nchw=None,
     ):
         """
         Args:
@@ -190,6 +253,9 @@ class NPYDataset(Dataset):
             num_workers: 预加载使用的线程数（None表示自动检测）
             data_dtype: 数据加载后的 tensor 精度（fp16 或 fp32）
             split_name: 数据集 split 名称（train / val / test）
+            expected_sample_shape: 推断得到的原始样本形状
+            sample_shape_chw: 推断得到的 CHW 形状
+            input_shape_nchw: 推断得到的 NCHW 形状
         """
         if data_dtype not in DTYPE_MAP:
             raise ValueError(f"不支持的数据精度: {data_dtype}")
@@ -202,6 +268,28 @@ class NPYDataset(Dataset):
         self.numpy_dtype, self.tensor_dtype = DTYPE_MAP[data_dtype]
         self.data_cache: Optional[list[Optional[Sample]]] = None
         self.split_name: Optional[str] = split_name
+        if expected_sample_shape is None:
+            raise ValueError(
+                "expected_sample_shape 不能为空；请通过 data_set_split() 构造 NPYDataset"
+            )
+        normalized_expected_sample_shape = tuple(int(dim) for dim in expected_sample_shape)
+        self._expected_sample_shape = _normalize_dataset_shape_tuple(
+            normalized_expected_sample_shape,
+            expected_dims=(
+                2 if len(normalized_expected_sample_shape) == 2 else 3
+            ),
+            label="expected_sample_shape",
+        )
+        self._sample_shape_chw = _normalize_dataset_shape_tuple(
+            sample_shape_chw,
+            expected_dims=3,
+            label="sample_shape_chw",
+        )
+        self._input_shape_nchw = _normalize_dataset_shape_tuple(
+            input_shape_nchw,
+            expected_dims=4,
+            label="input_shape_nchw",
+        )
         cpu_count = os.cpu_count() or 1
         self.num_workers = num_workers if num_workers is not None else max(1, cpu_count)
 
@@ -215,6 +303,7 @@ class NPYDataset(Dataset):
         data = _load_and_validate_numpy_sample(
             self.file_paths[idx],
             self.numpy_dtype,
+            expected_shape=self._expected_sample_shape,
             idx=idx,
             split=self.split_name,
             stage=stage,
@@ -293,6 +382,18 @@ class NPYDataset(Dataset):
 
     def __len__(self):
         return len(self.file_paths)
+
+    @property
+    def expected_sample_shape(self):
+        return self._expected_sample_shape
+
+    @property
+    def sample_shape_chw(self):
+        return self._sample_shape_chw
+
+    @property
+    def input_shape_nchw(self):
+        return self._input_shape_nchw
 
     def __getitem__(self, idx):
         """加载单个样本（可配置精度，带性能监控）"""
@@ -493,9 +594,18 @@ def data_set_split(
 
     file_paths, labels, labels__, label_map = scan_dataset()
     manifest_path = build_manifest_path()
+    expected_sample_shape, sample_shape_chw, input_shape_nchw = infer_dataset_sample_shapes(
+        file_paths
+    )
 
     print(f"类别标签映射：{labels__}")
     print(f"总样本数：{len(file_paths)}")
+    print(
+        "推断得到数据集样本形状: "
+        f"expected_sample_shape={expected_sample_shape}, "
+        f"sample_shape_chw={sample_shape_chw}, "
+        f"input_shape_nchw={input_shape_nchw}"
+    )
 
     manifest_split = try_load_split_manifest(manifest_path, labels__)
     if manifest_split is None:
@@ -529,9 +639,9 @@ def data_set_split(
         )
 
     if not full_load:
-        _validate_split_file_paths("train", train_paths, numpy_dtype)
-        _validate_split_file_paths("val", val_paths, numpy_dtype)
-        _validate_split_file_paths("test", test_paths, numpy_dtype)
+        _validate_split_file_paths("train", train_paths, numpy_dtype, expected_sample_shape)
+        _validate_split_file_paths("val", val_paths, numpy_dtype, expected_sample_shape)
+        _validate_split_file_paths("test", test_paths, numpy_dtype, expected_sample_shape)
 
     print(f"训练集：{len(train_paths)} 样本")
     print(f"验证集：{len(val_paths)} 样本")
@@ -544,6 +654,9 @@ def data_set_split(
         num_workers=num_workers,
         data_dtype=data_dtype,
         split_name="train",
+        expected_sample_shape=expected_sample_shape,
+        sample_shape_chw=sample_shape_chw,
+        input_shape_nchw=input_shape_nchw,
     )
     validate_dataset = NPYDataset(
         val_paths,
@@ -552,6 +665,9 @@ def data_set_split(
         num_workers=num_workers,
         data_dtype=data_dtype,
         split_name="val",
+        expected_sample_shape=expected_sample_shape,
+        sample_shape_chw=sample_shape_chw,
+        input_shape_nchw=input_shape_nchw,
     )
     test_dataset = NPYDataset(
         test_paths,
@@ -560,6 +676,9 @@ def data_set_split(
         num_workers=num_workers,
         data_dtype=data_dtype,
         split_name="test",
+        expected_sample_shape=expected_sample_shape,
+        sample_shape_chw=sample_shape_chw,
+        input_shape_nchw=input_shape_nchw,
     )
 
     return train_dataset, validate_dataset, test_dataset, labels__

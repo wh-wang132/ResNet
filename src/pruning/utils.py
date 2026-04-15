@@ -10,8 +10,6 @@
 import os
 
 from base_model.utils import (
-    INPUT_SHAPE_NCHW,
-    INPUT_SIZE_CHW,
     build_architecture_signature,
     create_optimized_dataloader,
     get_raw_model,
@@ -55,8 +53,6 @@ def build_compact_pruning_meta(pruning_meta, baseline_stats):
     return compact_pruning_meta
 
 __all__ = [
-    "INPUT_SHAPE_NCHW",
-    "INPUT_SIZE_CHW",
     "REPO_ROOT",
     "build_compact_pruning_meta",
     "build_architecture_signature",

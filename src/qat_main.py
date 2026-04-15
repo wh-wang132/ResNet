@@ -84,8 +84,9 @@ def main():
         drop_last=False,
         loader_name="QAT 测试集 DataLoader",
     )
+    input_shape_nchw = train_dataset.input_shape_nchw
 
-    example_inputs = build_example_inputs(device)
+    example_inputs = build_example_inputs(device, input_shape_nchw)
     topology_meta = checkpoint_meta["quantization_source"]
     baseline_stats = count_model_stats(float_model, example_inputs)
     baseline_val_metrics = evaluate_model(
@@ -104,7 +105,11 @@ def main():
             progress_desc="QAT baseline test",
         )
 
-    prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(float_model, device)
+    prepared_model, quantization_meta, example_inputs = prepare_model_for_qat(
+        float_model,
+        device,
+        example_input_shape=input_shape_nchw,
+    )
     prepared_model.channel_cfg = topology_meta["channel_cfg"]
     quantization_meta["example_input_shape"] = list(example_inputs[0].shape)
 

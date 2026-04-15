@@ -142,6 +142,7 @@ def load_base_checkpoint(model_name, device):
         checkpoint.get("train_context", {}).get("class_num", 24),
     )
     model_kwargs.setdefault("dropout_p", 0.0)
+    model_kwargs.setdefault("in_channels", model_structure.get("in_channels", 1))
 
     model_map = load_model_map()
     if model_name not in model_map:

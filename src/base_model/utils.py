@@ -12,9 +12,6 @@ import torch
 import argparse
 from torch.amp import autocast
 
-INPUT_SHAPE_NCHW = (1, 1, 543, 512)
-INPUT_SIZE_CHW = (1, 543, 512)
-
 
 def release_gpu_memory():
     """释放 GPU 内存"""
@@ -135,13 +132,31 @@ def load_model_map():
     }
 
 
-def print_model_info(model, device):
+def _normalize_shape(shape, expected_dims, label):
+    if isinstance(shape, torch.Size):
+        shape = list(shape)
+    if not isinstance(shape, (list, tuple)):
+        raise TypeError(f"{label} 必须是 list/tuple/torch.Size")
+    normalized_shape = tuple(int(dim) for dim in shape)
+    if len(normalized_shape) != expected_dims:
+        raise ValueError(f"{label} 必须是 {expected_dims} 维形状，当前为 {normalized_shape}")
+    if any(dim <= 0 for dim in normalized_shape):
+        raise ValueError(f"{label} 的每一维都必须大于 0，当前为 {normalized_shape}")
+    return normalized_shape
+
+
+def print_model_info(model, device, input_size_chw):
     """打印模型信息"""
+    normalized_input_size_chw = _normalize_shape(input_size_chw, 3, "input_size_chw")
     try:
         from torchsummary import summary
 
         print("\n模型结构:")
-        summary(model, input_size=INPUT_SIZE_CHW, device=str(device).split(":")[0])
+        summary(
+            model,
+            input_size=normalized_input_size_chw,
+            device=str(device).split(":")[0],
+        )
     except Exception as e:
         print(f"无法使用 torchsummary: {e}")
         print(f"模型参数量: {sum(p.numel() for p in model.parameters()):,}")
@@ -216,7 +231,7 @@ def configure_cudnn(args):
     return config_status
 
 
-def compile_model(model, args, device, loss_function, optimizer):
+def compile_model(model, args, device, loss_function, optimizer, input_shape_nchw):
     """
     编译模型以优化性能
 
@@ -226,6 +241,7 @@ def compile_model(model, args, device, loss_function, optimizer):
         device: 计算设备
         loss_function: 损失函数（用于编译验证）
         optimizer: 优化器（用于编译验证）
+        input_shape_nchw: 用于编译验证的 NCHW 输入形状
 
     Returns:
         compiled_model: 编译后的模型（如果禁用编译则返回原模型）
@@ -248,6 +264,12 @@ def compile_model(model, args, device, loss_function, optimizer):
     start_time = time.time()
 
     try:
+        normalized_input_shape_nchw = _normalize_shape(
+            input_shape_nchw,
+            4,
+            "input_shape_nchw",
+        )
+
         # 使用torch.compile编译模型
         compiled_model = torch.compile(
             model,
@@ -259,8 +281,12 @@ def compile_model(model, args, device, loss_function, optimizer):
         # 验证编译是否成功 - 通过一次前向+反向传播
         compiled_model.train()
 
-        # 创建一个示例输入进行验证
-        sample_input = torch.randn(*INPUT_SHAPE_NCHW, dtype=torch.float16, device=device)
+        # 使用数据集推断得到的形状创建示例输入进行验证
+        sample_input = torch.randn(
+            *normalized_input_shape_nchw,
+            dtype=torch.float16,
+            device=device,
+        )
         sample_target = torch.randint(0, 24, (1,), device=device)
 
         # 执行前向传播

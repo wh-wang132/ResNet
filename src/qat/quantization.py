@@ -16,8 +16,6 @@ from torch.ao.quantization.observer import (
 from torch.ao.quantization.quantize_fx import prepare_qat_fx
 from torch.nn.intrinsic.qat import freeze_bn_stats
 
-from .utils import INPUT_SHAPE_NCHW
-
 
 QUANTIZATION_SCHEME_VERSION = 3
 CANONICAL_QAT_SCHEME_NAME = "torch_fx_qat_cann_v1"
@@ -34,7 +32,9 @@ QCONFIG_OBJECT_TYPE_TARGETS = (
 
 def normalize_example_input_shape(example_input_shape):
     if example_input_shape is None:
-        example_input_shape = INPUT_SHAPE_NCHW
+        raise ValueError(
+            "example_input_shape 不能为空；未提供 quantization_meta 时必须显式传入"
+        )
 
     if isinstance(example_input_shape, torch.Size):
         example_input_shape = list(example_input_shape)
@@ -134,6 +134,10 @@ def prepare_model_for_qat(model, device, quantization_meta=None, example_input_s
         normalized_shape = validate_quantization_meta(quantization_meta)
         canonical_meta = build_quantization_meta(normalized_shape)
     else:
+        if example_input_shape is None:
+            raise ValueError(
+                "未提供 quantization_meta 时必须显式传入 example_input_shape"
+            )
         normalized_shape = normalize_example_input_shape(example_input_shape)
         canonical_meta = build_quantization_meta(normalized_shape)
 

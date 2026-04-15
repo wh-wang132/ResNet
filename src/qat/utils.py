@@ -10,8 +10,6 @@ QAT 阶段通用工具入口。
 import os
 
 from base_model.utils import (
-    INPUT_SHAPE_NCHW,
-    INPUT_SIZE_CHW,
     build_architecture_signature,
     create_optimized_dataloader,
     get_raw_model,
@@ -37,8 +35,6 @@ def to_repo_relative_path(path):
 
 
 __all__ = [
-    "INPUT_SHAPE_NCHW",
-    "INPUT_SIZE_CHW",
     "REPO_ROOT",
     "build_architecture_signature",
     "create_optimized_dataloader",

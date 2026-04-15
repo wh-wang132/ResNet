@@ -38,9 +38,10 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 ### 1. 数据层
 
 - 数据集采用 `Data/<class>/*.npy` 目录组织
-- 默认输入形状为 `(1, 543, 512)`
+- 训练期输入 shape 由数据集首个可读样本推断
 - `data_set_split()` 负责：
   - 自然排序扫描
+  - 推断原始样本 shape，并补齐 `CHW / NCHW`
   - 分层切分 train / val / test
   - 将切分结果落盘到 `output/splits/`
   - 后续优先复用 manifest

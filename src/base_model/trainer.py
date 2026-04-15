@@ -39,6 +39,7 @@ def train_model(
     args,
     folder_path,
     val_num,
+    input_shape_nchw,
 ):
     """
     训练模型的主函数
@@ -51,6 +52,7 @@ def train_model(
         args: 命令行参数
         folder_path: 输出目录路径
         val_num: 验证样本数
+        input_shape_nchw: 由数据集样本推断得到的 NCHW 输入形状
 
     Returns:
         model: 训练后的模型（加载最佳权重）
@@ -82,6 +84,7 @@ def train_model(
         device=device,
         loss_function=loss_function,
         optimizer=optimizer,
+        input_shape_nchw=input_shape_nchw,
     )
 
     # 初始化 GradScaler 用于自动混合精度
@@ -281,6 +284,11 @@ def train_model(
                     "model_kwargs": {
                         "num_classes": args.class_num,
                         "dropout_p": args.dropout_p,
+                        "in_channels": (
+                            int(model_to_save.conv1.in_channels)
+                            if hasattr(model_to_save, "conv1")
+                            else 1
+                        ),
                     },
                     "include_top": bool(getattr(model_to_save, "include_top", True)),
                     "in_channels": (

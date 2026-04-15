@@ -310,12 +310,13 @@ class ResNet2D(nn.Module):
         return x if len(out) == 0 else out
 
 
-def resnet18_2d(num_classes=24, dropout_p=0.0):
+def resnet18_2d(num_classes=24, dropout_p=0.0, in_channels=1):
     """标准 ResNet-18 2D 版本"""
     return ResNet2D(
         BasicBlock,
         [2, 2, 2, 2],
         num_classes=num_classes,
+        in_channels=in_channels,
         init_channels=64,
         dropout_p=dropout_p,
     )
@@ -334,12 +335,13 @@ def resnet18_2d_from_cfg(channel_cfg, num_classes=24, dropout_p=0.0, include_top
     )
 
 
-def resnet34_2d(num_classes=24, dropout_p=0.0):
+def resnet34_2d(num_classes=24, dropout_p=0.0, in_channels=1):
     """标准 ResNet-34 2D 版本"""
     return ResNet2D(
         BasicBlock,
         [3, 4, 6, 3],
         num_classes=num_classes,
+        in_channels=in_channels,
         init_channels=64,
         dropout_p=dropout_p,
     )

@@ -26,7 +26,6 @@ from pruning.trainer import (
     save_pruned_checkpoint_without_finetune,
 )
 from pruning.utils import (
-    INPUT_SHAPE_NCHW,
     build_compact_pruning_meta,
     create_optimized_dataloader,
     release_gpu_memory,
@@ -36,8 +35,8 @@ from pruning.utils import (
 configure_matplotlib()
 
 
-def build_example_inputs(device):
-    return torch.randn(*INPUT_SHAPE_NCHW, dtype=torch.float32, device=device)
+def build_example_inputs(device, input_shape_nchw):
+    return torch.randn(*input_shape_nchw, dtype=torch.float32, device=device)
 
 
 def main():
@@ -103,8 +102,9 @@ def main():
         drop_last=False,
         loader_name="剪枝测试集 DataLoader",
     )
+    input_shape_nchw = train_dataset.input_shape_nchw
 
-    example_inputs = build_example_inputs(device)
+    example_inputs = build_example_inputs(device, input_shape_nchw)
     pre_prune_model = copy.deepcopy(model).to(device)
     baseline_stats = count_model_stats(pre_prune_model, example_inputs)
     baseline_val_metrics = evaluate_model(

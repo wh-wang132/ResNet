@@ -308,34 +308,37 @@ class LightweightResNet2D(nn.Module):
             return x if len(out) == 0 else out
 
 
-def resnet6_2d(num_classes=24, dropout_p=0.2):
+def resnet6_2d(num_classes=24, dropout_p=0.2, in_channels=1):
     """超轻量 ResNet-6 2D 版本（只有 2 个残差层）"""
     return LightweightResNet2D(
         LightweightBasicBlock2D,
         [1, 1, 1],
         num_classes=num_classes,
+        in_channels=in_channels,
         init_channels=32,
         dropout_p=dropout_p,
     )
 
 
-def resnet10_2d(num_classes=24, dropout_p=0.2):
+def resnet10_2d(num_classes=24, dropout_p=0.2, in_channels=1):
     """轻量 ResNet-10 2D 版本"""
     return LightweightResNet2D(
         LightweightBasicBlock2D,
         [1, 1, 1],
         num_classes=num_classes,
+        in_channels=in_channels,
         init_channels=48,
         dropout_p=dropout_p,
     )
 
 
-def resnet14_2d(num_classes=24, dropout_p=0.2):
+def resnet14_2d(num_classes=24, dropout_p=0.2, in_channels=1):
     """中等 ResNet-14 2D 版本"""
     return LightweightResNet2D(
         LightweightBasicBlock2D,
         [2, 2, 1],
         num_classes=num_classes,
+        in_channels=in_channels,
         init_channels=48,
         dropout_p=dropout_p,
     )

@@ -98,6 +98,9 @@ def main():
     val_num = len(validate_dataset)
     test_num = len(test_dataset)
     print(f"训练样本数: {train_num}, 验证样本数: {val_num}, 测试样本数: {test_num}")
+    sample_shape_chw = train_dataset.sample_shape_chw
+    input_shape_nchw = train_dataset.input_shape_nchw
+    input_channels = sample_shape_chw[0]
 
     # 设置随机种子
     torch.manual_seed(42)
@@ -107,11 +110,15 @@ def main():
     # 模型初始化
     print(f"\n初始化模型: {args.model}")
     model_map = load_model_map()
-    model = model_map[args.model](num_classes=args.class_num, dropout_p=args.dropout_p)
+    model = model_map[args.model](
+        num_classes=args.class_num,
+        dropout_p=args.dropout_p,
+        in_channels=input_channels,
+    )
     model.to(device)
 
     # 打印模型信息
-    print_model_info(model, device)
+    print_model_info(model, device, sample_shape_chw)
 
     # 训练阶段
     if args.Train:
@@ -123,6 +130,7 @@ def main():
             args=args,
             folder_path=folder_path,
             val_num=val_num,
+            input_shape_nchw=input_shape_nchw,
         )
 
     # 测试阶段
