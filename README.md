@@ -265,42 +265,42 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 
 ## 自动化脚本
 
-`autorun/` 目录提供 6 份顺序执行脚本：
+`autorun/` 目录提供 6 份顺序执行脚本，并在 `pixi.toml` 中一一映射为独立 task：
 
-- [autorun/autorun_base_model.sh](autorun/autorun_base_model.sh)
-- [autorun/autorun_pruning.sh](autorun/autorun_pruning.sh)
-- [autorun/autorun_qat.sh](autorun/autorun_qat.sh)
-- [autorun/autorun_onnx.sh](autorun/autorun_onnx.sh)
-- [autorun/autorun_amct.sh](autorun/autorun_amct.sh)
-- [autorun/autorun_atc.sh](autorun/autorun_atc.sh)
+- [autorun/autorun_base_model.sh](autorun/autorun_base_model.sh) -> `pixi run autorun-base-model`
+- [autorun/autorun_pruning.sh](autorun/autorun_pruning.sh) -> `pixi run autorun-pruning`
+- [autorun/autorun_qat.sh](autorun/autorun_qat.sh) -> `pixi run autorun-qat`
+- [autorun/autorun_onnx.sh](autorun/autorun_onnx.sh) -> `pixi run autorun-onnx`
+- [autorun/autorun_amct.sh](autorun/autorun_amct.sh) -> `pixi run autorun-amct`
+- [autorun/autorun_atc.sh](autorun/autorun_atc.sh) -> `pixi run autorun-atc`
 
-这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，适合直接在服务器终端监视运行并安全清理中间状态。
+这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，适合直接在服务器终端监视运行并安全清理中间状态。推荐优先通过 `pixi run <task>` 调用；对应 shell 脚本仍保留作为底层实现。
 
 运行前提：
 
-- shell 必须已自动或手动激活项目根目录的 `.envrc`
-- `autorun` 脚本统一直接使用 `.envrc` 提供的 `REPO_ROOT` 作为仓库根
+- 使用 `pixi run autorun-*` 时，task 会自动注入 `REPO_ROOT=$PIXI_PROJECT_ROOT` 与 `PYTHONPATH=$PIXI_PROJECT_ROOT/src`
+- 若手动执行 `bash autorun/*.sh`，仍要求 shell 已自动或手动激活项目根目录的 `.envrc`
 
 脚本行为概览：
 
-- `autorun/autorun_base_model.sh`
+- `autorun-base-model`
   - 批量训练 5 个基座模型
   - 搜索维度：模型与 `batch_size`
   - 固定显式传入：`--full_load True`
-- `autorun/autorun_pruning.sh`
+- `autorun-pruning`
   - 批量运行 pruning 实验
   - 搜索维度：模型、`pruning_ratio`、`pruning_steps`
   - 固定显式传入：`--full_load True`
-- `autorun/autorun_qat.sh`
+- `autorun-qat`
   - 批量消费 pruning checkpoint
   - 固定显式传入：`--full_load True`
-- `autorun/autorun_onnx.sh`
+- `autorun-onnx`
   - 遍历 `output/pruning/**/best_pruned_model.pth`
   - 遍历 `output/qat/**/best_qat_prepare_model.pth`
   - 默认参数与 ONNX CLI 保持一致：`evaluate_test=True`、`eval_batch_size=64`
-- `autorun/autorun_amct.sh`
+- `autorun-amct`
   - 遍历 `output/onnx/qat_convert/**/model_quant.onnx`
-- `autorun/autorun_atc.sh`
+- `autorun-atc`
   - 遍历 `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - 遍历 `output/amct/**/deploy_model.onnx`
   - 默认参数与 ATC CLI 保持一致：`soc_version=Ascend310B4`

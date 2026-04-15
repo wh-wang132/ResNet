@@ -2,16 +2,16 @@
 
 ## 概述
 
-当前仓库在 `autorun/` 目录提供 6 份顺序执行脚本：
+当前仓库在 `autorun/` 目录提供 6 份顺序执行脚本，并在 `pixi.toml` 中一一映射为独立 task：
 
-- `autorun/autorun_base_model.sh`
-- `autorun/autorun_pruning.sh`
-- `autorun/autorun_qat.sh`
-- `autorun/autorun_onnx.sh`
-- `autorun/autorun_amct.sh`
-- `autorun/autorun_atc.sh`
+- `autorun/autorun_base_model.sh` -> `pixi run autorun-base-model`
+- `autorun/autorun_pruning.sh` -> `pixi run autorun-pruning`
+- `autorun/autorun_qat.sh` -> `pixi run autorun-qat`
+- `autorun/autorun_onnx.sh` -> `pixi run autorun-onnx`
+- `autorun/autorun_amct.sh` -> `pixi run autorun-amct`
+- `autorun/autorun_atc.sh` -> `pixi run autorun-atc`
 
-这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，便于在服务器终端观察运行状态并安全清理中间状态。
+这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，便于在服务器终端观察运行状态并安全清理中间状态。推荐通过 `pixi run <task>` 调用；对应 shell 脚本保留为底层实现。
 
 ## 运行前准备
 
@@ -70,12 +70,17 @@ AMCT 阶段额外依赖仓库自带组件：
 
 - 上述文件已经随仓库提供
 - 它们不属于 `uv sync` / `pixi install` 的自动安装范围
-- 在运行 `autorun/autorun_amct.sh` 前，需要按目标环境自行安装或部署
+- 在运行 `pixi run autorun-amct` 或 `autorun/autorun_amct.sh` 前，需要按目标环境自行安装或部署
 - 若宿主机已预装系统全局 CUDA，AMCT 在安装 `amct_onnx/amct_onnx_op.tar.gz` 或运行阶段可能优先搜索到系统 CUDA，从而引发 CUDA 版本不匹配错误；此场景建议在 Docker 环境中部署和运行 AMCT 相关流程
 
 ## 环境层次
 
-自动化脚本默认都要求当前 shell 已激活公共环境层 `.envrc`，并通过其中的 `REPO_ROOT` 作为统一仓库根。在此基础上：
+通过 `pixi run autorun-*` 调用时，task 会自动注入：
+
+- `REPO_ROOT=$PIXI_PROJECT_ROOT`
+- `PYTHONPATH=$PIXI_PROJECT_ROOT/src`
+
+若手动执行 shell 脚本，则仍要求当前 shell 已激活公共环境层 `.envrc`。在此基础上：
 
 - `autorun/autorun_base_model.sh`：内部加载 `load_base_model_env.sh`
 - `autorun/autorun_pruning.sh`：只依赖公共层
@@ -89,7 +94,7 @@ AMCT 阶段额外依赖仓库自带组件：
 入口：
 
 ```bash
-bash autorun/autorun_base_model.sh
+pixi run autorun-base-model
 ```
 
 脚本行为：
@@ -109,7 +114,7 @@ output/base_model/<model>/epochs<epochs>_bs<batch_size>/
 入口：
 
 ```bash
-bash autorun/autorun_pruning.sh
+pixi run autorun-pruning
 ```
 
 脚本行为：
@@ -133,7 +138,7 @@ output/pruning/<model>/ratio<ratio>_steps<steps>_<global|local>_ft<epochs>_bs<ba
 入口：
 
 ```bash
-bash autorun/autorun_qat.sh
+pixi run autorun-qat
 ```
 
 脚本行为：
@@ -153,7 +158,7 @@ output/qat/<model>/from_<pruning_exp>/
 入口：
 
 ```bash
-bash autorun/autorun_onnx.sh
+pixi run autorun-onnx
 ```
 
 脚本行为：
@@ -178,7 +183,7 @@ output/onnx/qat_convert/<model>/from_<exp>/
 入口：
 
 ```bash
-bash autorun/autorun_amct.sh
+pixi run autorun-amct
 ```
 
 脚本行为：
@@ -197,7 +202,7 @@ output/amct/<model>/from_<exp>/
 入口：
 
 ```bash
-bash autorun/autorun_atc.sh
+pixi run autorun-atc
 ```
 
 脚本行为：
@@ -221,11 +226,11 @@ output/atc/amct_deploy/<model>/from_<exp>/
 ## 使用建议
 
 1. 先单独运行一条命令，确认环境、数据路径与驱动条件正常。
-2. 先确认执行脚本前的 shell 已加载项目根目录的 `.envrc`；若不使用 `direnv` 自动激活，也必须手动提供与 `.envrc` 等价的环境变量。
+2. 推荐直接使用 `pixi run autorun-*`；若手动执行 shell 脚本，再确认当前 shell 已加载项目根目录的 `.envrc`。
 3. pruning 自动脚本依赖：
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
-4. `autorun/autorun_onnx.sh` 默认不显式传 `--eval_batch_size`；若资源不足，可在脚本中追加更小的评估 batch。
-5. `autorun/autorun_amct.sh` 与 `autorun/autorun_atc.sh` 适合在对应目标环境上运行。
+4. `autorun-onnx` 对应脚本默认不显式传 `--eval_batch_size`；若资源不足，可在底层脚本中追加更小的评估 batch。
+5. `autorun-amct` 与 `autorun-atc` 适合在对应目标环境上运行。
 
 ## 注意事项
 

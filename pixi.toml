@@ -13,6 +13,12 @@ index-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 extra-index-urls = ["https://mirrors.ustc.edu.cn/pypi/web/simple"]
 
 [tasks]
+autorun-base-model = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_base_model.sh"
+autorun-pruning = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_pruning.sh"
+autorun-qat = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_qat.sh"
+autorun-onnx = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_onnx.sh"
+autorun-amct = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_amct.sh"
+autorun-atc = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_atc.sh"
 
 [dependencies]
 gxx = ">=15.2.0,<15.3"
