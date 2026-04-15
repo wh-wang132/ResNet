@@ -17,7 +17,12 @@ from base_model.resnet_standard import (
     resnet34_2d_from_cfg,
 )
 from .quantization import prepare_model_for_qat
-from .utils import build_architecture_signature, load_state_dict_safely, to_repo_relative_path
+from .utils import (
+    build_architecture_signature,
+    load_state_dict_safely,
+    resolve_model_structure_num_classes,
+    to_repo_relative_path,
+)
 
 
 class CheckpointRestoreError(RuntimeError):
@@ -59,7 +64,22 @@ REQUIRED_QAT_CHECKPOINT_KEYS = {
 }
 
 
-def load_pruning_checkpoint(pruning_checkpoint_path, device):
+def _validate_expected_num_classes(model_structure, state_dict, expected_num_classes, label):
+    checkpoint_num_classes = resolve_model_structure_num_classes(
+        model_structure,
+        state_dict=state_dict,
+    )
+    if checkpoint_num_classes is None:
+        raise CheckpointRestoreError(f"{label} 无法解析分类头输出维度")
+    if checkpoint_num_classes != expected_num_classes:
+        raise CheckpointRestoreError(
+            f"{label} 的分类头输出维度与 Data 目录类别数不一致: "
+            f"expected={expected_num_classes}, actual={checkpoint_num_classes}"
+        )
+    return checkpoint_num_classes
+
+
+def load_pruning_checkpoint(pruning_checkpoint_path, device, expected_num_classes):
     checkpoint_path = os.path.abspath(pruning_checkpoint_path)
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(f"找不到 pruning checkpoint: {pruning_checkpoint_path}")
@@ -75,7 +95,7 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
             f"pruning checkpoint 缺少关键 model_structure 字段: {', '.join(missing_keys)}"
         )
 
-    restore_spec = _build_restore_spec(model_structure, checkpoint)
+    restore_spec = _build_restore_spec(model_structure, checkpoint, expected_num_classes)
     model = _build_float_model_from_restore_spec(restore_spec)
     _validate_architecture_signature(
         model,
@@ -93,6 +113,7 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
         "checkpoint_path": checkpoint_path,
         "model_name": restore_spec["model_name"],
         "model_kwargs": restore_spec["model_kwargs"],
+        "num_classes": restore_spec["num_classes"],
         "model_structure": copy.deepcopy(model_structure),
         "input_tensor_meta": model_structure.get("input_tensor_meta"),
         "best_acc": checkpoint.get("best_acc"),
@@ -105,7 +126,7 @@ def load_pruning_checkpoint(pruning_checkpoint_path, device):
     return model, checkpoint_meta, checkpoint
 
 
-def _build_restore_spec(model_structure, checkpoint):
+def _build_restore_spec(model_structure, checkpoint, expected_num_classes):
     missing_keys = sorted(REQUIRED_MODEL_STRUCTURE_KEYS - set(model_structure.keys()))
     if missing_keys:
         raise CheckpointRestoreError(
@@ -120,12 +141,20 @@ def _build_restore_spec(model_structure, checkpoint):
     if architecture_signature is None:
         raise CheckpointRestoreError("checkpoint 中缺少 architecture_signature，无法执行强校验")
 
+    resolved_num_classes = _validate_expected_num_classes(
+        model_structure,
+        checkpoint["model_state_dict"],
+        expected_num_classes,
+        "checkpoint",
+    )
+
     model_kwargs = dict(model_structure.get("model_kwargs", {}))
-    model_kwargs.setdefault("num_classes", checkpoint.get("train_context", {}).get("class_num", 24))
+    model_kwargs.pop("num_classes", None)
     model_kwargs.setdefault("dropout_p", model_kwargs.get("dropout_p", 0.0))
     return {
         "model_name": model_name,
         "model_kwargs": model_kwargs,
+        "num_classes": resolved_num_classes,
         "include_top": model_structure.get("include_top", True),
         "in_channels": model_structure.get("in_channels", 1),
         "channel_cfg": copy.deepcopy(model_structure["channel_cfg"]),
@@ -135,7 +164,7 @@ def _build_restore_spec(model_structure, checkpoint):
 def _build_float_model_from_restore_spec(restore_spec):
     model = FROM_CFG_MODEL_MAP[restore_spec["model_name"]](
         channel_cfg=restore_spec["channel_cfg"],
-        num_classes=restore_spec["model_kwargs"].get("num_classes", 24),
+        num_classes=restore_spec["num_classes"],
         dropout_p=restore_spec["model_kwargs"].get("dropout_p", 0.0),
         include_top=restore_spec["include_top"],
         in_channels=restore_spec["in_channels"],
@@ -143,7 +172,7 @@ def _build_float_model_from_restore_spec(restore_spec):
     return model
 
 
-def load_qat_checkpoint(qat_checkpoint_path, device):
+def load_qat_checkpoint(qat_checkpoint_path, device, expected_num_classes):
     checkpoint_path = os.path.abspath(qat_checkpoint_path)
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(f"找不到 QAT checkpoint: {qat_checkpoint_path}")
@@ -156,7 +185,7 @@ def load_qat_checkpoint(qat_checkpoint_path, device):
         )
 
     model_structure = checkpoint["model_structure"]
-    restore_spec = _build_restore_spec(model_structure, checkpoint)
+    restore_spec = _build_restore_spec(model_structure, checkpoint, expected_num_classes)
     float_model = _build_float_model_from_restore_spec(restore_spec)
     _validate_architecture_signature(
         float_model,
@@ -185,6 +214,7 @@ def load_qat_checkpoint(qat_checkpoint_path, device):
         "source_qat_checkpoint_path": to_repo_relative_path(checkpoint_path),
         "model_name": restore_spec["model_name"],
         "model_kwargs": restore_spec["model_kwargs"],
+        "num_classes": restore_spec["num_classes"],
         "model_structure": copy.deepcopy(model_structure),
         "input_tensor_meta": model_structure.get("input_tensor_meta"),
         "quantization_meta": copy.deepcopy(quantization_meta),

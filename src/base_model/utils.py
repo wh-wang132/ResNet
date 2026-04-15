@@ -56,6 +56,54 @@ def build_architecture_signature(model):
     }
 
 
+def infer_num_classes_from_model(model):
+    raw_model = get_raw_model(model)
+    if not getattr(raw_model, "include_top", True):
+        return None
+    if not hasattr(raw_model, "fc"):
+        raise ValueError("模型缺少 fc，无法推断分类输出维度")
+    return int(raw_model.fc.out_features)
+
+
+def extract_num_classes_from_channel_cfg(channel_cfg):
+    if not isinstance(channel_cfg, dict):
+        return None
+    fc_cfg = channel_cfg.get("fc")
+    if not isinstance(fc_cfg, dict):
+        return None
+    out_features = fc_cfg.get("out_features")
+    if out_features is None:
+        return None
+    return int(out_features)
+
+
+def extract_num_classes_from_state_dict(state_dict):
+    if not isinstance(state_dict, dict):
+        return None
+    fc_weight = state_dict.get("fc.weight")
+    if isinstance(fc_weight, torch.Tensor):
+        return int(fc_weight.shape[0])
+    fc_bias = state_dict.get("fc.bias")
+    if isinstance(fc_bias, torch.Tensor):
+        return int(fc_bias.shape[0])
+    return None
+
+
+def resolve_model_structure_num_classes(model_structure, state_dict=None):
+    if not isinstance(model_structure, dict):
+        return None
+    num_classes = extract_num_classes_from_channel_cfg(model_structure.get("channel_cfg"))
+    if num_classes is not None:
+        return num_classes
+    num_classes = extract_num_classes_from_state_dict(state_dict)
+    if num_classes is not None:
+        return num_classes
+    model_kwargs = model_structure.get("model_kwargs", {})
+    if isinstance(model_kwargs, dict) and model_kwargs.get("num_classes") is not None:
+        return int(model_kwargs["num_classes"])
+    return None
+
+
 def print_training_summary(table_title, train_loss, val_loss, val_acc, gpu_info, epoch):
     """打印训练摘要"""
     print(f"\n{'='*80}")
@@ -287,12 +335,21 @@ def compile_model(model, args, device, loss_function, optimizer, input_shape_nch
             dtype=torch.float16,
             device=device,
         )
-        sample_target = torch.randint(0, 24, (1,), device=device)
 
         # 执行前向传播
         optimizer.zero_grad()
         with autocast("cuda", enabled=True):
             sample_output = compiled_model(sample_input)
+            if sample_output.ndim != 2 or int(sample_output.shape[1]) <= 0:
+                raise ValueError(
+                    "编译验证要求模型输出为 [batch, num_classes] 的二维张量"
+                )
+            sample_target = torch.randint(
+                0,
+                int(sample_output.shape[1]),
+                (int(sample_output.shape[0]),),
+                device=device,
+            )
             sample_loss = loss_function(sample_output, sample_target)
 
         # 执行反向传播

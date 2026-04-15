@@ -7,7 +7,7 @@ import os
 
 import torch
 
-from base_model.dataset import data_set_split
+from base_model.dataset import data_set_split, discover_dataset_classes
 from base_model.plotting import configure_matplotlib
 from qat.args import parse_args
 from qat.checkpoint import load_pruning_checkpoint
@@ -30,8 +30,14 @@ def main():
 
     release_gpu_memory()
     device = setup_device()
+    labels__, _ = discover_dataset_classes(args.data_dir)
+    expected_num_classes = len(labels__)
 
-    float_model, checkpoint_meta, _ = load_pruning_checkpoint(args.pruning_checkpoint, device)
+    float_model, checkpoint_meta, _ = load_pruning_checkpoint(
+        args.pruning_checkpoint,
+        device,
+        expected_num_classes=expected_num_classes,
+    )
     model_name = checkpoint_meta["model_name"]
 
     folder_path = create_output_directory(args, checkpoint_meta)

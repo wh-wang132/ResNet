@@ -8,7 +8,7 @@ import os
 
 import torch
 
-from base_model.dataset import data_set_split
+from base_model.dataset import data_set_split, discover_dataset_classes
 from base_model.plotting import configure_matplotlib
 from pruning.args import parse_args
 from pruning.checkpoint import load_base_checkpoint
@@ -45,10 +45,13 @@ def main():
 
     release_gpu_memory()
     device = setup_device()
+    labels__, _ = discover_dataset_classes(args.data_dir)
+    expected_num_classes = len(labels__)
 
     model, checkpoint_meta, _ = load_base_checkpoint(
         args.model,
         device,
+        expected_num_classes=expected_num_classes,
     )
     model_name = checkpoint_meta["model_name"]
 

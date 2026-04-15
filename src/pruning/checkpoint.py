@@ -9,6 +9,7 @@ import torch
 
 from .utils import (
     build_architecture_signature,
+    resolve_model_structure_num_classes,
     load_model_map,
     load_state_dict_safely,
     to_repo_relative_path,
@@ -115,7 +116,22 @@ def resolve_base_checkpoint_path(model_name):
     return selected_checkpoint_path, selected_checkpoint_path
 
 
-def load_base_checkpoint(model_name, device):
+def _validate_expected_num_classes(model_structure, state_dict, expected_num_classes, label):
+    checkpoint_num_classes = resolve_model_structure_num_classes(
+        model_structure,
+        state_dict=state_dict,
+    )
+    if checkpoint_num_classes is None:
+        raise CheckpointRestoreError(f"{label} 无法解析分类头输出维度")
+    if checkpoint_num_classes != expected_num_classes:
+        raise CheckpointRestoreError(
+            f"{label} 的分类头输出维度与 Data 目录类别数不一致: "
+            f"expected={expected_num_classes}, actual={checkpoint_num_classes}"
+        )
+    return checkpoint_num_classes
+
+
+def load_base_checkpoint(model_name, device, expected_num_classes):
     checkpoint_link_path, resolved_checkpoint_path = resolve_base_checkpoint_path(model_name)
 
     checkpoint = torch.load(resolved_checkpoint_path, map_location=device, weights_only=True)
@@ -136,11 +152,15 @@ def load_base_checkpoint(model_name, device):
     if architecture_signature is None:
         raise CheckpointRestoreError("checkpoint 中缺少 architecture_signature，无法执行强校验")
 
-    model_kwargs = dict(model_structure.get("model_kwargs", {}))
-    model_kwargs.setdefault(
-        "num_classes",
-        checkpoint.get("train_context", {}).get("class_num", 24),
+    resolved_num_classes = _validate_expected_num_classes(
+        model_structure,
+        checkpoint["model_state_dict"],
+        expected_num_classes,
+        "基座 checkpoint",
     )
+
+    model_kwargs = dict(model_structure.get("model_kwargs", {}))
+    model_kwargs.pop("num_classes", None)
     model_kwargs.setdefault("dropout_p", 0.0)
     model_kwargs.setdefault("in_channels", model_structure.get("in_channels", 1))
 
@@ -148,7 +168,11 @@ def load_base_checkpoint(model_name, device):
     if model_name not in model_map:
         raise CheckpointRestoreError(f"不支持的模型名: {model_name}")
 
-    model = model_map[model_name](**model_kwargs)
+    model = model_map[model_name](
+        num_classes=resolved_num_classes,
+        dropout_p=model_kwargs["dropout_p"],
+        in_channels=model_kwargs["in_channels"],
+    )
     _validate_architecture_signature(model, architecture_signature, "基座 checkpoint")
     success = load_state_dict_safely(model, checkpoint["model_state_dict"], strict=True)
     if not success:
@@ -162,6 +186,7 @@ def load_base_checkpoint(model_name, device):
         "checkpoint_path": resolved_checkpoint_path,
         "model_name": model_name,
         "model_kwargs": model_kwargs,
+        "num_classes": resolved_num_classes,
         "train_context": checkpoint.get("train_context", {}),
         "model_structure": model_structure,
         "input_tensor_meta": model_structure.get("input_tensor_meta"),

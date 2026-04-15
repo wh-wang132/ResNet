@@ -59,7 +59,7 @@ def test_model(model, device, test_loader, args, folder_path, labels__):
 
     model.to(device)
 
-    confusion = ConfusionMatrix(num_classes=args.class_num, labels=labels__)
+    confusion = ConfusionMatrix(num_classes=len(labels__), labels=labels__)
     model.eval()
 
     with autocast("cuda", enabled=torch.cuda.is_available()):

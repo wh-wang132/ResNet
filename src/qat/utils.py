@@ -16,6 +16,7 @@ from base_model.utils import (
     load_state_dict_safely,
     release_gpu_memory,
     remove_orig_mod_prefix,
+    resolve_model_structure_num_classes,
     setup_device,
     str2bool,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "load_state_dict_safely",
     "release_gpu_memory",
     "remove_orig_mod_prefix",
+    "resolve_model_structure_num_classes",
     "setup_device",
     "str2bool",
     "to_repo_relative_path",

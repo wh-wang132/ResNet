@@ -15,7 +15,6 @@ def parse_args():
     parser.add_argument(
         "--model_path", type=str, default="best_model.pth", help="模型保存路径"
     )
-    parser.add_argument("--class_num", type=int, default=24, help="分类数 (默认 24)")
 
     # 模型选择
     parser.add_argument(

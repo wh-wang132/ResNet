@@ -20,6 +20,7 @@ from .plotting import configure_matplotlib
 from .utils import (
     build_architecture_signature,
     get_gpu_memory_info,
+    infer_num_classes_from_model,
     print_training_summary,
     configure_cudnn,
     compile_model,
@@ -121,9 +122,10 @@ def train_model(
     best_val_accs = []
     lr_history = []
     input_tensor_meta = None
+    resolved_num_classes = infer_num_classes_from_model(original_model)
     train_context = {
         "model_name": args.model,
-        "class_num": args.class_num,
+        "num_classes": resolved_num_classes,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "lr": args.lr,
@@ -282,7 +284,6 @@ def train_model(
                     "model_name": args.model,
                     "model_class": model_to_save.__class__.__name__,
                     "model_kwargs": {
-                        "num_classes": args.class_num,
                         "dropout_p": args.dropout_p,
                         "in_channels": (
                             int(model_to_save.conv1.in_channels)

@@ -88,7 +88,6 @@ uv run python -m base_model --help
 | `--lr` | `0.0003` | 学习率 |
 | `--batch_size` | `64` | 批次大小 |
 | `--model_path` | `best_model.pth` | 模型保存文件名 |
-| `--class_num` | `24` | 分类数 |
 | `--model` | `resnet6_2d` | 模型名 |
 | `--data_dir` | `Data` | 数据集路径 |
 | `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |

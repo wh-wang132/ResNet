@@ -49,7 +49,7 @@ class BranchArtifacts:
 
 @dataclass(frozen=True)
 class BranchSpec:
-    loader: Callable[[str, BranchRuntime], tuple[torch.nn.Module, dict, dict]]
+    loader: Callable[[str, BranchRuntime, int], tuple[torch.nn.Module, dict, dict]]
     runtime_factory: Callable[[torch.device], BranchRuntime]
     export_shape_resolver: Callable[[dict, dict], list[int]]
     onnx_filename: str
@@ -128,12 +128,20 @@ def _build_qat_runtime(_device):
     )
 
 
-def _load_pruning_artifacts(checkpoint_path, runtime):
-    return load_pruning_checkpoint(checkpoint_path, runtime.source_device)
+def _load_pruning_artifacts(checkpoint_path, runtime, expected_num_classes):
+    return load_pruning_checkpoint(
+        checkpoint_path,
+        runtime.source_device,
+        expected_num_classes,
+    )
 
 
-def _load_qat_artifacts(checkpoint_path, runtime):
-    return load_qat_checkpoint(checkpoint_path, runtime.source_device)
+def _load_qat_artifacts(checkpoint_path, runtime, expected_num_classes):
+    return load_qat_checkpoint(
+        checkpoint_path,
+        runtime.source_device,
+        expected_num_classes,
+    )
 
 
 def _validate_pruning_export(onnx_path, _checkpoint_meta, expected_opset_version):
@@ -171,8 +179,12 @@ def _resolve_branch_runtime(branch, device):
     return _resolve_branch_spec(branch).runtime_factory(device)
 
 
-def _load_branch_artifacts(branch, checkpoint_path, runtime):
-    return _resolve_branch_spec(branch).loader(checkpoint_path, runtime)
+def _load_branch_artifacts(branch, checkpoint_path, runtime, expected_num_classes):
+    return _resolve_branch_spec(branch).loader(
+        checkpoint_path,
+        runtime,
+        expected_num_classes,
+    )
 
 
 def _build_export_meta(export_meta, runtime, export_shape, input_dtype_label):
@@ -227,9 +239,14 @@ def _build_branch_artifacts_from_loaded(
     )
 
 
-def inspect_branch_checkpoint(branch, checkpoint_path, device):
+def inspect_branch_checkpoint(branch, checkpoint_path, device, expected_num_classes):
     runtime = _resolve_branch_runtime(branch, device)
-    _, checkpoint_meta, _ = _load_branch_artifacts(branch, checkpoint_path, runtime)
+    _, checkpoint_meta, _ = _load_branch_artifacts(
+        branch,
+        checkpoint_path,
+        runtime,
+        expected_num_classes,
+    )
     return checkpoint_meta
 
 
@@ -283,12 +300,13 @@ def build_metric_delta(source_metrics, onnx_metrics):
     }
 
 
-def build_branch_artifacts(branch, checkpoint_path, device, opset_version):
+def build_branch_artifacts(branch, checkpoint_path, device, opset_version, expected_num_classes):
     runtime = _resolve_branch_runtime(branch, device)
     model, checkpoint_meta, checkpoint = _load_branch_artifacts(
         branch=branch,
         checkpoint_path=checkpoint_path,
         runtime=runtime,
+        expected_num_classes=expected_num_classes,
     )
     return _build_branch_artifacts_from_loaded(
         branch=branch,

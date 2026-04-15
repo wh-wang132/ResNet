@@ -19,7 +19,7 @@ def build_resnet2d_channel_cfg(
     groups=1,
     width_per_group=64,
     include_top=True,
-    num_classes=24,
+    num_classes=None,
 ):
     """构建标准 ResNet 的默认逐层通道配置。"""
     cfg = {
@@ -58,6 +58,8 @@ def build_resnet2d_channel_cfg(
         cfg["layers"].append(layer_cfg)
 
     if include_top:
+        if num_classes is None:
+            raise ValueError("include_top=True 时必须显式提供 num_classes")
         cfg["fc"] = {
             "in_features": in_ch,
             "out_features": num_classes,
@@ -147,7 +149,7 @@ class ResNet2D(nn.Module):
         self,
         block,
         blocks_num,
-        num_classes=24,
+        num_classes=None,
         include_top=True,
         groups=1,
         width_per_group=64,
@@ -160,7 +162,7 @@ class ResNet2D(nn.Module):
         Args:
             block: 残差块类（BasicBlock）
             blocks_num: 每层的残差块数量列表 [layer1, layer2, layer3, layer4]
-            num_classes: 分类数（默认 24）
+            num_classes: 分类数（由调用方或 channel_cfg 提供）
             include_top: 是否包含分类头
             groups: 分组卷积的组数（默认为 1）
             width_per_group: 每组宽度（默认 64）
@@ -174,6 +176,9 @@ class ResNet2D(nn.Module):
         self.width_per_group = width_per_group
         self.blocks_num = blocks_num
         self.block = block
+
+        if channel_cfg is None and include_top and num_classes is None:
+            raise ValueError("channel_cfg 为空且 include_top=True 时必须显式提供 num_classes")
 
         if channel_cfg is None:
             channel_cfg = build_resnet2d_channel_cfg(
@@ -310,7 +315,31 @@ class ResNet2D(nn.Module):
         return x if len(out) == 0 else out
 
 
-def resnet18_2d(num_classes=24, dropout_p=0.0, in_channels=1):
+def _resolve_num_classes_from_channel_cfg(channel_cfg, num_classes, include_top=True):
+    effective_include_top = channel_cfg.get("include_top", include_top)
+    if not effective_include_top:
+        return None
+
+    fc_cfg = channel_cfg.get("fc")
+    derived_num_classes = None
+    if isinstance(fc_cfg, dict) and fc_cfg.get("out_features") is not None:
+        derived_num_classes = int(fc_cfg["out_features"])
+
+    if num_classes is None:
+        if derived_num_classes is None:
+            raise ValueError("无法从 channel_cfg 推导 num_classes")
+        return derived_num_classes
+
+    resolved_num_classes = int(num_classes)
+    if derived_num_classes is not None and derived_num_classes != resolved_num_classes:
+        raise ValueError(
+            "显式提供的 num_classes 与 channel_cfg.fc.out_features 不一致: "
+            f"expected={derived_num_classes}, actual={resolved_num_classes}"
+        )
+    return resolved_num_classes
+
+
+def resnet18_2d(num_classes, dropout_p=0.0, in_channels=1):
     """标准 ResNet-18 2D 版本"""
     return ResNet2D(
         BasicBlock,
@@ -322,11 +351,16 @@ def resnet18_2d(num_classes=24, dropout_p=0.0, in_channels=1):
     )
 
 
-def resnet18_2d_from_cfg(channel_cfg, num_classes=24, dropout_p=0.0, include_top=True, in_channels=1):
+def resnet18_2d_from_cfg(channel_cfg, num_classes=None, dropout_p=0.0, include_top=True, in_channels=1):
+    resolved_num_classes = _resolve_num_classes_from_channel_cfg(
+        channel_cfg,
+        num_classes,
+        include_top=include_top,
+    )
     return ResNet2D(
         BasicBlock,
         [2, 2, 2, 2],
-        num_classes=num_classes,
+        num_classes=resolved_num_classes,
         include_top=channel_cfg.get("include_top", include_top),
         in_channels=in_channels,
         init_channels=channel_cfg["stem"]["out_channels"],
@@ -335,7 +369,7 @@ def resnet18_2d_from_cfg(channel_cfg, num_classes=24, dropout_p=0.0, include_top
     )
 
 
-def resnet34_2d(num_classes=24, dropout_p=0.0, in_channels=1):
+def resnet34_2d(num_classes, dropout_p=0.0, in_channels=1):
     """标准 ResNet-34 2D 版本"""
     return ResNet2D(
         BasicBlock,
@@ -347,11 +381,16 @@ def resnet34_2d(num_classes=24, dropout_p=0.0, in_channels=1):
     )
 
 
-def resnet34_2d_from_cfg(channel_cfg, num_classes=24, dropout_p=0.0, include_top=True, in_channels=1):
+def resnet34_2d_from_cfg(channel_cfg, num_classes=None, dropout_p=0.0, include_top=True, in_channels=1):
+    resolved_num_classes = _resolve_num_classes_from_channel_cfg(
+        channel_cfg,
+        num_classes,
+        include_top=include_top,
+    )
     return ResNet2D(
         BasicBlock,
         [3, 4, 6, 3],
-        num_classes=num_classes,
+        num_classes=resolved_num_classes,
         include_top=channel_cfg.get("include_top", include_top),
         in_channels=in_channels,
         init_channels=channel_cfg["stem"]["out_channels"],

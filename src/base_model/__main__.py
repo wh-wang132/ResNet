@@ -102,6 +102,7 @@ def main():
     sample_shape_chw = train_dataset.sample_shape_chw
     input_shape_nchw = train_dataset.input_shape_nchw
     input_channels = sample_shape_chw[0]
+    num_classes = len(labels__)
 
     # 设置随机种子
     torch.manual_seed(42)
@@ -112,7 +113,7 @@ def main():
     print(f"\n初始化模型: {args.model}")
     model_map = load_model_map()
     model = model_map[args.model](
-        num_classes=args.class_num,
+        num_classes=num_classes,
         dropout_p=args.dropout_p,
         in_channels=input_channels,
     )

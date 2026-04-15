@@ -7,7 +7,7 @@ import json
 import torch
 
 from amct.utils import SUMMARY_VERSION, extract_onnx_contract
-from base_model.dataset import data_set_split
+from base_model.dataset import data_set_split, discover_dataset_classes
 from base_model.plotting import configure_matplotlib
 from onnx_export.args import parse_args
 from onnx_export.evaluator import (
@@ -47,6 +47,8 @@ def main():
 
     release_gpu_memory()
     device = setup_device()
+    labels__, _ = discover_dataset_classes(args.data_dir)
+    expected_num_classes = len(labels__)
 
     actual_opset_version = resolve_branch_opset_version(args.branch, args.opset_version)
     artifacts = build_branch_artifacts(
@@ -54,22 +56,22 @@ def main():
         checkpoint_path=args.checkpoint,
         device=device,
         opset_version=actual_opset_version,
-    )
-
-    _, _, test_dataset, labels__ = data_set_split(
-        args.data_dir,
-        train_ratio=0.6,
-        val_ratio=0.2,
-        test_ratio=0.2,
-        full_load=args.full_load,
-        num_workers=args.num_workers,
-        data_dtype=artifacts.runtime.dataset_dtype,
+        expected_num_classes=expected_num_classes,
     )
 
     source_test_metrics = None
     onnx_test_metrics = None
     ort_provider_meta = None
     if args.evaluate_test:
+        _, _, test_dataset, labels__ = data_set_split(
+            args.data_dir,
+            train_ratio=0.6,
+            val_ratio=0.2,
+            test_ratio=0.2,
+            full_load=args.full_load,
+            num_workers=args.num_workers,
+            data_dtype=artifacts.runtime.dataset_dtype,
+        )
         test_loader, _ = create_optimized_dataloader(
             test_dataset,
             batch_size=args.eval_batch_size,

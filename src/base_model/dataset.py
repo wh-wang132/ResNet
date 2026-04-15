@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 .npy 数据集加载模块
-用于加载 Data 目录下的 24 类.npy 格式数据集
+用于加载 Data 目录下按类别子目录组织的 .npy 数据集
 支持多线程预加载和性能监控
 """
 
@@ -28,6 +28,30 @@ DTYPE_MAP = {
 
 SPLIT_MANIFEST_VERSION = 1
 SPLIT_OUTPUT_DIR = os.path.join("output", "splits")
+
+
+def natural_sort_key(text):
+    """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
+
+
+def discover_dataset_classes(data_dir):
+    normalized_data_dir = os.path.normpath(data_dir)
+    if not os.path.isdir(normalized_data_dir):
+        raise FileNotFoundError(f"找不到数据集目录: {data_dir}")
+
+    class_names = []
+    class_to_idx = {}
+    for label_folder in sorted(os.listdir(data_dir), key=natural_sort_key):
+        label_folder_path = os.path.join(data_dir, label_folder)
+        if os.path.isdir(label_folder_path):
+            class_to_idx[label_folder] = len(class_names)
+            class_names.append(label_folder)
+
+    if not class_names:
+        raise DatasetIntegrityError(f"数据集目录中未发现任何类别子目录: {data_dir}")
+
+    return class_names, class_to_idx
 
 
 class DatasetSampleError(RuntimeError):
@@ -482,10 +506,6 @@ def data_set_split(
     normalized_data_dir = os.path.normpath(data_dir)
     numpy_dtype, _ = DTYPE_MAP[data_dtype]
 
-    def natural_sort_key(text):
-        """自然排序键：支持 0,1,2,...,10 的数字顺序，同时兼容非数字字符串。"""
-        return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
-
     def build_manifest_path():
         file_name = (
             "dataset_split__"
@@ -499,23 +519,15 @@ def data_set_split(
     def scan_dataset():
         file_paths: list[str] = []
         labels: list[str] = []
-        labels__: list[str] = []
-        label_map: dict[str, int] = {}
-        label_index = 0
+        labels__, label_map = discover_dataset_classes(data_dir)
 
-        for label_folder in sorted(os.listdir(data_dir), key=natural_sort_key):
+        for label_folder in labels__:
             label_folder_path = os.path.join(data_dir, label_folder)
-            if os.path.isdir(label_folder_path):
-                labels__.append(label_folder)
-                for file_name in sorted(
-                    os.listdir(label_folder_path), key=natural_sort_key
-                ):
-                    if file_name.endswith(".npy"):
-                        file_path = os.path.join(label_folder_path, file_name)
-                        file_paths.append(file_path)
-                        labels.append(label_folder)
-                label_map[label_folder] = label_index
-                label_index += 1
+            for file_name in sorted(os.listdir(label_folder_path), key=natural_sort_key):
+                if file_name.endswith(".npy"):
+                    file_path = os.path.join(label_folder_path, file_name)
+                    file_paths.append(file_path)
+                    labels.append(label_folder)
 
         indexed_labels = [label_map[label] for label in labels]
         return file_paths, indexed_labels, labels__, label_map

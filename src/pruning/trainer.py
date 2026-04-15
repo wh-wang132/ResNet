@@ -104,7 +104,7 @@ def finetune_model(
         "resolved_checkpoint_path": checkpoint_meta["resolved_checkpoint_path"],
         "model_name": checkpoint_meta["model_name"],
         "round_index": int(round_index),
-        "class_num": checkpoint_meta["model_kwargs"].get("num_classes", 24),
+        "num_classes": checkpoint_meta["num_classes"],
         "finetune_epochs": args.finetune_epochs,
         "batch_size": args.batch_size,
         "lr": args.lr,

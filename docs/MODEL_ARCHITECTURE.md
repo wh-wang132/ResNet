@@ -102,11 +102,15 @@
 ## 使用示例
 
 ```python
+from base_model.dataset import discover_dataset_classes
 from base_model.resnet_lightweight import resnet6_2d
 from base_model.resnet_standard import resnet18_2d
 
-model_light = resnet6_2d(num_classes=24, dropout_p=0.3)
-model_standard = resnet18_2d(num_classes=24, dropout_p=0.3)
+class_names, _ = discover_dataset_classes("Data")
+num_classes = len(class_names)
+
+model_light = resnet6_2d(num_classes=num_classes, dropout_p=0.3)
+model_standard = resnet18_2d(num_classes=num_classes, dropout_p=0.3)
 ```
 
 ## 拓扑恢复示例
@@ -118,7 +122,7 @@ from base_model.resnet_lightweight import resnet6_2d_from_cfg
 
 model = resnet6_2d_from_cfg(
     channel_cfg=channel_cfg,
-    num_classes=24,
+    num_classes=len(class_names),
     dropout_p=0.3,
 )
 ```
