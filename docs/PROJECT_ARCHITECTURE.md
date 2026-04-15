@@ -63,16 +63,16 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 ### 3. 阶段编排层
 
-顶层入口位于 `src/` 根目录：
+各阶段入口位于对应包内的 `__main__.py`：
 
-- `src/base_model_main.py`
-- `src/pruning_main.py`
-- `src/qat_main.py`
-- `src/onnx_main.py`
-- `src/amct_main.py`
-- `src/atc_main.py`
+- `src/base_model/__main__.py`
+- `src/pruning/__main__.py`
+- `src/qat/__main__.py`
+- `src/onnx_export/__main__.py`
+- `src/amct/__main__.py`
+- `src/atc/__main__.py`
 
-这 6 个入口分别承担单阶段编排，不直接混写彼此逻辑。
+这 6 个入口分别承担单阶段编排，不直接混写彼此逻辑；命令统一通过 `python -m <package>` 形式调用。
 
 ### 4. 环境层
 

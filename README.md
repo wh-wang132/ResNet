@@ -152,23 +152,23 @@ base_model checkpoint
 
 ```bash
 # 完整训练 + 测试
-uv run src/base_model_main.py --epochs 20 --model resnet6_2d
+uv run python -m base_model --epochs 20 --model resnet6_2d
 
 # 仅训练
-uv run src/base_model_main.py --epochs 20 --Test False
+uv run python -m base_model --epochs 20 --Test False
 
 # 仅测试 + UMAP
-uv run src/base_model_main.py --Train False --UMAP True
+uv run python -m base_model --Train False --UMAP True
 ```
 
 ### 剪枝 + 微调
 
 ```bash
 # 最小剪枝命令
-uv run src/pruning_main.py --model resnet6_2d
+uv run python -m pruning --model resnet6_2d
 
 # 指定总剪枝率与轮数
-uv run src/pruning_main.py \
+uv run python -m pruning \
   --model resnet18_2d \
   --pruning_ratio 0.30 \
   --pruning_steps 5 \
@@ -176,7 +176,7 @@ uv run src/pruning_main.py \
   --finetune_epochs 10
 
 # 不做微调，只保存最终剪枝结果
-uv run src/pruning_main.py \
+uv run python -m pruning \
   --model resnet14_2d \
   --finetune_epochs 0 \
   --evaluate_test False
@@ -186,11 +186,11 @@ uv run src/pruning_main.py \
 
 ```bash
 # 最小 QAT 命令
-uv run src/qat_main.py \
+uv run python -m qat \
   --pruning_checkpoint output/pruning/resnet14_2d/ratio0.60_steps8_global_ft10_bs64/best_pruned_model.pth
 
 # 指定保守 QAT 微调参数
-uv run src/qat_main.py \
+uv run python -m qat \
   --pruning_checkpoint output/pruning/resnet34_2d/ratio0.80_steps8_global_ft10_bs64/best_pruned_model.pth \
   --qat_epochs 10 \
   --lr 1e-5 \
@@ -201,13 +201,13 @@ uv run src/qat_main.py \
 
 ```bash
 # pruning checkpoint -> FP16 ONNX
-uv run src/onnx_main.py \
+uv run python -m onnx_export \
   --branch pruning_fp16 \
   --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth \
   --eval_batch_size 64
 
 # QAT checkpoint -> convert 后量化 ONNX
-uv run src/onnx_main.py \
+uv run python -m onnx_export \
   --branch qat_convert \
   --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth \
   --eval_batch_size 64
@@ -226,7 +226,7 @@ uv run src/onnx_main.py \
 ```bash
 . scripts/load_amct_env.sh
 
-uv run src/amct_main.py \
+uv run python -m amct \
   --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx
 ```
 
@@ -236,12 +236,12 @@ uv run src/amct_main.py \
 . scripts/load_atc_env.sh
 
 # pruning_fp16 ONNX -> ATC
-pixi run python src/atc_main.py \
+pixi run python -m atc \
   --branch pruning_fp16 \
   --onnx_model output/onnx/pruning_fp16/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/model_fp16.onnx
 
 # AMCT deploy ONNX -> ATC
-pixi run python src/atc_main.py \
+pixi run python -m atc \
   --branch amct_deploy \
   --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
 ```

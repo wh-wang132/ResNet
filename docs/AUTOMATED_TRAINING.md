@@ -96,7 +96,7 @@ bash autorun/autorun_base_model.sh
 - 模型：`resnet6_2d` / `resnet10_2d` / `resnet14_2d` / `resnet18_2d` / `resnet34_2d`
 - 搜索维度：模型对应的训练轮数 + `batch_size`
 - 每条命令显式传入：`--full_load True`
-- 内部执行：`uv run src/base_model_main.py ...`
+- 内部执行：`uv run python -m base_model ...`
 
 输出目录：
 
@@ -120,7 +120,7 @@ bash autorun/autorun_pruning.sh
   - `--pruning_steps`
 - 每条命令显式传入：`--full_load True`
 - 其余参数与 pruning CLI 默认值保持一致
-- 内部执行：`uv run src/pruning_main.py ...`
+- 内部执行：`uv run python -m pruning ...`
 
 输出目录：
 
@@ -140,7 +140,7 @@ bash autorun/autorun_qat.sh
 - 输入：pruning 自动脚本产出的 `best_pruned_model.pth`
 - 每条命令显式传入：`--full_load True`
 - 其余参数与 QAT CLI 默认值保持一致
-- 内部执行：`uv run src/qat_main.py ...`
+- 内部执行：`uv run python -m qat ...`
 
 输出目录：
 
@@ -160,7 +160,7 @@ bash autorun/autorun_onnx.sh
 - 遍历：
   - `output/pruning/**/best_pruned_model.pth`
   - `output/qat/**/best_qat_prepare_model.pth`
-- 内部执行：`uv run src/onnx_main.py ...`
+- 内部执行：`uv run python -m onnx_export ...`
 - 默认参数与 ONNX CLI 保持一致：
   - `full_load=False`
   - `evaluate_test=True`
@@ -183,7 +183,7 @@ bash autorun/autorun_amct.sh
 
 脚本行为：
 - 只遍历 `output/onnx/qat_convert/**/model_quant.onnx`
-- 内部执行：`uv run src/amct_main.py ...`
+- 内部执行：`uv run python -m amct ...`
 - 运行前需先完成仓库内 `amct_onnx` wheel 与算子包的手动安装或部署
 
 输出目录：
@@ -204,7 +204,7 @@ bash autorun/autorun_atc.sh
 - 输入分支：
   - `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - `output/amct/**/deploy_model.onnx`
-- 内部执行：`pixi run python src/atc_main.py ...`
+- 内部执行：`pixi run python -m atc ...`
 - 默认参数与 ATC CLI 保持一致：
   - `soc_version=Ascend310B4`
   - `input_format=NCHW`

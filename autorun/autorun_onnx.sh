@@ -37,7 +37,7 @@ run_branch() {
     while IFS= read -r checkpoint_path; do
         [ -n "$checkpoint_path" ] || continue
         printf '\n[%s] %s\n' "$branch" "$checkpoint_path"
-        uv run src/onnx_main.py \
+        uv run python -m onnx_export \
             --branch "$branch" \
             --checkpoint "$checkpoint_path"
     done < "$tmp_list"

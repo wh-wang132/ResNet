@@ -14,13 +14,8 @@ base_model -> pruning -> qat -> onnx -> amct -> atc
 
 ```text
 src/
-├── base_model_main.py
-├── pruning_main.py
-├── qat_main.py
-├── onnx_main.py
-├── amct_main.py
-├── atc_main.py
 ├── base_model/
+│   ├── __main__.py
 │   ├── args.py
 │   ├── confusionMatrix.py
 │   ├── dataset.py
@@ -33,6 +28,7 @@ src/
 │   ├── utils.py
 │   └── visualizer.py
 ├── pruning/
+│   ├── __main__.py
 │   ├── args.py
 │   ├── checkpoint.py
 │   ├── evaluator.py
@@ -43,6 +39,7 @@ src/
 │   ├── utils.py
 │   └── README.md
 ├── qat/
+│   ├── __main__.py
 │   ├── args.py
 │   ├── checkpoint.py
 │   ├── evaluator.py
@@ -52,6 +49,7 @@ src/
 │   ├── utils.py
 │   └── README.md
 ├── onnx_export/
+│   ├── __main__.py
 │   ├── args.py
 │   ├── evaluator.py
 │   ├── exporter.py
@@ -60,12 +58,14 @@ src/
 │   ├── utils.py
 │   └── validate.py
 ├── amct/
+│   ├── __main__.py
 │   ├── __init__.py
 │   ├── args.py
 │   ├── converter.py
 │   ├── output.py
 │   └── utils.py
 └── atc/
+    ├── __main__.py
     ├── __init__.py
     ├── args.py
     ├── converter.py
@@ -73,9 +73,9 @@ src/
     └── utils.py
 ```
 
-## 入口脚本
+## 入口模块
 
-### `src/base_model_main.py`
+### `src/base_model/__main__.py`
 
 负责：
 
@@ -84,7 +84,7 @@ src/
 - 初始化模型
 - 执行训练 / 测试 / UMAP
 
-### `src/pruning_main.py`
+### `src/pruning/__main__.py`
 
 负责：
 
@@ -95,7 +95,7 @@ src/
 - 每轮评估与可选微调
 - 导出 pruning checkpoint 与 summary
 
-### `src/qat_main.py`
+### `src/qat/__main__.py`
 
 负责：
 
@@ -106,7 +106,7 @@ src/
 - 执行保守 QAT 微调
 - 导出 QAT prepare checkpoint 与 summary
 
-### `src/onnx_main.py`
+### `src/onnx_export/__main__.py`
 
 负责：
 
@@ -116,7 +116,7 @@ src/
 - 做 Torch / ORT 精度对照
 - 输出 `onnx_summary.json`
 
-### `src/amct_main.py`
+### `src/amct/__main__.py`
 
 负责：
 
@@ -124,7 +124,7 @@ src/
 - 调用 AMCT 转换逻辑
 - 保存 `amct_summary.json`
 
-### `src/atc_main.py`
+### `src/atc/__main__.py`
 
 负责：
 

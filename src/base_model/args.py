@@ -139,7 +139,7 @@ def parse_args():
         "--warmup_ratio",
         type=float,
         default=0.05,
-        help="Warmup 占总步数的比例 (默认 0.05, 即 5%)",
+        help="Warmup 占总步数的比例 (默认 0.05, 即 5%%)",
     )
     parser.add_argument(
         "--warmup_steps",

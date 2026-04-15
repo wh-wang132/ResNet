@@ -5,7 +5,7 @@
 推荐从项目根目录执行：
 
 ```bash
-uv run src/pruning_main.py --help
+uv run python -m pruning --help
 ```
 
 ## 环境说明

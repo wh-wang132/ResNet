@@ -103,7 +103,7 @@ PR 描述中建议明确说明：
 
 当前仓库更强调“阶段入口可运行 + 产物契约正确”，建议按变更范围做验证：
 
-- 基座训练相关：至少跑通一次 `src/base_model_main.py`
+- 基座训练相关：至少跑通一次 `python -m base_model`
 - 剪枝相关：至少验证 `pruning_summary.json` 与 checkpoint 输出
 - QAT 相关：至少验证 QAT checkpoint 可恢复
 - ONNX 相关：至少验证导出与 ORT 精度评估

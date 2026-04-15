@@ -112,13 +112,13 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 ### 最小剪枝命令
 
 ```bash
-uv run src/pruning_main.py --model resnet6_2d
+uv run python -m pruning --model resnet6_2d
 ```
 
 ### 指定总剪枝率与轮数
 
 ```bash
-uv run src/pruning_main.py \
+uv run python -m pruning \
   --model resnet18_2d \
   --pruning_ratio 0.30 \
   --pruning_steps 5 \
@@ -129,7 +129,7 @@ uv run src/pruning_main.py \
 ### 不做微调，仅保存最终剪枝结果
 
 ```bash
-uv run src/pruning_main.py \
+uv run python -m pruning \
   --model resnet14_2d \
   --finetune_epochs 0 \
   --evaluate_test False

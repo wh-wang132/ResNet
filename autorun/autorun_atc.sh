@@ -37,7 +37,7 @@ run_branch() {
     while IFS= read -r onnx_model_path; do
         [ -n "$onnx_model_path" ] || continue
         printf '\n[%s] %s\n' "$branch" "$onnx_model_path"
-        pixi run python src/atc_main.py \
+        pixi run python -m atc \
             --branch "$branch" \
             --onnx_model "$onnx_model_path"
     done < "$tmp_list"

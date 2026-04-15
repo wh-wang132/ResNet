@@ -34,7 +34,7 @@ find "output/onnx/qat_convert" -type f -name "model_quant.onnx" | LC_ALL=C sort 
 while IFS= read -r onnx_model_path; do
     [ -n "$onnx_model_path" ] || continue
     printf '\n[amct] %s\n' "$onnx_model_path"
-    uv run src/amct_main.py --onnx_model "$onnx_model_path"
+    uv run python -m amct --onnx_model "$onnx_model_path"
 done < "$tmp_list"
 
 print_section "完成遍历 qat_convert ONNX -> AMCT"

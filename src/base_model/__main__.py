@@ -3,26 +3,27 @@
 """
 .npy 数据集 2D ResNet 训练脚本（FP16 全流程版本）
 
-该文件作为新的统一入口，用于替代 src/base_model/main.py。
+该模块作为 base_model 包内的统一入口。
 """
 
-import sys
 import gc
+import sys
+
 import torch
 
 from base_model.args import parse_args
 from base_model.dataset import data_set_split
 from base_model.plotting import configure_matplotlib
+from base_model.tester import test_model
+from base_model.trainer import train_model
 from base_model.utils import (
-    release_gpu_memory,
-    setup_device,
+    create_optimized_dataloader,
     create_output_directory,
     load_model_map,
     print_model_info,
-    create_optimized_dataloader,
+    release_gpu_memory,
+    setup_device,
 )
-from base_model.trainer import train_model
-from base_model.tester import test_model
 from base_model.visualizer import visualize_umap
 
 configure_matplotlib()
@@ -55,7 +56,7 @@ def main():
         data_dtype=args.data_dtype,
     )
 
-    # 检查是否使用GPU
+    # 检查是否使用 GPU
     use_cuda = torch.cuda.is_available()
     pin_memory = args.pin_memory and use_cuda
 

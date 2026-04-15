@@ -4,12 +4,12 @@
 
 项目包含 6 套独立 CLI：
 
-- 基座训练：`uv run src/base_model_main.py ...`
-- 剪枝：`uv run src/pruning_main.py ...`
-- QAT：`uv run src/qat_main.py ...`
-- ONNX 导出：`uv run src/onnx_main.py ...`
-- AMCT 转换：`uv run src/amct_main.py ...`
-- ATC 编译：`pixi run python src/atc_main.py ...`
+- 基座训练：`uv run python -m base_model ...`
+- 剪枝：`uv run python -m pruning ...`
+- QAT：`uv run python -m qat ...`
+- ONNX 导出：`uv run python -m onnx_export ...`
+- AMCT 转换：`uv run python -m amct ...`
+- ATC 编译：`pixi run python -m atc ...`
 
 各入口参数并不完全相同，阅读时需要严格区分阶段。
 
@@ -77,7 +77,7 @@ AMCT CLI 额外依赖仓库自带组件：
 ### 入口
 
 ```bash
-uv run src/base_model_main.py --help
+uv run python -m base_model --help
 ```
 
 ### 核心参数
@@ -124,7 +124,7 @@ uv run src/base_model_main.py --help
 ### 示例
 
 ```bash
-uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet18_2d
+uv run python -m base_model --epochs 100 --batch_size 64 --model resnet18_2d
 ```
 
 ## 剪枝 CLI
@@ -132,7 +132,7 @@ uv run src/base_model_main.py --epochs 100 --batch_size 64 --model resnet18_2d
 ### 入口
 
 ```bash
-uv run src/pruning_main.py --help
+uv run python -m pruning --help
 ```
 
 完整实现见 [src/pruning/args.py](../src/pruning/args.py)。
@@ -173,7 +173,7 @@ uv run src/pruning_main.py --help
 ### 示例
 
 ```bash
-uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.80 --pruning_steps 8
+uv run python -m pruning --model resnet34_2d --pruning_ratio 0.80 --pruning_steps 8
 ```
 
 ## QAT CLI
@@ -181,7 +181,7 @@ uv run src/pruning_main.py --model resnet34_2d --pruning_ratio 0.80 --pruning_st
 ### 入口
 
 ```bash
-uv run src/qat_main.py --help
+uv run python -m qat --help
 ```
 
 完整实现见 [src/qat/args.py](../src/qat/args.py)。
@@ -218,7 +218,7 @@ uv run src/qat_main.py --help
 ### 示例
 
 ```bash
-uv run src/qat_main.py \
+uv run python -m qat \
   --pruning_checkpoint output/pruning/resnet18_2d/ratio0.60_steps8_global_ft10_bs64/best_pruned_model.pth
 ```
 
@@ -227,7 +227,7 @@ uv run src/qat_main.py \
 ### 入口
 
 ```bash
-uv run src/onnx_main.py --help
+uv run python -m onnx_export --help
 ```
 
 ### 核心参数
@@ -259,12 +259,12 @@ uv run src/onnx_main.py --help
 ### 示例
 
 ```bash
-uv run src/onnx_main.py \
+uv run python -m onnx_export \
   --branch pruning_fp16 \
   --checkpoint output/pruning/resnet10_2d/ratio0.40_steps5_global_ft10_bs64/best_pruned_model.pth \
   --eval_batch_size 64
 
-uv run src/onnx_main.py \
+uv run python -m onnx_export \
   --branch qat_convert \
   --checkpoint output/qat/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/best_qat_prepare_model.pth \
   --eval_batch_size 64
@@ -275,7 +275,7 @@ uv run src/onnx_main.py \
 ### 入口
 
 ```bash
-uv run src/amct_main.py --help
+uv run python -m amct --help
 ```
 
 ### 核心参数
@@ -293,7 +293,7 @@ uv run src/amct_main.py --help
 
 ### 输入契约
 
-- 只接受仓库 `onnx_main.py --branch qat_convert` 导出的 `model_quant.onnx`
+- 只接受仓库 `python -m onnx_export --branch qat_convert` 导出的 `model_quant.onnx`
 - 同目录必须存在 `onnx_summary.json`
 - `onnx_summary.json.branch` 必须为 `qat_convert`
 
@@ -307,7 +307,7 @@ uv run src/amct_main.py --help
 ### 示例
 
 ```bash
-uv run src/amct_main.py \
+uv run python -m amct \
   --onnx_model output/onnx/qat_convert/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/model_quant.onnx
 ```
 
@@ -316,7 +316,7 @@ uv run src/amct_main.py \
 ### 入口
 
 ```bash
-pixi run python src/atc_main.py --help
+pixi run python -m atc --help
 ```
 
 ### 核心参数
@@ -358,11 +358,11 @@ pixi run python src/atc_main.py --help
 ### 示例
 
 ```bash
-pixi run python src/atc_main.py \
+pixi run python -m atc \
   --branch pruning_fp16 \
   --onnx_model output/onnx/pruning_fp16/resnet10_2d/from_ratio0.40_steps5_global_ft10_bs64/model_fp16.onnx
 
-pixi run python src/atc_main.py \
+pixi run python -m atc \
   --branch amct_deploy \
   --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
 ```
