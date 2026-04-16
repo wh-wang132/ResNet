@@ -2,12 +2,12 @@
 
 ## 概述
 
-项目提供两类 2D ResNet：
+项目提供两类 2D ResNet 模型族：
 
 - 轻量级模型：`resnet6_2d`、`resnet10_2d`、`resnet14_2d`
 - 标准模型：`resnet18_2d`、`resnet34_2d`
 
-所有模型都面向 `.npy` 特征图；训练期实际输入 shape 由数据集样本推断得到：
+所有模型都面向 `.npy` 特征图；`_2d` 表示网络主体采用 2D 卷积，并不限制原始样本只能是二维数组。训练期实际输入 shape 由数据集样本推断得到：
 
 - 若样本为 2D `H,W`，加载后自动补成 `CHW=(1,H,W)`
 - 若样本为 3D `C,H,W`，则直接沿用其通道数
@@ -15,6 +15,7 @@
 说明：
 
 - 仓库包含以上 5 个模型
+- 训练入口不会要求显式传入类别数；类别数会先从 `Data/<class>/` 一级子目录推断，再传给模型构造逻辑
 - 模型结构均采用 `BasicBlock` 路线，不包含 `resnet50` 或 bottleneck 结构
 - 两类模型都支持 `*_from_cfg()`，用于恢复剪枝后的不规则拓扑
 
@@ -65,10 +66,11 @@
 所有支持的模型都具备：
 
 1. 输入通道数与数据集样本一致
-2. 可配置 Dropout
-3. Kaiming 初始化
-4. `get_features()` 中间特征提取接口
-5. `channel_cfg` 驱动的拓扑恢复能力
+2. 分类头输出维度与数据集动态推断出的类别数一致
+3. 可配置 Dropout
+4. Kaiming 初始化
+5. `get_features()` 中间特征提取接口
+6. `channel_cfg` 驱动的拓扑恢复能力
 
 这意味着模型不仅用于基座训练，也用于：
 
@@ -107,23 +109,24 @@ from base_model.resnet_lightweight import resnet6_2d
 from base_model.resnet_standard import resnet18_2d
 
 class_names, _ = discover_dataset_classes("Data")
-num_classes = len(class_names)
 
-model_light = resnet6_2d(num_classes=num_classes, dropout_p=0.3)
-model_standard = resnet18_2d(num_classes=num_classes, dropout_p=0.3)
+model_light = resnet6_2d(num_classes=len(class_names), dropout_p=0.3, in_channels=1)
+model_standard = resnet18_2d(num_classes=len(class_names), dropout_p=0.3, in_channels=3)
 ```
 
 ## 拓扑恢复示例
 
-剪枝后模型并不是靠“猜测通道数”恢复，而是通过 `channel_cfg` 明确重建：
+剪枝后模型并不是靠“猜测通道数”恢复，而是通过 `channel_cfg` 明确重建；若 `channel_cfg` 已携带分类头信息，则无需再额外手动传入类别数：
 
 ```python
 from base_model.resnet_lightweight import resnet6_2d_from_cfg
 
+in_channels = 3
+
 model = resnet6_2d_from_cfg(
     channel_cfg=channel_cfg,
-    num_classes=len(class_names),
     dropout_p=0.3,
+    in_channels=in_channels,
 )
 ```
 

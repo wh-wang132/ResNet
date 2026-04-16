@@ -33,10 +33,11 @@ QAT 阶段负责：
 
 1. 读取 pruning checkpoint
 2. 按 `model_structure.model_name + channel_cfg` 调用 `*_from_cfg()` 恢复剪枝后的浮点模型
-3. 在线执行 `prepare_qat_fx`
-4. 进行单路径、保守超参的 QAT 微调
-5. 导出 prepare 后的 QAT checkpoint
-6. 提供从 QAT checkpoint 直接恢复 prepared model 的正式接口
+3. 重新扫描 `Data/<class>/` 动态推断类别数，并校验 pruning checkpoint 的分类头
+4. 在线执行 `prepare_qat_fx`
+5. 进行单路径、保守超参的 QAT 微调
+6. 导出 prepare 后的 QAT checkpoint
+7. 提供从 QAT checkpoint 直接恢复 prepared model 的正式接口
 
 本阶段不负责：
 
@@ -48,6 +49,7 @@ QAT 阶段负责：
 
 - QAT 固定纯 `fp32`
 - 无论在 CPU 还是 GPU 上，训练 / 验证 / 测试统一为 `fp32`
+- 样本继续支持 2D `(H, W)` 与 3D `(C, H, W)`，输入通道数沿用 pruning checkpoint / 数据集推断结果
 - 量化方案采用固定 canonical 契约：
   - `quantization_scheme_version=3`
   - `scheme_name="torch_fx_qat_cann_v1"`

@@ -10,6 +10,12 @@ base_model -> pruning -> qat -> onnx -> amct -> atc
 
 本文档按代码实际结构说明各模块职责。
 
+补充约定：
+
+- 模型家族为 2D ResNet，但输入样本支持 2D `(H, W)` 与 3D `(C, H, W)` `.npy`
+- 类别名与类别数运行时从 `Data/<class>/` 一级子目录动态推断
+- 阶段入口统一通过包内 `__main__.py` 暴露，用户侧命令推荐使用 `uv run python -m <package>`；ATC 例外为 `pixi run python -m atc`
+
 ## 项目结构
 
 ```text
@@ -81,6 +87,7 @@ src/
 
 - 解析基座训练参数
 - 调用数据切分与 DataLoader
+- 扫描数据集类别并推断输入 shape / 通道数
 - 初始化模型
 - 执行训练 / 测试 / UMAP
 
@@ -89,7 +96,7 @@ src/
 负责：
 
 - 解析 pruning 参数
-- 读取基座模型符号链接
+- 按 `--model` 自动选择最佳基座 checkpoint
 - 恢复基座 checkpoint
 - 执行 iterative pruning
 - 每轮评估与可选微调
@@ -143,6 +150,8 @@ src/
 
 - `.npy` 数据集加载
 - 自然排序扫描
+- 从 `Data/<class>/` 动态推断类别映射
+- 从首个可读样本推断输入 shape 与通道数
 - 稳定 train / val / test 划分
 - `output/splits` manifest 落盘与复用
 
@@ -182,6 +191,7 @@ src/
   - `resnet6_2d`
   - `resnet10_2d`
   - `resnet14_2d`
+- 输入通道数与分类头维度由调用方按数据集推断结果传入
 - `*_from_cfg()` 恢复入口
 
 ### `base_model/resnet_standard.py`
@@ -190,6 +200,7 @@ src/
 - 默认工厂：
   - `resnet18_2d`
   - `resnet34_2d`
+- 输入通道数与分类头维度由调用方按数据集推断结果传入
 - `*_from_cfg()` 恢复入口
 
 ## `pruning` 模块职责

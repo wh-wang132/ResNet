@@ -38,6 +38,7 @@ direnv allow
 pruning 阶段负责：
 
 - 自动扫描 `output/base_model/<model>/` 下实验目录并选择最佳 `best_model.pth` 恢复基座模型
+- 重新扫描 `Data/<class>/` 以动态推断类别数，并校验所选基座 checkpoint 的分类头
 - 执行 iterative structured pruning
 - 每轮进行验证与可选微调
 - 仅最终轮保存 pruning checkpoint
@@ -57,6 +58,8 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 ```
 
 pruning 会遍历 `output/base_model/<model>/` 下所有直接子目录，读取每个目录 `best_val_acc_info.txt` 的最后一条有效记录，并按 `val acc` 优先、`val loss` 次优自动选择最佳实验权重。
+
+pruning 继续复用基础数据管线：样本支持 2D `(H, W)` 与 3D `(C, H, W)`，类别数来自 `Data/<class>/` 一级子目录扫描。
 
 ## 输出约定
 

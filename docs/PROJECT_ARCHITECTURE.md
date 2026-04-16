@@ -11,10 +11,11 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 各阶段职责如下：
 
 - `base_model`
-  - 训练原始 2D ResNet
+  - 训练 2D ResNet 模型族
+  - 输入样本可为 2D `(H, W)` 或 3D `(C, H, W)`
   - 输出结构化基座 checkpoint
 - `pruning`
-  - 读取基座 checkpoint
+  - 按 `--model` 自动选择最佳基座 checkpoint
   - 执行 iterative structured pruning + 微调
   - 输出 pruning checkpoint 与剪枝拓扑
 - `qat`
@@ -38,6 +39,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 ### 1. 数据层
 
 - 数据集采用 `Data/<class>/*.npy` 目录组织
+- 一级子目录名即类别名，类别数运行时动态推断
 - 训练期输入 shape 由数据集首个可读样本推断
 - `data_set_split()` 负责：
   - 自然排序扫描
@@ -50,6 +52,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 
 - 轻量模型定义位于 `base_model/resnet_lightweight.py`
 - 标准模型定义位于 `base_model/resnet_standard.py`
+- `resnet*_2d` 表示模型为 2D 卷积结构，不限制原始样本必须是 2D 数组
 - 仅支持 5 个模型：
   - `resnet6_2d`
   - `resnet10_2d`
@@ -72,7 +75,7 @@ base_model -> pruning -> qat -> onnx -> amct -> atc -> deploy
 - `src/amct/__main__.py`
 - `src/atc/__main__.py`
 
-这 6 个入口分别承担单阶段编排，不直接混写彼此逻辑；命令统一通过 `python -m <package>` 形式调用。
+这 6 个入口分别承担单阶段编排，不直接混写彼此逻辑；用户侧命令统一推荐使用 `uv run python -m <package>`，ATC 阶段使用 `pixi run python -m atc`。
 
 ### 4. 环境层
 

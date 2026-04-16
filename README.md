@@ -2,7 +2,7 @@
 
 ## 概述
 
-本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练端代码实现。仓库围绕 2D `.npy` 数据集构建了六阶段主线：
+本项目是本科毕设“基于昇腾 AI 架构的高效化无人机射频信号识别”的训练端代码实现。仓库围绕以 `.npy` 为载体的数据集构建了六阶段主线：样本支持 2D `(H, W)` 与 3D `(C, H, W)`，类别数运行时从 `Data/` 一级子目录动态推断。
 
 - `base_model`：基座模型训练、验证、测试与 UMAP/混淆矩阵可视化
 - `pruning`：基于 `torch-pruning` 的 iterative structured pruning + 微调
@@ -39,10 +39,14 @@ base_model checkpoint
 ## 核心能力
 
 - 5 种 2D ResNet 架构：`resnet6_2d`、`resnet10_2d`、`resnet14_2d`、`resnet18_2d`、`resnet34_2d`
+- `resnet*_2d` 表示模型为 2D 卷积结构，不限制原始 `.npy` 样本必须是二维
+- 数据样本支持 `(H, W)` 与 `(C, H, W)`，训练期自动推断 `CHW / NCHW`
+- 类别名与类别数来自 `Data/<class>/` 一级子目录扫描，不再依赖手动 `num_classes` 配置
 - `base_model / pruning` 支持 `fp16` 或 `fp32` 数据加载
 - `qat` 固定纯 `fp32`
 - 稳定的数据集切分与 `output/splits/` manifest 复用
 - 基座、剪枝、QAT 三类结构化 checkpoint
+- pruning 阶段按 `--model` 自动扫描 `output/base_model/<model>/` 并选择最佳基座实验
 - 剪枝后完整拓扑导出：`channel_cfg + architecture_signature`
 - 所有消费 `.pth` checkpoint 的步骤统一强校验 `architecture_signature`
 - ONNX / deploy ONNX 阶段统一通过同目录 summary 读取并校验上游 `architecture_signature` 与来源信息
@@ -255,7 +259,7 @@ pixi run python -m atc \
 
 ## 基座模型自动选择约定
 
-剪枝入口不会手动接收基座 checkpoint 路径，而是自动扫描：
+剪枝入口不会要求显式提供基座 checkpoint 路径，而是自动扫描：
 
 ```text
 output/base_model/<model>/<experiment_dir>/best_model.pth

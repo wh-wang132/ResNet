@@ -2,7 +2,7 @@
 
 ## 概述
 
-项目提供基于 `torch-pruning` 的 iterative structured pruning + 微调框架。该阶段以基座模型 checkpoint 为输入，输出 pruning checkpoint，供后续 QAT / ONNX 阶段恢复使用。
+项目提供基于 `torch-pruning` 的 iterative structured pruning + 微调框架。该阶段以自动选择出的基座模型 checkpoint 为输入，输出 pruning checkpoint，供后续 QAT / ONNX 阶段恢复使用。
 
 pruning 阶段负责：
 
@@ -14,6 +14,12 @@ pruning 阶段负责：
 6. 仅最终轮保存 pruning checkpoint
 
 pruning 阶段不负责读取 pruning checkpoint 并恢复模型；该职责由后续 QAT / ONNX 模块承担。
+
+数据侧约定：
+
+- 数据仍使用 `Data/<class>/*.npy` 目录组织
+- 样本支持 2D `(H, W)` 与 3D `(C, H, W)`
+- 类别数运行时从 `--data_dir` 的一级子目录动态推断，并用于校验所选基座 checkpoint 的分类头
 
 ## 环境前提
 
@@ -83,7 +89,7 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `--model` | 必填 | 基座模型名 |
+| `--model` | 必填 | 基座模型名；程序会据此扫描 `output/base_model/<model>/` 并自动选择最佳 `best_model.pth` |
 | `--model_path` | `best_pruned_model.pth` | 最终剪枝模型文件名 |
 | `--data_dir` | `Data` | 数据集路径 |
 | `--data_dtype` | `fp16` | 数据集输出 tensor 精度 |
@@ -134,6 +140,10 @@ uv run python -m pruning \
   --finetune_epochs 0 \
   --evaluate_test False
 ```
+
+说明：
+
+- `--model` 只选择上游基座模型家族；样本 shape 与类别数仍从 `--data_dir` 动态推断
 
 ## 输出目录
 

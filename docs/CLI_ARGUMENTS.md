@@ -13,6 +13,11 @@
 
 各入口参数并不完全相同，阅读时需要严格区分阶段。
 
+补充说明：
+
+- 所有训练相关 CLI 都以 `Data/<class>/` 一级子目录动态推断类别名与类别数，无需显式传入类别数
+- `resnet*_2d` 是模型家族命名；数据样本支持 2D `(H, W)` 与 3D `(C, H, W)`
+
 ## 环境前提
 
 ### 需要用户手动安装的项目
@@ -126,6 +131,11 @@ uv run python -m base_model --help
 uv run python -m base_model --epochs 100 --batch_size 64 --model resnet18_2d
 ```
 
+说明：
+
+- `--model` 只决定使用哪一种 2D ResNet 拓扑，不限制原始样本必须是 2D 数组
+- 输入通道数与分类头维度由入口根据 `Data/` 的样本 shape 与类别目录自动推断
+
 ## 剪枝 CLI
 
 ### 入口
@@ -166,7 +176,8 @@ uv run python -m pruning --help
 
 ### 特点
 
-- pruning 不手动接收基座 checkpoint 路径，而是自动扫描 base_model 实验目录并选择最佳 `best_model.pth`
+- pruning 通过扫描 base_model 实验目录自动选择最佳 `best_model.pth`
+- pruning 会重新扫描 `--data_dir`，用当前数据集类别数校验被选中的基座模型分类头
 - 产物用于后续 QAT / ONNX 恢复
 
 ### 示例
@@ -211,6 +222,7 @@ uv run python -m qat --help
 ### 特点
 
 - QAT 固定纯 `fp32`
+- QAT 仍通过 `--data_dir` 重新获取类别名与类别数，用于恢复与校验 pruning checkpoint
 - QAT 阶段输出 prepare checkpoint，不在本阶段做 `torch.convert`
 - QAT checkpoint 使用最小 `quantization_meta` 契约，供后续 ONNX 恢复
 
@@ -292,7 +304,7 @@ uv run python -m amct --help
 
 ### 输入契约
 
-- 只接受仓库 `python -m onnx_export --branch qat_convert` 导出的 `model_quant.onnx`
+- 只接受仓库 `uv run python -m onnx_export --branch qat_convert` 导出的 `model_quant.onnx`
 - 同目录必须存在 `onnx_summary.json`
 - `onnx_summary.json.branch` 必须为 `qat_convert`
 
