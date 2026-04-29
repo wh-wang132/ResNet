@@ -2,7 +2,7 @@
 
 ## 概述
 
-项目包含 6 套独立 CLI：
+项目包含 6 套流水线 CLI 与 1 套论文插图后处理 CLI：
 
 - 基座训练：`uv run python -m base_model ...`
 - 剪枝：`uv run python -m pruning ...`
@@ -10,6 +10,7 @@
 - ONNX 导出：`uv run python -m onnx_export ...`
 - AMCT 转换：`uv run python -m amct ...`
 - ATC 编译：`pixi run python -m atc ...`
+- 论文插图后处理：`uv run python -m thesis_figures ...`
 
 各入口参数并不完全相同，阅读时需要严格区分阶段。
 
@@ -376,4 +377,53 @@ pixi run python -m atc \
 pixi run python -m atc \
   --branch amct_deploy \
   --onnx_model output/amct/resnet6_2d/from_ratio0.60_steps8_global_ft10_bs64/deploy_model.onnx
+```
+
+## Thesis Figures CLI
+
+### 入口
+
+```bash
+uv run python -m thesis_figures --help
+```
+
+### 核心参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--output_root` | `output` | 只读扫描的训练端产物根目录 |
+| `--figure_dir` | `output/thesis_figures` | 论文插图输出根目录 |
+| `--formats` | `png,svg` | 逗号分隔的图片格式，当前支持 `png`、`svg` |
+| `--model` | `all` | 筛选单个模型，或扫描全部模型 |
+| `--experiment` | `all` | 按实验名子串筛选；`from_ratio...` 会按 `ratio...` 对齐 |
+| `--dry_run` | `False` | 只扫描并打印记录数，不创建输出目录 |
+| `--strict` | `False` | 遇到坏 JSON、缺关键字段或无记录时直接失败 |
+
+### 输入契约
+
+- 只消费 `output/` 下已有 summary：
+  - `pruning_summary.json`
+  - `qat_summary.json`
+  - `onnx_summary.json`
+  - `amct_summary.json`
+  - `atc_summary.json`
+- 不读取 `Data/`，不加载 `.pth`、`.onnx`、`.om`。
+- 不生成或模拟 ResNet_Acl 的真实推理延迟、吞吐、能耗等指标。
+
+### 输出产物
+
+- `fig1_pruning_accuracy_complexity.<png|svg>`
+- `fig2_compression_by_model.<png|svg>`
+- `fig3_stage_accuracy_flow.<png|svg>`
+- `fig4_onnx_metric_delta.<png|svg>`
+- `fig5_atc_amct_interface_matrix.<png|svg>`
+- `figures_manifest.json`
+- `tables/*.csv`
+
+### 示例
+
+```bash
+uv run python -m thesis_figures --output_root output --dry_run
+uv run python -m thesis_figures --output_root output --formats png,svg
+uv run python -m thesis_figures --model resnet6_2d --experiment ratio0.60
 ```

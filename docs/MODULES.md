@@ -70,13 +70,21 @@ src/
 │   ├── converter.py
 │   ├── output.py
 │   └── utils.py
-└── atc/
+├── atc/
+│   ├── __main__.py
+│   ├── __init__.py
+│   ├── args.py
+│   ├── converter.py
+│   ├── output.py
+│   └── utils.py
+└── thesis_figures/
     ├── __main__.py
     ├── __init__.py
     ├── args.py
-    ├── converter.py
+    ├── contracts.py
     ├── output.py
-    └── utils.py
+    ├── plots.py
+    └── scanner.py
 ```
 
 ## 入口模块
@@ -379,6 +387,35 @@ src/
 - 路径解析与文件检查
 - 汇总工具链环境变量
 
+## `thesis_figures` 模块职责
+
+### `thesis_figures/args.py`
+
+- 定义论文插图后处理 CLI 参数
+- 支持 `--output_root`、`--figure_dir`、`--formats`、`--dry_run` 等只读扫描选项
+
+### `thesis_figures/scanner.py`
+
+- 扫描 `output/` 下已有 summary
+- 跳过自身生成的 `output/thesis_figures/`
+- 按模型名、实验名、阶段和分支排序记录
+
+### `thesis_figures/contracts.py`
+
+- 将 pruning / QAT / ONNX / AMCT / ATC summary 归一化为统一图表记录
+- 将 `from_ratio...` 实验名对齐为 `ratio...`
+- 只读取 JSON 字段，不加载 checkpoint、ONNX 或 OM 实体
+
+### `thesis_figures/plots.py`
+
+- 生成剪枝折中、复杂度压缩、阶段精度流转、ONNX 差异和接口矩阵图
+- 输出 `png` / `svg` 图片以及 CSV 表格
+
+### `thesis_figures/output.py`
+
+- 创建 `output/thesis_figures/figures_<timestamp>/`
+- 保存 `figures_manifest.json` 与 `tables/*.csv`
+
 ## 当前阶段边界
 
 - `base_model`：产出结构化基座 checkpoint
@@ -387,3 +424,4 @@ src/
 - `onnx`：消费 pruning / QAT checkpoint，产出 ONNX 与评估摘要
 - `amct`：消费 `qat_convert` ONNX，产出 deploy / fakequant ONNX
 - `atc`：消费 `pruning_fp16` 或 `amct_deploy` ONNX，产出 `.om`
+- `thesis_figures`：只读消费 `output/` summary，产出论文插图和表格
