@@ -16,7 +16,7 @@ pixi run autorun-thesis-figures
 默认输出目录：
 
 ```text
-output/thesis_figures/figures_<YYYYmmdd_HHMMSS>/
+output/thesis_figures/
 ├── fig1_pruning_accuracy_complexity.png
 ├── fig1_pruning_accuracy_complexity.svg
 ├── ...
@@ -28,6 +28,8 @@ output/thesis_figures/figures_<YYYYmmdd_HHMMSS>/
     ├── onnx_metric_delta.csv
     └── atc_amct_interface_matrix.csv
 ```
+
+重复运行会覆盖 `output/thesis_figures/` 下的同名图表、CSV 和 `figures_manifest.json`，不再创建 `figures_<timestamp>` 子目录。
 
 ## 输入范围
 

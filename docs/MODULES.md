@@ -413,7 +413,7 @@ src/
 
 ### `thesis_figures/output.py`
 
-- 创建 `output/thesis_figures/figures_<timestamp>/`
+- 创建固定输出目录 `output/thesis_figures/`
 - 保存 `figures_manifest.json` 与 `tables/*.csv`
 
 ## 当前阶段边界

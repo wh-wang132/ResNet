@@ -13,15 +13,9 @@ from typing import Any, Iterable
 
 def create_figure_directory(figure_dir) -> Path:
     root = Path(figure_dir)
-    timestamp = datetime.now().strftime("figures_%Y%m%d_%H%M%S")
-    candidate = root / timestamp
-    suffix = 1
-    while candidate.exists():
-        suffix += 1
-        candidate = root / f"{timestamp}_{suffix}"
-    candidate.mkdir(parents=True, exist_ok=False)
-    (candidate / "tables").mkdir(parents=True, exist_ok=True)
-    return candidate
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "tables").mkdir(parents=True, exist_ok=True)
+    return root
 
 
 def write_csv(path, rows: Iterable[dict[str, Any]]) -> Path:

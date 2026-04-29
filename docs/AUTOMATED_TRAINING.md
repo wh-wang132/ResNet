@@ -242,7 +242,7 @@ pixi run autorun-thesis-figures
 输出目录：
 
 ```text
-output/thesis_figures/figures_<timestamp>/
+output/thesis_figures/
 ```
 
 ## 使用建议
