@@ -408,7 +408,7 @@ src/
 
 ### `thesis_figures/plots.py`
 
-- 生成剪枝折中、复杂度压缩、阶段精度流转、ONNX 差异和接口矩阵图
+- 生成剪枝折中、复杂度压缩、阶段错误率流转、ONNX 差异和接口矩阵图
 - 输出 `png` / `svg` 图片以及 CSV 表格
 
 ### `thesis_figures/output.py`

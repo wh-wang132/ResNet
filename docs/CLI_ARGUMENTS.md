@@ -420,6 +420,8 @@ uv run python -m thesis_figures --help
 - `figures_manifest.json`
 - `tables/*.csv`
 
+图表使用错误率口径，错误率按 `1 - acc` 派生；错误率、参数量与 MACs 相关图使用对数坐标。文件名保持兼容，不再额外改名。
+
 ### 示例
 
 ```bash

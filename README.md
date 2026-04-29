@@ -269,7 +269,7 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 
 ## 自动化脚本
 
-`autorun/` 目录提供 6 份顺序执行脚本，并在 `pixi.toml` 中一一映射为独立 task：
+`autorun/` 目录提供 7 份顺序执行与后处理脚本，并在 `pixi.toml` 中一一映射为独立 task：
 
 - [autorun/autorun_base_model.sh](autorun/autorun_base_model.sh) -> `pixi run autorun-base-model`
 - [autorun/autorun_pruning.sh](autorun/autorun_pruning.sh) -> `pixi run autorun-pruning`
@@ -277,8 +277,9 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
 - [autorun/autorun_onnx.sh](autorun/autorun_onnx.sh) -> `pixi run autorun-onnx`
 - [autorun/autorun_amct.sh](autorun/autorun_amct.sh) -> `pixi run autorun-amct`
 - [autorun/autorun_atc.sh](autorun/autorun_atc.sh) -> `pixi run autorun-atc`
+- [autorun/autorun_thesis_figures.sh](autorun/autorun_thesis_figures.sh) -> `pixi run autorun-thesis-figures`
 
-这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，适合直接在服务器终端监视运行并安全清理中间状态。推荐优先通过 `pixi run <task>` 调用；对应 shell 脚本仍保留作为底层实现。
+这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，适合直接在服务器终端监视运行并安全清理中间状态。`autorun-thesis-figures` 是只读消费 `output/` 的论文插图后处理任务，通常在 ATC 产物准备好后单独运行。推荐优先通过 `pixi run <task>` 调用；对应 shell 脚本仍保留作为底层实现。
 
 运行前提：
 
@@ -308,6 +309,10 @@ output/base_model/<model>/<experiment_dir>/best_model.pth
   - 遍历 `output/onnx/pruning_fp16/**/model_fp16.onnx`
   - 遍历 `output/amct/**/deploy_model.onnx`
   - 默认参数与 ATC CLI 保持一致：`soc_version=Ascend310B4`
+- `autorun-thesis-figures`
+  - 只读扫描已有 `output/` summary
+  - 生成论文插图、CSV 表格与 `figures_manifest.json`
+  - 内部执行：`uv run python -m thesis_figures --output_root output --formats png,svg --strict`
 
 ## 数据划分清单
 

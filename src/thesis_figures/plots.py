@@ -35,7 +35,7 @@ def write_all_outputs(records, output_dir, formats):
     tables: list[Path] = []
     tables.append(write_csv(tables_dir / "records.csv", [record.to_row() for record in records]))
     tables.append(write_csv(tables_dir / "pruning_tradeoff.csv", _pruning_rows(records)))
-    tables.append(write_csv(tables_dir / "stage_accuracy_summary.csv", _stage_accuracy_rows(records)))
+    tables.append(write_csv(tables_dir / "stage_accuracy_summary.csv", _stage_error_rows(records)))
     tables.append(write_csv(tables_dir / "onnx_metric_delta.csv", _onnx_delta_rows(records)))
     tables.append(write_csv(tables_dir / "atc_amct_interface_matrix.csv", _interface_rows(records)))
 
@@ -53,38 +53,62 @@ def plot_pruning_accuracy_complexity(records, output_dir, formats):
         return []
 
     fig, axes = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
+    plotted_error = False
+    plotted_params = False
     for model_name, model_rows in _group_rows(rows, "model_name").items():
         model_rows = sorted(model_rows, key=lambda row: row["pruning_ratio"])
-        x_values = [row["pruning_ratio"] * 100 for row in model_rows]
-        acc_values = [row["accuracy"] * 100 for row in model_rows]
-        params_values = [row["params_remaining_ratio"] * 100 for row in model_rows]
         color = _color_for_model(model_name)
-        axes[0].plot(
-            x_values,
-            acc_values,
-            marker="o",
-            linewidth=1.8,
-            markersize=4,
-            label=model_name,
-            color=color,
-        )
-        axes[1].plot(
-            x_values,
-            params_values,
-            marker="s",
-            linewidth=1.8,
-            markersize=4,
-            label=model_name,
-            color=color,
-        )
+        error_points = [
+            (row["pruning_ratio"] * 100, row["error_rate"] * 100)
+            for row in model_rows
+            if _is_positive(row.get("error_rate"))
+        ]
+        params_points = [
+            (row["pruning_ratio"] * 100, row["params_remaining_ratio"] * 100)
+            for row in model_rows
+            if _is_positive(row.get("params_remaining_ratio"))
+        ]
+        if error_points:
+            x_values, error_values = zip(*error_points)
+            axes[0].plot(
+                x_values,
+                error_values,
+                marker="o",
+                linewidth=1.8,
+                markersize=4,
+                label=model_name,
+                color=color,
+            )
+            plotted_error = True
+        if params_points:
+            x_values, params_values = zip(*params_points)
+            axes[1].plot(
+                x_values,
+                params_values,
+                marker="s",
+                linewidth=1.8,
+                markersize=4,
+                label=model_name,
+                color=color,
+            )
+            plotted_params = True
 
-    axes[0].set_ylabel("Accuracy (%)")
-    axes[0].set_title("Pruning Accuracy and Parameter Trade-off")
+    if not plotted_error and not plotted_params:
+        plt.close(fig)
+        return []
+
+    axes[0].set_yscale("log")
+    axes[0].set_ylabel("Error Rate (%)")
+    axes[0].set_title("Pruning Error Rate and Parameter Trade-off")
     axes[0].grid(True, alpha=0.3, linestyle="--")
-    axes[0].legend(ncol=2)
+    if plotted_error:
+        axes[0].legend(ncol=2)
     axes[1].set_xlabel("Target Pruning Ratio (%)")
+    axes[1].set_yscale("log")
     axes[1].set_ylabel("Parameters Remaining (%)")
     axes[1].grid(True, alpha=0.3, linestyle="--")
+    if plotted_params:
+        axes[1].legend(ncol=2)
     _set_ylim_with_padding(axes[0])
     _set_ylim_with_padding(axes[1])
     return _save_figure(fig, output_dir, "fig1_pruning_accuracy_complexity", formats)
@@ -97,10 +121,10 @@ def plot_compression_by_model(records, output_dir, formats):
         candidates = [
             record
             for record in model_records
-            if record.params is not None
-            and record.baseline_params not in (None, 0)
-            and record.macs is not None
-            and record.baseline_macs not in (None, 0)
+            if _is_positive(record.params)
+            and _is_positive(record.baseline_params)
+            and _is_positive(record.macs)
+            and _is_positive(record.baseline_macs)
         ]
         if candidates:
             best_records.append(min(candidates, key=lambda item: item.params or math.inf))
@@ -127,6 +151,7 @@ def plot_compression_by_model(records, output_dir, formats):
         width,
         "Parameters (M)",
         "Best Compression by Model",
+        yscale="log",
     )
     _paired_bars(
         axes[1],
@@ -137,24 +162,30 @@ def plot_compression_by_model(records, output_dir, formats):
         width,
         "MACs (G)",
         "Computation Reduction by Model",
+        yscale="log",
     )
     return _save_figure(fig, output_dir, "fig2_compression_by_model", formats)
 
 
 def plot_stage_accuracy_flow(records, output_dir, formats):
-    rows = _stage_accuracy_rows(records)
+    rows = [
+        row
+        for row in _stage_error_rows(records)
+        if _is_positive(row.get("mean_error_rate"))
+    ]
     if not rows:
         return []
 
     labels = [row["stage_label"] for row in rows]
-    values = [row["mean_accuracy"] * 100 for row in rows]
+    values = [row["mean_error_rate"] * 100 for row in rows]
     counts = [row["count"] for row in rows]
     colors = ["#0072B2", "#009E73", "#D55E00", "#CC79A7"]
 
     fig, ax = plt.subplots(figsize=(9, 4.8))
     bars = ax.bar(labels, values, color=colors[: len(values)], width=0.62)
-    ax.set_ylabel("Mean Test Accuracy (%)")
-    ax.set_title("Accuracy Flow Across Training Artifacts")
+    ax.set_yscale("log")
+    ax.set_ylabel("Mean Test Error Rate (%)")
+    ax.set_title("Error Rate Flow Across Training Artifacts")
     ax.grid(True, axis="y", alpha=0.3, linestyle="--")
     _set_ylim_with_padding(ax)
     for bar, count in zip(bars, counts):
@@ -183,16 +214,16 @@ def plot_onnx_metric_delta(records, output_dir, formats):
         )
         x_values = list(range(len(branch_rows)))
         color = "#0072B2" if branch == "pruning_fp16" else "#D55E00"
-        acc_delta = [row["metric_delta_acc"] * 100 for row in branch_rows]
+        error_delta = [row["metric_delta_error_rate"] * 100 for row in branch_rows]
         loss_delta = [row["metric_delta_loss"] for row in branch_rows]
-        axes[0].scatter(x_values, acc_delta, label=branch, color=color, alpha=0.75)
+        axes[0].scatter(x_values, error_delta, label=branch, color=color, alpha=0.75)
         axes[1].scatter(x_values, loss_delta, label=branch, color=color, alpha=0.75)
 
     axes[0].axhline(0, color="#333333", linewidth=1)
     axes[1].axhline(0, color="#333333", linewidth=1)
-    axes[0].set_ylabel("Accuracy Delta (pp)")
+    axes[0].set_ylabel("Error Rate Delta (pp)")
     axes[1].set_ylabel("Loss Delta")
-    axes[0].set_title("ONNX Accuracy Delta")
+    axes[0].set_title("ONNX Error Rate Delta")
     axes[1].set_title("ONNX Loss Delta")
     for ax in axes:
         ax.set_xlabel("Exported Artifacts")
@@ -242,6 +273,7 @@ def _pruning_rows(records):
         if record.stage != "pruning":
             continue
         accuracy = _first_number(record.test_acc, record.val_acc)
+        error_rate = _error_rate(accuracy)
         if (
             record.pruning_ratio is None
             or accuracy is None
@@ -255,6 +287,7 @@ def _pruning_rows(records):
             "pruning_ratio": record.pruning_ratio,
             "pruning_steps": record.pruning_steps,
             "accuracy": accuracy,
+            "error_rate": error_rate,
             "params": record.params,
             "baseline_params": record.baseline_params,
             "params_remaining_ratio": record.params / record.baseline_params,
@@ -271,7 +304,7 @@ def _pruning_rows(records):
     return rows
 
 
-def _stage_accuracy_rows(records):
+def _stage_error_rows(records):
     stage_order = [
         ("pruning", None, "Pruning"),
         ("qat", None, "QAT"),
@@ -287,8 +320,9 @@ def _stage_accuracy_rows(records):
             if branch is not None and record.branch != branch:
                 continue
             accuracy = _first_number(record.exported_test_acc, record.test_acc, record.val_acc)
-            if accuracy is not None:
-                values.append(accuracy)
+            error_rate = _error_rate(accuracy)
+            if error_rate is not None:
+                values.append(error_rate)
         if values:
             rows.append(
                 {
@@ -296,9 +330,9 @@ def _stage_accuracy_rows(records):
                     "branch": branch,
                     "stage_label": label,
                     "count": len(values),
-                    "mean_accuracy": sum(values) / len(values),
-                    "min_accuracy": min(values),
-                    "max_accuracy": max(values),
+                    "mean_error_rate": sum(values) / len(values),
+                    "min_error_rate": min(values),
+                    "max_error_rate": max(values),
                 }
             )
     return rows
@@ -311,15 +345,20 @@ def _onnx_delta_rows(records):
             continue
         if record.metric_delta_acc is None or record.metric_delta_loss is None:
             continue
+        source_error_rate = _error_rate(record.source_test_acc)
+        exported_error_rate = _error_rate(record.exported_test_acc)
         rows.append(
             {
                 "branch": record.branch,
                 "model_name": record.model_name,
                 "experiment_name": record.experiment_name,
                 "metric_delta_acc": record.metric_delta_acc,
+                "metric_delta_error_rate": -record.metric_delta_acc,
                 "metric_delta_loss": record.metric_delta_loss,
                 "source_test_acc": record.source_test_acc,
                 "exported_test_acc": record.exported_test_acc,
+                "source_test_error_rate": source_error_rate,
+                "exported_test_error_rate": exported_error_rate,
                 "summary_path": record.summary_path,
             }
         )
@@ -405,13 +444,15 @@ def _color_for_model(model_name):
     return MODEL_COLORS.get(model_name, "#666666")
 
 
-def _paired_bars(ax, x_values, baseline, final, labels, width, ylabel, title):
+def _paired_bars(ax, x_values, baseline, final, labels, width, ylabel, title, yscale=None):
     ax.bar([x - width / 2 for x in x_values], baseline, width, label="Baseline", color="#7AA6C2")
     ax.bar([x + width / 2 for x in x_values], final, width, label="Final", color="#D7835F")
     ax.set_xticks(x_values)
     ax.set_xticklabels(labels, rotation=20, ha="right")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    if yscale is not None:
+        ax.set_yscale(yscale)
     ax.grid(True, axis="y", alpha=0.3, linestyle="--")
     ax.legend()
 
@@ -429,3 +470,16 @@ def _first_number(*values):
         if value is not None:
             return value
     return None
+
+
+def _error_rate(accuracy):
+    if accuracy is None:
+        return None
+    error_rate = 1.0 - accuracy
+    if error_rate < 0:
+        return None
+    return error_rate
+
+
+def _is_positive(value):
+    return value is not None and value > 0

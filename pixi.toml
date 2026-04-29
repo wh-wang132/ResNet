@@ -19,6 +19,7 @@ autorun-qat = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /b
 autorun-onnx = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_onnx.sh"
 autorun-amct = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_amct.sh"
 autorun-atc = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_atc.sh"
+autorun-thesis-figures = "REPO_ROOT=$PIXI_PROJECT_ROOT PYTHONPATH=$PIXI_PROJECT_ROOT/src /bin/sh autorun/autorun_thesis_figures.sh"
 
 [dependencies]
 gxx = ">=15.2.0,<15.3"

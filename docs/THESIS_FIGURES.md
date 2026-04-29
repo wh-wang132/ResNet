@@ -8,7 +8,10 @@
 uv run python -m thesis_figures --help
 uv run python -m thesis_figures --output_root output --dry_run
 uv run python -m thesis_figures --output_root output --formats png,svg
+pixi run autorun-thesis-figures
 ```
+
+`pixi run autorun-thesis-figures` 是批处理后处理入口，内部执行 `uv run python -m thesis_figures --output_root output --formats png,svg --strict`，通常在 ATC 产物准备好后运行。
 
 默认输出目录：
 
@@ -40,11 +43,13 @@ output/thesis_figures/figures_<YYYYmmdd_HHMMSS>/
 
 ## 生成图表
 
-- `fig1_pruning_accuracy_complexity`：剪枝率、准确率与参数保留比例关系。
-- `fig2_compression_by_model`：各模型最佳压缩实验的 baseline/final 参数量与 MACs 对比。
-- `fig3_stage_accuracy_flow`：pruning、QAT、ONNX FP16、ONNX QAT 的平均测试准确率流转。
-- `fig4_onnx_metric_delta`：ONNX 导出前后 accuracy / loss 差异。
+- `fig1_pruning_accuracy_complexity`：剪枝率、错误率与参数保留比例关系，错误率与参数保留比例均使用对数坐标。
+- `fig2_compression_by_model`：各模型最佳压缩实验的 baseline/final 参数量与 MACs 对比，参数量与 MACs 均使用对数坐标。
+- `fig3_stage_accuracy_flow`：pruning、QAT、ONNX FP16、ONNX QAT 的平均测试错误率流转，使用对数坐标。
+- `fig4_onnx_metric_delta`：ONNX 导出前后 error rate / loss 差异；错误率差异由 `-metric_delta_acc` 派生。
 - `fig5_atc_amct_interface_matrix`：AMCT / ATC 分支接口矩阵。
+
+错误率统一按 `1 - acc` 派生。对数坐标图会跳过缺失、为 0 或小于 0 的数据点，不使用 epsilon 伪造非零错误率。
 
 该模块不生成或模拟推理端真实延迟、吞吐、能耗等指标；这些指标仍以 `wh-wang132/ResNet_Acl` 的 `accuracy`、`efficiency`、`visualization` 输出为准。
 
@@ -65,5 +70,7 @@ output/thesis_figures/figures_<YYYYmmdd_HHMMSS>/
 ```bash
 uv run python -m thesis_figures --help
 uv run python -m thesis_figures --output_root output --dry_run
+uv run python -m thesis_figures --output_root output --dry_run --strict
+pixi run autorun-thesis-figures
 PYTHONPATH=src uv run python -m unittest discover -s tests
 ```

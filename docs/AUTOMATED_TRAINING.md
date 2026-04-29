@@ -2,7 +2,7 @@
 
 ## 概述
 
-当前仓库在 `autorun/` 目录提供 6 份顺序执行脚本，并在 `pixi.toml` 中一一映射为独立 task：
+当前仓库在 `autorun/` 目录提供 7 份顺序执行与后处理脚本，并在 `pixi.toml` 中一一映射为独立 task：
 
 - `autorun/autorun_base_model.sh` -> `pixi run autorun-base-model`
 - `autorun/autorun_pruning.sh` -> `pixi run autorun-pruning`
@@ -10,8 +10,9 @@
 - `autorun/autorun_onnx.sh` -> `pixi run autorun-onnx`
 - `autorun/autorun_amct.sh` -> `pixi run autorun-amct`
 - `autorun/autorun_atc.sh` -> `pixi run autorun-atc`
+- `autorun/autorun_thesis_figures.sh` -> `pixi run autorun-thesis-figures`
 
-这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，便于在服务器终端观察运行状态并安全清理中间状态。推荐通过 `pixi run <task>` 调用；对应 shell 脚本保留为底层实现。
+这些脚本整体仍服务于顺序批处理执行；其中 `onnx` / `amct` / `atc` autorun 已包含 shell 函数、`mktemp`、`trap`、`find` 遍历与临时文件清理等基础控制逻辑，便于在服务器终端观察运行状态并安全清理中间状态。`thesis_figures` autorun 是只读消费 `output/` 的论文插图后处理任务，通常在 ATC 产物准备好后单独运行。推荐通过 `pixi run <task>` 调用；对应 shell 脚本保留为底层实现。
 
 ## 运行前准备
 
@@ -88,6 +89,7 @@ AMCT 阶段额外依赖仓库自带组件：
 - `autorun/autorun_onnx.sh`：内部加载 `load_onnx_env.sh`
 - `autorun/autorun_amct.sh`：内部加载 `load_amct_env.sh`
 - `autorun/autorun_atc.sh`：内部加载 `load_atc_env.sh`
+- `autorun/autorun_thesis_figures.sh`：只依赖公共层
 
 ## 基座模型自动训练
 
@@ -223,6 +225,26 @@ output/atc/pruning_fp16/<model>/from_<exp>/
 output/atc/amct_deploy/<model>/from_<exp>/
 ```
 
+## 论文插图自动生成
+
+入口：
+
+```bash
+pixi run autorun-thesis-figures
+```
+
+脚本行为：
+- 只读扫描已有 `output/` summary 与产物路径信息
+- 内部执行：`uv run python -m thesis_figures --output_root output --formats png,svg --strict`
+- 不加载 CUDA / CANN / AMCT / ATC 阶段环境
+- 通常在 `pixi run autorun-atc` 完成后运行，也可在任意已有 `output/` 产物准备好后单独运行
+
+输出目录：
+
+```text
+output/thesis_figures/figures_<timestamp>/
+```
+
 ## 使用建议
 
 1. 先单独运行一条命令，确认环境、数据路径与驱动条件正常。
@@ -231,6 +253,7 @@ output/atc/amct_deploy/<model>/from_<exp>/
    - 对应基座模型目录下已存在 `output/base_model/<model>/best_model.pth` 符号链接
 4. `autorun-onnx` 对应脚本默认不显式传 `--eval_batch_size`；若资源不足，可在底层脚本中追加更小的评估 batch。
 5. `autorun-amct` 与 `autorun-atc` 适合在对应目标环境上运行。
+6. `autorun-thesis-figures` 是后处理任务，不会触发训练、导出或 ATC 编译。
 
 ## 注意事项
 
