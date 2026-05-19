@@ -24,6 +24,7 @@ MODEL_COLORS = {
     "resnet18_2d": "#CC79A7",
     "resnet34_2d": "#E69F00",
 }
+FIG2_MAX_ERROR_RATE = 0.005
 
 
 def write_all_outputs(records, output_dir, formats):
@@ -125,6 +126,8 @@ def plot_compression_by_model(records, output_dir, formats):
             and _is_positive(record.baseline_params)
             and _is_positive(record.macs)
             and _is_positive(record.baseline_macs)
+            and _fig2_error_rate(record) is not None
+            and _fig2_error_rate(record) <= FIG2_MAX_ERROR_RATE
         ]
         if candidates:
             best_records.append(min(candidates, key=lambda item: item.params or math.inf))
@@ -150,7 +153,7 @@ def plot_compression_by_model(records, output_dir, formats):
         labels,
         width,
         "Parameters (M)",
-        "Best Compression by Model",
+        "Best Compression by Model (Error Rate <= 0.5%)",
         yscale="log",
     )
     _paired_bars(
@@ -161,7 +164,7 @@ def plot_compression_by_model(records, output_dir, formats):
         labels,
         width,
         "MACs (G)",
-        "Computation Reduction by Model",
+        "Computation Reduction by Model (Error Rate <= 0.5%)",
         yscale="log",
     )
     return _save_figure(fig, output_dir, "fig2_compression_by_model", formats)
@@ -470,6 +473,10 @@ def _first_number(*values):
         if value is not None:
             return value
     return None
+
+
+def _fig2_error_rate(record):
+    return _error_rate(_first_number(record.test_acc, record.val_acc))
 
 
 def _error_rate(accuracy):
