@@ -75,7 +75,6 @@ base_model checkpoint
 - `pixi install`：
   - Python 3.12 运行时
   - GCC / G++ / Make / CMake 等工具链
-  - `cuda-runtime`、`cudnn`
   - `ascend-cann-toolkit`、`ascend-cann-310b-ops`
 - `uv sync`：
   - `torch`
